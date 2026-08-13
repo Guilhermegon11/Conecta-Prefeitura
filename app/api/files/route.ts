@@ -15,8 +15,8 @@ export async function GET(request: Request) {
     const { DB, BUCKET } = getRuntimeBindings();
     const viewer = await DB.prepare("SELECT id, department FROM users WHERE id = ?").bind(viewerId).first<{ id: string; department: string }>();
     if (!viewer) return Response.json({ error: "Usuário não encontrado" }, { status: 404 });
-    const document = await DB.prepare("SELECT name, storage_key AS storageKey, content_type AS contentType, ticket_id AS ticketId FROM documents WHERE id = ?")
-      .bind(id).first<{ name: string; storageKey: string; contentType: string; ticketId: string | null }>();
+    const document = await DB.prepare("SELECT name, storage_key AS storageKey, content_type AS contentType, ticket_id AS ticketId, department FROM documents WHERE id = ?")
+      .bind(id).first<{ name: string; storageKey: string; contentType: string; ticketId: string | null; department: string }>();
     if (!document) return Response.json({ error: "Documento não encontrado" }, { status: 404 });
     if (document.ticketId) {
       const ticketAccess = await DB.prepare("SELECT id FROM tickets WHERE id = ? AND LOWER(TRIM(department)) = LOWER(TRIM(?))")
@@ -32,6 +32,9 @@ export async function GET(request: Request) {
       const membership = await DB.prepare("SELECT user_id AS userId FROM group_members WHERE group_id = ? AND user_id = ? AND invitation_status = 'aceito'")
         .bind(linkedMessage.conversationId, viewerId).first<{ userId: string }>();
       if (!membership) return Response.json({ error: "Documento privado deste grupo" }, { status: 403 });
+    }
+    if (!linkedMessage && document.department.trim().toLocaleLowerCase("pt-BR") !== viewer.department.trim().toLocaleLowerCase("pt-BR")) {
+      return Response.json({ error: "Arquivo restrito aos integrantes do setor" }, { status: 403 });
     }
 
     const object = await BUCKET.get(document.storageKey);
@@ -100,8 +103,8 @@ export async function POST(request: Request) {
     }
 
     const statements = [
-      DB.prepare("INSERT INTO documents (id, name, category, owner_id, ticket_id, storage_key, content_type, size, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)")
-        .bind(id, file.name, String(form.get("category") ?? "Documento"), ownerId, ticketId, storageKey, contentType, file.size, now),
+      DB.prepare("INSERT INTO documents (id, name, category, owner_id, ticket_id, department, storage_key, content_type, size, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)")
+        .bind(id, file.name, String(form.get("category") ?? "Documento"), ownerId, ticketId, actor.department, storageKey, contentType, file.size, now),
     ];
 
     if (isChatUpload && messageId) {
@@ -126,6 +129,7 @@ export async function POST(request: Request) {
       name: file.name,
       size: file.size,
       contentType,
+      department: actor.department,
       createdAt: now,
       message: messageId ? { id: messageId, conversationType, conversationId, senderId: ownerId, senderName: actor.fullName, senderInitials: actor.initials, body: String(form.get("messageBody") ?? "").trim(), attachmentId: id, attachmentName: file.name, attachmentSize: file.size, attachmentContentType: contentType, ticketId, createdAt: now } : null,
     }, { status: 201 });

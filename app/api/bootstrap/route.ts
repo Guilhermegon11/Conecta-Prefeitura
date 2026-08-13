@@ -9,8 +9,10 @@ export async function GET(request: Request) {
     const viewer = await db.prepare("SELECT id, department FROM users WHERE id = ?").bind(currentUserId).first<{ id: string; department: string }>();
     if (!viewer) return Response.json({ error: "Usuário não encontrado" }, { status: 404 });
     const directPattern = `%::${currentUserId}::%`;
-    const [users, tickets, groups, groupMemberships, messages, documents, audit, notifications, invitations] = await db.batch([
-      db.prepare("SELECT id, full_name AS fullName, email, department, role, initials FROM users ORDER BY full_name"),
+    const [users, tickets, groups, groupMemberships, messages, documents, events, audit, notifications, invitations] = await db.batch([
+      db.prepare(`SELECT id, full_name AS fullName, email, department, role, initials,
+        account_status AS accountStatus, invited_by AS invitedBy, invited_at AS invitedAt
+        FROM users ORDER BY full_name`),
       db.prepare(`SELECT t.id, t.protocol, t.title, t.description, t.requester, t.department, t.priority, t.status,
         t.assignee_id AS assigneeId, t.due_date AS dueDate, t.created_at AS createdAt, t.updated_at AS updatedAt,
         u.full_name AS assigneeName, u.initials AS assigneeInitials
@@ -41,23 +43,17 @@ export async function GET(request: Request) {
           SELECT 1 FROM tickets message_ticket
           WHERE message_ticket.id = m.ticket_id AND LOWER(TRIM(message_ticket.department)) = LOWER(TRIM(?))
         )) ORDER BY m.created_at ASC`).bind(directPattern, currentUserId, viewer.department),
-      db.prepare(`SELECT d.id, d.name, d.category, d.owner_id AS ownerId, d.ticket_id AS ticketId, d.content_type AS contentType,
-        d.size, d.created_at AS createdAt, u.full_name AS ownerName FROM documents d JOIN users u ON u.id = d.owner_id
-        WHERE (d.ticket_id IS NULL OR EXISTS (
-          SELECT 1 FROM tickets document_ticket
-          WHERE document_ticket.id = d.ticket_id AND LOWER(TRIM(document_ticket.department)) = LOWER(TRIM(?))
-        )) AND (
-          NOT EXISTS (SELECT 1 FROM messages linked_message WHERE linked_message.attachment_key = d.storage_key)
-          OR EXISTS (
-            SELECT 1 FROM messages linked_message WHERE linked_message.attachment_key = d.storage_key AND (
-              (linked_message.conversation_type = 'direct' AND ('::' || linked_message.conversation_id || '::') LIKE ?)
-              OR (linked_message.conversation_type = 'group' AND EXISTS (
-                SELECT 1 FROM group_members viewer_member
-                WHERE viewer_member.group_id = linked_message.conversation_id AND viewer_member.user_id = ? AND viewer_member.invitation_status = 'aceito'
-              ))
-            )
-          )
-        ) ORDER BY d.created_at DESC`).bind(viewer.department, directPattern, currentUserId),
+      db.prepare(`SELECT d.id, d.name, d.category, d.owner_id AS ownerId, d.ticket_id AS ticketId, d.department,
+        d.content_type AS contentType, d.size, d.created_at AS createdAt, u.full_name AS ownerName
+        FROM documents d JOIN users u ON u.id = d.owner_id
+        WHERE LOWER(TRIM(d.department)) = LOWER(TRIM(?))
+          AND NOT EXISTS (SELECT 1 FROM messages linked_message WHERE linked_message.attachment_key = d.storage_key)
+        ORDER BY d.created_at DESC`).bind(viewer.department),
+      db.prepare(`SELECT e.id, e.title, e.description, e.department, e.location, e.starts_at AS startsAt,
+        e.ends_at AS endsAt, e.created_by AS createdBy, e.created_at AS createdAt,
+        u.full_name AS creatorName, u.initials AS creatorInitials
+        FROM events e JOIN users u ON u.id = e.created_by
+        WHERE LOWER(TRIM(e.department)) = LOWER(TRIM(?)) ORDER BY e.starts_at ASC`).bind(viewer.department),
       db.prepare(`SELECT a.id, a.action, a.entity_type AS entityType, a.entity_id AS entityId, a.detail,
         a.created_at AS createdAt, u.full_name AS actorName, u.initials AS actorInitials
         FROM audit_logs a JOIN users u ON u.id = a.actor_id
@@ -75,11 +71,14 @@ export async function GET(request: Request) {
               SELECT 1 FROM tickets audit_message_ticket WHERE audit_message_ticket.id = audit_message.ticket_id
               AND LOWER(TRIM(audit_message_ticket.department)) = LOWER(TRIM(?))
             ))
-          )) OR (a.entity_type = 'grupo' AND EXISTS (
-            SELECT 1 FROM group_members viewer_member
-            WHERE viewer_member.group_id = a.entity_id AND viewer_member.user_id = ? AND viewer_member.invitation_status = 'aceito'
-          )) OR a.entity_type NOT IN ('chamado', 'mensagem', 'grupo')
-        ORDER BY a.created_at DESC LIMIT 80`).bind(viewer.department, directPattern, currentUserId, viewer.department, currentUserId),
+          )) OR (a.entity_type = 'documento' AND EXISTS (
+            SELECT 1 FROM documents audit_document
+            WHERE audit_document.id = a.entity_id AND LOWER(TRIM(audit_document.department)) = LOWER(TRIM(?))
+          )) OR (a.entity_type = 'evento' AND EXISTS (
+            SELECT 1 FROM events audit_event
+            WHERE audit_event.id = a.entity_id AND LOWER(TRIM(audit_event.department)) = LOWER(TRIM(?))
+          ))
+        ORDER BY a.created_at DESC LIMIT 80`).bind(viewer.department, directPattern, currentUserId, viewer.department, viewer.department, viewer.department),
       db.prepare(`SELECT n.id, n.user_id AS userId, n.type, n.title, n.body, n.related_entity_id AS relatedEntityId,
         n.read_at AS readAt, n.created_at AS createdAt, actor.full_name AS actorName, actor.initials AS actorInitials
         FROM notifications n LEFT JOIN users actor ON actor.id = n.actor_id
@@ -108,7 +107,7 @@ export async function GET(request: Request) {
         WHERE gm.user_id = ? AND gm.invitation_status = 'convidado' ORDER BY g.created_at DESC`).bind(currentUserId),
     ]);
 
-    return Response.json({ users: users.results, tickets: tickets.results, groups: groups.results, groupMemberships: groupMemberships.results, messages: messages.results, documents: documents.results, audit: audit.results, notifications: notifications.results, invitations: invitations.results });
+    return Response.json({ users: users.results, tickets: tickets.results, groups: groups.results, groupMemberships: groupMemberships.results, messages: messages.results, documents: documents.results, events: events.results, audit: audit.results, notifications: notifications.results, invitations: invitations.results });
   } catch (error) {
     return Response.json({ error: error instanceof Error ? error.message : "Falha ao carregar dados" }, { status: 503 });
   }

@@ -3,7 +3,8 @@ import { index, integer, primaryKey, sqliteTable, text } from "drizzle-orm/sqlit
 export const users = sqliteTable("users", {
   id: text("id").primaryKey(), fullName: text("full_name").notNull(), email: text("email").notNull(),
   department: text("department").notNull(), role: text("role").notNull().default("secretario"),
-  initials: text("initials").notNull(), createdAt: text("created_at").notNull(),
+  initials: text("initials").notNull(), accountStatus: text("account_status").notNull().default("Ativo"),
+  invitedBy: text("invited_by"), invitedAt: text("invited_at"), createdAt: text("created_at").notNull(),
 });
 
 export const tickets = sqliteTable("tickets", {
@@ -41,9 +42,17 @@ export const messages = sqliteTable("messages", {
 export const documents = sqliteTable("documents", {
   id: text("id").primaryKey(), name: text("name").notNull(), category: text("category").notNull().default("Documento"),
   ownerId: text("owner_id").notNull().references(() => users.id), ticketId: text("ticket_id").references(() => tickets.id),
+  department: text("department").notNull(),
   storageKey: text("storage_key").notNull(), contentType: text("content_type").notNull(), size: integer("size").notNull(),
   createdAt: text("created_at").notNull(),
-});
+}, (table) => [index("documents_department_idx").on(table.department)]);
+
+export const events = sqliteTable("events", {
+  id: text("id").primaryKey(), title: text("title").notNull(), description: text("description").notNull().default(""),
+  department: text("department").notNull(), location: text("location").notNull().default(""),
+  startsAt: text("starts_at").notNull(), endsAt: text("ends_at"),
+  createdBy: text("created_by").notNull().references(() => users.id), createdAt: text("created_at").notNull(),
+}, (table) => [index("events_department_starts_idx").on(table.department, table.startsAt)]);
 
 export const auditLogs = sqliteTable("audit_logs", {
   id: text("id").primaryKey(), actorId: text("actor_id").notNull().references(() => users.id), action: text("action").notNull(),

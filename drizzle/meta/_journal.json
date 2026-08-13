@@ -22,6 +22,20 @@
       "when": 1786643976374,
       "tag": "0002_official-secretaries",
       "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "6",
+      "when": 1786649085930,
+      "tag": "0003_optimal_yellow_claw",
+      "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "6",
+      "when": 1786651535672,
+      "tag": "0004_remarkable_red_hulk",
+      "breakpoints": true
     }
   ]
 }

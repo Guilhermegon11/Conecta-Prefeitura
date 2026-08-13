@@ -1,7 +1,7 @@
 import { getRuntimeBindings } from "../../../db/runtime";
 
 type ActionPayload = {
-  action?: "create_ticket" | "update_ticket" | "send_message" | "create_group" | "respond_invitation" | "mark_notification" | "mark_all_notifications";
+  action?: "create_ticket" | "update_ticket" | "send_message" | "create_group" | "respond_invitation" | "mark_notification" | "mark_all_notifications" | "create_event" | "invite_employee" | "resend_employee_invite";
   [key: string]: unknown;
 };
 
@@ -21,11 +21,114 @@ export async function POST(request: Request) {
       case "respond_invitation": return respondInvitation(payload);
       case "mark_notification": return markNotification(payload);
       case "mark_all_notifications": return markAllNotifications(payload);
+      case "create_event": return createEvent(payload);
+      case "invite_employee": return inviteEmployee(payload);
+      case "resend_employee_invite": return resendEmployeeInvite(payload);
       default: return Response.json({ error: "Ação não reconhecida" }, { status: 400 });
     }
   } catch (error) {
     return Response.json({ error: error instanceof Error ? error.message : "Falha ao registrar ação" }, { status: 500 });
   }
+}
+
+async function inviteEmployee(payload: ActionPayload) {
+  const actorId = String(payload.userId ?? DEMO_USER_ID);
+  const fullName = String(payload.fullName ?? "").trim();
+  const email = String(payload.email ?? "").trim().toLowerCase();
+  if (fullName.length < 3 || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+    return Response.json({ error: "Informe um nome e um e-mail válidos" }, { status: 400 });
+  }
+
+  const database = db();
+  const actor = await database.prepare("SELECT id, full_name AS fullName, department, role FROM users WHERE id = ? AND account_status = 'Ativo'")
+    .bind(actorId).first<{ id: string; fullName: string; department: string; role: string }>();
+  if (!actor) return Response.json({ error: "Responsável não encontrado" }, { status: 404 });
+  if (!isSectorManagerRole(actor.role)) return Response.json({ error: "Somente o responsável pelo setor pode convidar funcionários" }, { status: 403 });
+
+  const existing = await database.prepare("SELECT id FROM users WHERE LOWER(TRIM(email)) = LOWER(TRIM(?))")
+    .bind(email).first<{ id: string }>();
+  if (existing) return Response.json({ error: "Já existe um acesso cadastrado com este e-mail" }, { status: 409 });
+
+  const id = crypto.randomUUID();
+  const now = new Date().toISOString();
+  const initials = makeInitials(fullName);
+  await database.batch([
+    database.prepare(`INSERT INTO users (id, full_name, email, department, role, initials, account_status, invited_by, invited_at, created_at)
+      VALUES (?, ?, ?, ?, 'Funcionário', ?, 'Aguardando criação de senha', ?, ?, ?)`).bind(
+      id, fullName, email, actor.department, initials, actorId, now, now,
+    ),
+    database.prepare("INSERT INTO audit_logs (id, actor_id, action, entity_type, entity_id, detail, created_at) VALUES (?, ?, 'funcionario_convidado', 'funcionario', ?, ?, ?)")
+      .bind(crypto.randomUUID(), actorId, id, `Convite simulado para ${fullName} (${email})`, now),
+  ]);
+  return Response.json({
+    user: { id, fullName, email, department: actor.department, role: "Funcionário", initials, accountStatus: "Aguardando criação de senha", invitedBy: actorId, invitedAt: now },
+    delivery: "simulated",
+  }, { status: 201 });
+}
+
+async function resendEmployeeInvite(payload: ActionPayload) {
+  const actorId = String(payload.userId ?? DEMO_USER_ID);
+  const employeeId = String(payload.employeeId ?? "");
+  if (!employeeId) return Response.json({ error: "Funcionário obrigatório" }, { status: 400 });
+  const database = db();
+  const actor = await database.prepare("SELECT id, department, role FROM users WHERE id = ? AND account_status = 'Ativo'")
+    .bind(actorId).first<{ id: string; department: string; role: string }>();
+  if (!actor || !isSectorManagerRole(actor.role)) return Response.json({ error: "Acesso negado" }, { status: 403 });
+  const employee = await database.prepare(`SELECT id, full_name AS fullName, email FROM users
+    WHERE id = ? AND account_status = 'Aguardando criação de senha' AND LOWER(TRIM(department)) = LOWER(TRIM(?))`)
+    .bind(employeeId, actor.department).first<{ id: string; fullName: string; email: string }>();
+  if (!employee) return Response.json({ error: "Convite pendente não encontrado neste setor" }, { status: 404 });
+  const now = new Date().toISOString();
+  await database.batch([
+    database.prepare("UPDATE users SET invited_at = ?, invited_by = ? WHERE id = ?").bind(now, actorId, employeeId),
+    database.prepare("INSERT INTO audit_logs (id, actor_id, action, entity_type, entity_id, detail, created_at) VALUES (?, ?, 'convite_funcionario_reenviado', 'funcionario', ?, ?, ?)")
+      .bind(crypto.randomUUID(), actorId, employeeId, `Reenvio simulado do convite para ${employee.fullName} (${employee.email})`, now),
+  ]);
+  return Response.json({ employeeId, invitedAt: now, delivery: "simulated" });
+}
+
+function isSectorManagerRole(role: string) {
+  return !role.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().includes("funcionario");
+}
+
+function makeInitials(fullName: string) {
+  const names = fullName.trim().split(/\s+/).filter(Boolean);
+  return `${names[0]?.[0] ?? ""}${names.length > 1 ? names[names.length - 1]?.[0] ?? "" : names[0]?.[1] ?? ""}`.toUpperCase();
+}
+
+async function createEvent(payload: ActionPayload) {
+  const actorId = String(payload.userId ?? DEMO_USER_ID);
+  const title = String(payload.title ?? "").trim();
+  const startsAt = String(payload.startsAt ?? "").trim();
+  if (!title || !startsAt || Number.isNaN(Date.parse(startsAt))) {
+    return Response.json({ error: "Título e data do evento são obrigatórios" }, { status: 400 });
+  }
+
+  const database = db();
+  const actor = await database.prepare("SELECT id, department FROM users WHERE id = ?")
+    .bind(actorId).first<{ id: string; department: string }>();
+  if (!actor) return Response.json({ error: "Usuário não encontrado" }, { status: 404 });
+
+  const endsAt = payload.endsAt ? String(payload.endsAt) : null;
+  if (endsAt && (Number.isNaN(Date.parse(endsAt)) || Date.parse(endsAt) < Date.parse(startsAt))) {
+    return Response.json({ error: "O término deve ser posterior ao início" }, { status: 400 });
+  }
+
+  const id = crypto.randomUUID();
+  const now = new Date().toISOString();
+  const departmentMembers = await database.prepare("SELECT id FROM users WHERE LOWER(TRIM(department)) = LOWER(TRIM(?)) AND id <> ?")
+    .bind(actor.department, actorId).all<{ id: string }>();
+  await database.batch([
+    database.prepare(`INSERT INTO events (id, title, description, department, location, starts_at, ends_at, created_by, created_at)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`).bind(
+      id, title, String(payload.description ?? "").trim(), actor.department, String(payload.location ?? "").trim(), startsAt, endsAt, actorId, now,
+    ),
+    database.prepare("INSERT INTO audit_logs (id, actor_id, action, entity_type, entity_id, detail, created_at) VALUES (?, ?, 'evento_criado', 'evento', ?, ?, ?)")
+      .bind(crypto.randomUUID(), actorId, id, `Evento criado para ${actor.department}: ${title}`, now),
+    ...departmentMembers.results.map((member) => database.prepare(`INSERT INTO notifications (id, user_id, actor_id, type, title, body, related_entity_id, read_at, created_at)
+      VALUES (?, ?, ?, 'system', 'Novo evento do setor', ?, ?, NULL, ?)`).bind(crypto.randomUUID(), member.id, actorId, title, id, now)),
+  ]);
+  return Response.json({ id, title, department: actor.department, createdBy: actorId, createdAt: now }, { status: 201 });
 }
 
 async function createTicket(payload: ActionPayload) {
