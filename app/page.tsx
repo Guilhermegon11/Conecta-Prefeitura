@@ -46,10 +46,19 @@ import {
   XCircle,
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
+import {
+  CitizenServiceSection,
+  HelpCenterSection,
+  IndicatorsSection,
+  MunicipalManagementSection,
+  ProcessesSection,
+  SecuritySection,
+} from "./municipal-modules";
+import { SectorWorkspaceSection } from "./sector-workspaces";
 
-type TicketStatus = "Recebido" | "Em produção" | "Aguardando aprovação" | "Finalizado";
-type Priority = "Alta" | "Média" | "Baixa";
-type NavItem = "Visão geral" | "Chamados" | "Comunicação" | "Notificações" | "Pendências" | "Anexos e Arquivos" | "Próximos Eventos" | "Funcionários" | "Secretarias" | "Auditoria";
+type TicketStatus = "Recebido" | "Em análise" | "Aguardando aprovação" | "Em execução" | "Aguardando resposta" | "Concluído" | "Cancelado";
+type Priority = "Urgente" | "Alta" | "Média" | "Baixa";
+type NavItem = "Visão geral" | "Área do Setor" | "Chamados" | "Comunicação" | "Atendimento ao Cidadão" | "Processos Digitais" | "Gestão Municipal" | "Indicadores" | "Notificações" | "Pendências" | "Anexos e Arquivos" | "Próximos Eventos" | "Funcionários" | "Secretarias" | "Segurança e LGPD" | "Auditoria" | "Central de Ajuda";
 type ChatTab = "direct" | "group";
 type OfficeCategory = "Prefeitura e apoio" | "Secretarias" | "Departamentos" | "Seções e subprefeitura";
 
@@ -113,11 +122,11 @@ const USERS: User[] = [
 ];
 
 const INITIAL_TICKETS: Ticket[] = [
-  { id: "t-187", protocol: "CH-2026-0187", title: "Manutenção da iluminação na Praça Central", description: "Substituição de luminárias e revisão do quadro elétrico.", requester: "Ouvidoria Municipal", department: "Secretaria de Infraestrutura e Transporte", priority: "Alta", status: "Em produção", dueDate: "2026-08-13T19:00:00.000Z", assigneeId: "u-rafael", assigneeName: "Bruno Gonçalves da Fonseca", assigneeInitials: "BF", createdAt: "2026-08-13T10:00:00.000Z", updatedAt: "2026-08-13T14:36:00.000Z" },
+  { id: "t-187", protocol: "CH-2026-0187", title: "Manutenção da iluminação na Praça Central", description: "Substituição de luminárias e revisão do quadro elétrico.", requester: "Ouvidoria Municipal", department: "Secretaria de Infraestrutura e Transporte", priority: "Alta", status: "Em execução", dueDate: "2026-08-13T19:00:00.000Z", assigneeId: "u-rafael", assigneeName: "Bruno Gonçalves da Fonseca", assigneeInitials: "BF", createdAt: "2026-08-13T10:00:00.000Z", updatedAt: "2026-08-13T14:36:00.000Z" },
   { id: "t-186", protocol: "CH-2026-0186", title: "Revisão do calendário de vacinação", description: "Validar datas, locais e comunicação da campanha.", requester: "Gabinete do Prefeito", department: "Secretaria de Saúde", priority: "Média", status: "Aguardando aprovação", dueDate: "2026-08-14T18:00:00.000Z", assigneeId: "u-lucas", assigneeName: "Natália Cristina Pedrosa Cabral", assigneeInitials: "NC", createdAt: "2026-08-12T13:00:00.000Z", updatedAt: "2026-08-13T14:52:00.000Z" },
   { id: "t-185", protocol: "CH-2026-0185", title: "Atualização do transporte escolar — Zona Norte", description: "Revisar itinerários antes da volta às aulas.", requester: "Secretaria de Educação", department: "Secretaria de Educação", priority: "Alta", status: "Recebido", dueDate: "2026-08-15T18:00:00.000Z", assigneeId: "u-amanda", assigneeName: "Leila Cibeli Silveira Mendes", assigneeInitials: "LM", createdAt: "2026-08-12T11:00:00.000Z", updatedAt: "2026-08-12T11:00:00.000Z" },
-  { id: "t-184", protocol: "CH-2026-0184", title: "Parecer sobre contratação emergencial", description: "Análise administrativa concluída.", requester: "Secretaria de Governo", department: "Secretaria de Administração e Finanças", priority: "Baixa", status: "Finalizado", dueDate: "2026-08-12T18:00:00.000Z", assigneeId: "u-carla", assigneeName: "Jaime de Souza", assigneeInitials: "JS", createdAt: "2026-08-10T09:00:00.000Z", updatedAt: "2026-08-13T12:00:00.000Z" },
-  { id: "t-183", protocol: "CH-2026-0183", title: "Liberação de área para feira de produtores", description: "Avaliação ambiental e autorização de uso.", requester: "Gabinete do Prefeito", department: "Secretaria Municipal de Desenvolvimento Econômico, Agricultura e Meio Ambiente", priority: "Média", status: "Em produção", dueDate: "2026-08-16T18:00:00.000Z", assigneeId: "u-felipe", assigneeName: "Lucas Fontinelli de Oliveira da Silva", assigneeInitials: "LS", createdAt: "2026-08-11T15:00:00.000Z", updatedAt: "2026-08-13T11:00:00.000Z" },
+  { id: "t-184", protocol: "CH-2026-0184", title: "Parecer sobre contratação emergencial", description: "Análise administrativa concluída.", requester: "Secretaria de Governo", department: "Secretaria de Administração e Finanças", priority: "Baixa", status: "Concluído", dueDate: "2026-08-12T18:00:00.000Z", assigneeId: "u-carla", assigneeName: "Jaime de Souza", assigneeInitials: "JS", createdAt: "2026-08-10T09:00:00.000Z", updatedAt: "2026-08-13T12:00:00.000Z" },
+  { id: "t-183", protocol: "CH-2026-0183", title: "Liberação de área para feira de produtores", description: "Avaliação ambiental e autorização de uso.", requester: "Gabinete do Prefeito", department: "Secretaria Municipal de Desenvolvimento Econômico, Agricultura e Meio Ambiente", priority: "Média", status: "Em execução", dueDate: "2026-08-16T18:00:00.000Z", assigneeId: "u-felipe", assigneeName: "Lucas Fontinelli de Oliveira da Silva", assigneeInitials: "LS", createdAt: "2026-08-11T15:00:00.000Z", updatedAt: "2026-08-13T11:00:00.000Z" },
 ];
 
 const INITIAL_GROUPS: Group[] = [
@@ -166,21 +175,31 @@ const INITIAL_AUDIT: AuditItem[] = [
 
 const navIcons: Record<NavItem, LucideIcon> = {
   "Visão geral": LayoutDashboard,
+  "Área do Setor": Building2,
   Chamados: ClipboardList,
   Comunicação: MessagesSquare,
+  "Atendimento ao Cidadão": Landmark,
+  "Processos Digitais": FileText,
+  "Gestão Municipal": Building2,
+  Indicadores: LayoutDashboard,
   Notificações: BellRing,
   Pendências: ListTodo,
   "Anexos e Arquivos": Files,
   "Próximos Eventos": CalendarDays,
   Funcionários: UsersRound,
   Secretarias: Building2,
+  "Segurança e LGPD": ShieldCheck,
   Auditoria: History,
+  "Central de Ajuda": HelpCircle,
 };
 const statusMeta: Record<TicketStatus, { color: string; short: string; icon: LucideIcon }> = {
   Recebido: { color: "blue", short: "Recebidos", icon: Inbox },
-  "Em produção": { color: "amber", short: "Em produção", icon: LoaderCircle },
+  "Em análise": { color: "slate", short: "Em análise", icon: Search },
   "Aguardando aprovação": { color: "violet", short: "Em aprovação", icon: Clock3 },
-  Finalizado: { color: "green", short: "Finalizados", icon: CheckCircle2 },
+  "Em execução": { color: "amber", short: "Em execução", icon: LoaderCircle },
+  "Aguardando resposta": { color: "orange", short: "Aguardando resposta", icon: MessagesSquare },
+  Concluído: { color: "green", short: "Concluídos", icon: CheckCircle2 },
+  Cancelado: { color: "red", short: "Cancelados", icon: XCircle },
 };
 const statuses = Object.keys(statusMeta) as TicketStatus[];
 
@@ -237,7 +256,7 @@ export default function Home() {
     fetch(`/api/bootstrap?userId=${encodeURIComponent(currentUserId)}`).then((response) => response.ok ? response.json() : Promise.reject()).then((data) => {
       const payload = data as BootstrapPayload;
       if (payload.users?.length) setUsers(payload.users);
-      if (Array.isArray(payload.tickets)) setTicketData(payload.tickets);
+      if (Array.isArray(payload.tickets)) setTicketData(payload.tickets.map((ticket) => ({ ...ticket, status: normalizeTicketStatus(ticket.status) })));
       if (Array.isArray(payload.groups)) setGroups(payload.groups.map((group) => {
         const memberships = (payload.groupMemberships ?? []).filter((membership) => membership.groupId === group.id);
         return { ...group, memberCount: Number(group.memberCount), memberUserIds: memberships.filter((membership) => membership.status === "aceito").map((membership) => membership.userId), pendingUserIds: memberships.filter((membership) => membership.status === "convidado").map((membership) => membership.userId) };
@@ -496,7 +515,7 @@ export default function Home() {
   }
 
   const heading = getHeading(activeNav);
-  const headingTitle = activeNav === "Visão geral" ? `Bom dia, ${currentUser.fullName.split(" ")[0]}.` : heading.title;
+  const headingTitle = activeNav === "Visão geral" ? `Bom dia, ${currentUser.fullName.split(" ")[0]}.` : activeNav === "Área do Setor" ? currentUser.department : heading.title;
 
   return (
     <div className="app-shell">
@@ -522,7 +541,7 @@ export default function Home() {
         </nav>
         <div className="sidebar-support">
           <div className="support-icon"><HelpCircle size={17} /></div>
-          <div><strong>Precisa de ajuda?</strong><p>Acesse o guia da plataforma ou fale com o suporte.</p><button>Central de ajuda <ArrowRight size={12} /></button></div>
+          <div><strong>Precisa de ajuda?</strong><p>Acesse o guia da plataforma ou fale com o suporte.</p><button onClick={() => setActiveNav("Central de Ajuda")}>Central de ajuda <ArrowRight size={12} /></button></div>
         </div>
         <div className="sidebar-profile">
           <div className="avatar avatar-large">{currentUser.initials}</div>
@@ -572,15 +591,22 @@ export default function Home() {
           </section>
 
           {activeNav === "Visão geral" && <Dashboard tickets={filteredTickets} audit={privateAudit} onNavigate={setActiveNav} />}
+          {activeNav === "Área do Setor" && <SectorWorkspaceSection key={currentUser.department} department={currentUser.department} userName={currentUser.fullName} userRole={currentUser.role} departments={Array.from(new Set(users.map((user) => user.department)))} notify={notify} />}
           {activeNav === "Chamados" && <TicketsSection tickets={filteredTickets} department={currentUser.department} onStatus={updateStatus} onNew={() => setTicketModal(true)} />}
           {activeNav === "Comunicação" && <CommunicationSection currentUser={currentUser} users={activeUsers} groups={accessibleGroups} messages={privateMessages} tickets={privateTickets} onSend={sendMessage} onSendAttachment={sendChatAttachment} onNewGroup={() => setGroupModal(true)} />}
+          {activeNav === "Atendimento ao Cidadão" && <CitizenServiceSection department={currentUser.department} notify={notify} />}
+          {activeNav === "Processos Digitais" && <ProcessesSection department={currentUser.department} notify={notify} />}
+          {activeNav === "Gestão Municipal" && <MunicipalManagementSection department={currentUser.department} notify={notify} />}
+          {activeNav === "Indicadores" && <IndicatorsSection department={currentUser.department} notify={notify} />}
           {activeNav === "Notificações" && <NotificationsSection notifications={currentNotifications} onRead={markNotification} onOpenPending={() => setActiveNav("Pendências")} />}
           {activeNav === "Pendências" && <PendingSection invitations={currentInvitations} tickets={pendingTickets} onRespond={respondInvitation} onOpenTickets={() => setActiveNav("Chamados")} />}
           {activeNav === "Anexos e Arquivos" && <DocumentsSection documents={privateDocuments} department={currentUser.department} currentUserId={currentUser.id} onUpload={() => fileInput.current?.click()} />}
           {activeNav === "Próximos Eventos" && <EventsSection events={currentEvents} department={currentUser.department} onNew={() => setEventModal(true)} />}
           {activeNav === "Funcionários" && canManageEmployees && <EmployeesSection users={sectorUsers} department={currentUser.department} onInvite={() => setEmployeeModal(true)} onResend={resendEmployeeInvite} />}
           {activeNav === "Secretarias" && <TeamSection offices={OFFICES} />}
+          {activeNav === "Segurança e LGPD" && <SecuritySection department={currentUser.department} notify={notify} />}
           {activeNav === "Auditoria" && <AuditSection audit={privateAudit} department={currentUser.department} />}
+          {activeNav === "Central de Ajuda" && <HelpCenterSection notify={notify} />}
         </div>
       </main>
 
@@ -597,15 +623,22 @@ export default function Home() {
 function getHeading(active: NavItem) {
   const headings: Record<NavItem, { eyebrow: string; title: string; subtitle: string }> = {
     "Visão geral": { eyebrow: "", title: "Bom dia.", subtitle: "Acompanhe as demandas e mantenha as secretarias alinhadas." },
+    "Área do Setor": { eyebrow: "AMBIENTE ESPECIALIZADO", title: "Área do Setor", subtitle: "Formulários, indicadores, equipes e fluxos adaptados às responsabilidades da unidade selecionada." },
     Chamados: { eyebrow: "GESTÃO DE DEMANDAS", title: "Chamados", subtitle: "Organize cada solicitação do recebimento à entrega final." },
     Comunicação: { eyebrow: "CENTRAL DE COMUNICAÇÃO", title: "Conversas", subtitle: "Mensagens diretas e grupos por convite entre as secretarias." },
+    "Atendimento ao Cidadão": { eyebrow: "PROTOCOLO, OUVIDORIA E SERVIÇOS", title: "Atendimento ao Cidadão", subtitle: "Registre, encaminhe e acompanhe solicitações, manifestações e pedidos de informação." },
+    "Processos Digitais": { eyebrow: "ADMINISTRAÇÃO SEM PAPEL", title: "Processos Digitais", subtitle: "Organize processos, despachos, documentos, versões e assinaturas em um fluxo rastreável." },
+    "Gestão Municipal": { eyebrow: "RECURSOS E OPERAÇÕES", title: "Gestão Municipal", subtitle: "Acompanhe frota, patrimônio, materiais, contratos, convênios, obras e serviços de campo." },
+    Indicadores: { eyebrow: "INTELIGÊNCIA DE GESTÃO", title: "Indicadores e Relatórios", subtitle: "Analise prazos, produtividade, satisfação e riscos com visão restrita ao seu setor." },
     Notificações: { eyebrow: "CENTRAL DE AVISOS", title: "Notificações", subtitle: "Acompanhe convites, mensagens e atualizações importantes do sistema." },
     Pendências: { eyebrow: "AÇÕES NECESSÁRIAS", title: "Pendências", subtitle: "Resolva convites de grupos e chamados que aguardam sua análise." },
     "Anexos e Arquivos": { eyebrow: "ARQUIVOS COMPARTILHADOS", title: "Anexos e Arquivos", subtitle: "Compartilhe documentos com segurança entre todos os integrantes do seu setor." },
     "Próximos Eventos": { eyebrow: "AGENDA DO SETOR", title: "Próximos Eventos", subtitle: "Acompanhe reuniões, prazos e compromissos destinados ao seu setor." },
     Funcionários: { eyebrow: "ACESSOS DO SETOR", title: "Funcionários", subtitle: "Cadastre nome e e-mail e acompanhe os convites simulados para criação de senha." },
     Secretarias: { eyebrow: "DIRETÓRIO MUNICIPAL", title: "Secretarias e unidades", subtitle: "Responsáveis, telefones, e-mails, horários e endereços oficiais." },
+    "Segurança e LGPD": { eyebrow: "GOVERNANÇA DIGITAL", title: "Segurança e LGPD", subtitle: "Gerencie permissões, dados pessoais, retenção, auditoria e resposta a incidentes." },
     Auditoria: { eyebrow: "RASTREABILIDADE DO SETOR", title: "Histórico de atividades", subtitle: "Registro cronológico de chamados, mensagens, anexos e eventos relevantes do seu setor." },
+    "Central de Ajuda": { eyebrow: "CONHECIMENTO E SUPORTE", title: "Central de Ajuda", subtitle: "Consulte guias, procedimentos e orientações sobre os módulos da plataforma." },
   };
   return headings[active];
 }
@@ -614,7 +647,7 @@ function Dashboard({ tickets, audit, onNavigate }: { tickets: Ticket[]; audit: A
   const stats = statuses.map((status, index) => ({
     label: statusMeta[status].short,
     value: String(tickets.filter((ticket) => ticket.status === status).length).padStart(2, "0"),
-    change: ["+3 hoje", "2 próximos do prazo", "Aguardando resposta", "+12% neste mês"][index],
+    change: ["Novos registros", "Triagem inicial", "Decisão pendente", "Serviço em andamento", "Retorno externo", "Entregas confirmadas", "Encerrados sem execução"][index],
     status,
   }));
 
@@ -684,9 +717,11 @@ function TicketTable({ tickets }: { tickets: Ticket[] }) {
 }
 
 function TicketsSection({ tickets, department, onStatus, onNew }: { tickets: Ticket[]; department: string; onStatus: (id: string, status: TicketStatus) => void; onNew: () => void }) {
+  const [selectedTicket, setSelectedTicket] = useState<Ticket | null>(null);
   return (
     <section className="board-wrap">
-      <div className="access-note ticket-privacy-note"><span><ShieldCheck size={20} /></span><div><strong>Área privada do setor responsável</strong><p>Você está vendo somente os chamados de {department}. Apenas integrantes deste setor podem abrir e alterar essas demandas.</p></div></div>
+      <div className="access-note ticket-privacy-note"><span><ShieldCheck size={20} /></span><div><strong>Fluxo setorial com responsabilidade definida</strong><p>Você está vendo somente as demandas de {department}. Prazos, aprovações, encaminhamentos, responsáveis e anotações internas permanecem registrados no chamado.</p></div></div>
+      <div className="ticket-capability-bar" aria-label="Recursos dos chamados"><span><Clock3 size={15} /><strong>SLA e alertas</strong><small>Prazos calculados</small></span><span><UsersRound size={15} /><strong>Equipe responsável</strong><small>Titular e colaboradores</small></span><span><CheckCircle2 size={15} /><strong>Aprovações</strong><small>Decisão registrada</small></span><span><ArrowRight size={15} /><strong>Encaminhamento</strong><small>Origem preservada</small></span></div>
       <div className="board-toolbar">
         <div className="filter-chip active">Todos <strong>{tickets.length}</strong></div>
         <div className="filter-chip">Alta prioridade <strong>{tickets.filter((t) => t.priority === "Alta").length}</strong></div>
@@ -706,8 +741,10 @@ function TicketsSection({ tickets, department, onStatus, onNew }: { tickets: Tic
                   <article className="kanban-card" key={ticket.id}>
                     <div className="card-meta"><span className={`priority-label ${ticket.priority.toLowerCase().replace("é", "e")}`}>{ticket.priority}</span><button aria-label={`Opções de ${ticket.protocol}`}><MoreHorizontal size={17} /></button></div>
                     <h3>{ticket.title}</h3><p>{ticket.description}</p><small>{ticket.protocol} · {ticket.requester}</small>
+                    <div className="ticket-template-line"><span>{ticket.priority === "Urgente" ? "Atendimento imediato" : "Prazo setorial"}</span><span>{ticket.assigneeName ? "Responsável definido" : "Aguardando atribuição"}</span></div>
                     <div className="kanban-footer"><span className="mini-avatar">{ticket.assigneeInitials ?? "--"}</span><span className={formatDue(ticket.dueDate).startsWith("Hoje") ? "due urgent" : "due"}><Clock3 size={12} /> {formatDue(ticket.dueDate)}</span></div>
                     <label className="move-label">Mover para<select aria-label={`Mover ${ticket.protocol}`} value={ticket.status} onChange={(event) => onStatus(ticket.id, event.target.value as TicketStatus)}>{statuses.map((option) => <option key={option}>{option}</option>)}</select></label>
+                    <button className="ticket-detail-button" onClick={() => setSelectedTicket(ticket)}>Abrir detalhes e checklist <ArrowRight size={12} /></button>
                   </article>
                 ))}
                 {columnTickets.length === 0 && <div className="column-empty">Nenhum chamado nesta etapa</div>}
@@ -716,6 +753,7 @@ function TicketsSection({ tickets, department, onStatus, onNew }: { tickets: Tic
           );
         })}
       </div>
+      {selectedTicket && <TicketDetailModal ticket={selectedTicket} onClose={() => setSelectedTicket(null)} onStatus={(status) => { onStatus(selectedTicket.id, status); setSelectedTicket((current) => current ? { ...current, status } : current); }} />}
     </section>
   );
 }
@@ -1047,11 +1085,27 @@ function AuditSection({ audit, department }: { audit: AuditItem[]; department: s
   );
 }
 
+function TicketDetailModal({ ticket, onClose, onStatus }: { ticket: Ticket; onClose: () => void; onStatus: (status: TicketStatus) => void }) {
+  const [tab, setTab] = useState<"mensagens" | "interno">("mensagens");
+  const [note, setNote] = useState("");
+  const [feedback, setFeedback] = useState("");
+  const [forwardDepartment, setForwardDepartment] = useState("");
+  const [checklist, setChecklist] = useState([
+    { id: "receive", label: "Conferir dados e documentos obrigatórios", done: true },
+    { id: "inspect", label: "Realizar análise ou vistoria técnica", done: ticket.status !== "Recebido" && ticket.status !== "Em análise" },
+    { id: "approve", label: "Submeter ao responsável pela aprovação", done: ticket.status === "Concluído" },
+    { id: "proof", label: "Anexar comprovante, parecer ou fotografia final", done: ticket.status === "Concluído" },
+  ]);
+  return <div className="modal-backdrop" role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget) onClose(); }}><section className="modal ticket-detail-modal" role="dialog" aria-modal="true" aria-labelledby="ticket-detail-title"><header><div><p className="eyebrow">{ticket.protocol} · {ticket.requester}</p><h2 id="ticket-detail-title">{ticket.title}</h2></div><button type="button" onClick={onClose} aria-label="Fechar"><X size={18} /></button></header><div className="ticket-detail-body"><div className="ticket-detail-meta"><StatusPill status={ticket.status} /><span className={`priority-label ${ticket.priority.toLowerCase().replace("é", "e")}`}>{ticket.priority}</span><span><Clock3 size={13} /> SLA: {formatDue(ticket.dueDate)}</span></div><p className="ticket-detail-description">{ticket.description}</p><div className="ticket-ownership"><div><small>Responsável principal</small><strong><span className="mini-avatar">{ticket.assigneeInitials ?? "--"}</span>{ticket.assigneeName ?? "A definir"}</strong></div><div><small>Colaboradores</small><strong><span className="avatar-stack"><i>AK</i><i>MC</i><i>+2</i></span>4 participantes</strong></div><div><small>Aprovador</small><strong><ShieldCheck size={14} /> Responsável pelo setor</strong></div></div><div className="ticket-detail-grid"><article className="ticket-checklist"><header><div><h3>Checklist de execução</h3><p>{checklist.filter((item) => item.done).length} de {checklist.length} etapas concluídas</p></div><span>{Math.round(checklist.filter((item) => item.done).length / checklist.length * 100)}%</span></header>{checklist.map((item) => <label key={item.id} className={item.done ? "done" : ""}><input type="checkbox" checked={item.done} onChange={() => setChecklist((current) => current.map((entry) => entry.id === item.id ? { ...entry, done: !entry.done } : entry))} /><span>{item.label}</span></label>)}<button><Plus size={13} /> Adicionar etapa</button></article><article className="ticket-movement"><h3>Encaminhar para outro setor</h3><p>O setor de origem e todo o histórico serão preservados.</p><select aria-label="Setor de destino" value={forwardDepartment} onChange={(event) => setForwardDepartment(event.target.value)}><option value="">Selecione o setor de destino</option>{OFFICES.filter((office) => office.name !== ticket.department).map((office) => <option key={office.id}>{office.name}</option>)}</select><textarea aria-label="Motivo do encaminhamento" placeholder="Justificativa do encaminhamento..." /><button className="button secondary" disabled={!forwardDepartment} onClick={() => { setFeedback(`Encaminhamento preparado para ${forwardDepartment}.`); setForwardDepartment(""); }}>Registrar encaminhamento</button>{feedback && <small className="ticket-inline-feedback"><Check size={11} /> {feedback}</small>}</article></div><article className="ticket-conversation"><div className="ticket-conversation-tabs"><button className={tab === "mensagens" ? "active" : ""} onClick={() => setTab("mensagens")}>Mensagens do chamado</button><button className={tab === "interno" ? "active" : ""} onClick={() => setTab("interno")}><LockKeyholeIcon /> Anotações internas</button></div><div className="ticket-note-feed">{tab === "mensagens" ? <><p><strong>Solicitante</strong><span>A solicitação foi registrada com endereço e fotografias do local.</span><small>13 ago., 08:42</small></p><p><strong>{ticket.assigneeName ?? "Equipe responsável"}</strong><span>A análise inicial foi realizada e o atendimento segue o prazo indicado.</span><small>13 ago., 11:18</small></p></> : <><p className="internal-note"><strong>Nota restrita ao setor</strong><span>Verificar disponibilidade da equipe antes de confirmar a data ao solicitante.</span><small>Somente integrantes autorizados podem visualizar</small></p></>} </div><div className="ticket-note-compose"><input aria-label={tab === "interno" ? "Adicionar anotação interna" : "Escrever mensagem do chamado"} value={note} onChange={(event) => setNote(event.target.value)} placeholder={tab === "interno" ? "Adicionar anotação interna..." : "Escrever atualização para os participantes..."} /><button disabled={!note.trim()} onClick={() => { setFeedback(tab === "interno" ? "Anotação interna registrada." : "Mensagem registrada no chamado."); setNote(""); }}><Send size={14} /></button></div></article><footer className="ticket-detail-footer"><label>Etapa atual<select value={ticket.status} onChange={(event) => onStatus(event.target.value as TicketStatus)}>{statuses.map((status) => <option key={status}>{status}</option>)}</select></label><button className="button secondary" onClick={onClose}>Fechar</button><button className="button primary" onClick={() => { onStatus("Concluído"); setFeedback("Chamado concluído e pesquisa de satisfação liberada."); }}><CheckCircle2 size={15} /> Concluir atendimento</button></footer></div></section></div>;
+}
+
+function LockKeyholeIcon() { return <ShieldCheck size={13} />; }
+
 function TicketModal({ users, onClose, onCreate }: { users: User[]; onClose: () => void; onCreate: (data: FormData) => void | Promise<void> }) {
   const [department, setDepartment] = useState("");
   const eligibleUsers = users.filter((user) => sameDepartment(user.department, department));
   function submit(event: FormEvent<HTMLFormElement>) { event.preventDefault(); void onCreate(new FormData(event.currentTarget)); }
-  return <div className="modal-backdrop" role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget) onClose(); }}><section className="modal" role="dialog" aria-modal="true" aria-labelledby="ticket-modal-title"><header><div><p className="eyebrow">NOVO REGISTRO</p><h2 id="ticket-modal-title">Criar chamado</h2></div><button type="button" onClick={onClose} aria-label="Fechar"><X size={18} /></button></header><form onSubmit={submit}><label className="field full"><span>Título do chamado *</span><input name="title" required placeholder="Ex.: Reparo da iluminação da avenida" autoFocus /></label><label className="field full"><span>Descrição</span><textarea name="description" placeholder="Inclua contexto, entregáveis e observações..." /></label><label className="field"><span>Secretaria responsável *</span><select name="department" required value={department} onChange={(event) => setDepartment(event.target.value)}><option value="" disabled>Selecione</option>{OFFICE_CATEGORIES.map((group) => <optgroup label={group} key={group}>{OFFICES.filter((office) => office.category === group).map((office) => <option key={office.id}>{office.name}</option>)}</optgroup>)}</select></label><label className="field"><span>Responsável do setor</span><select name="assigneeId" defaultValue="" disabled={!department}><option value="">{department ? "A definir" : "Selecione primeiro o setor"}</option>{eligibleUsers.map((user) => <option key={user.id} value={user.id}>{user.fullName}</option>)}</select></label><label className="field"><span>Prioridade</span><select name="priority" defaultValue="Média"><option>Alta</option><option>Média</option><option>Baixa</option></select></label><label className="field"><span>Prazo</span><input type="date" name="dueDate" /></label><p className="ticket-modal-privacy"><ShieldCheck size={14} /> Depois de criado, este chamado ficará visível somente para os integrantes da secretaria responsável.</p><div className="modal-actions"><button type="button" className="button secondary" onClick={onClose}>Cancelar</button><button type="submit" className="button primary"><Plus size={15} /> Criar e registrar</button></div></form></section></div>;
+  return <div className="modal-backdrop" role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget) onClose(); }}><section className="modal" role="dialog" aria-modal="true" aria-labelledby="ticket-modal-title"><header><div><p className="eyebrow">NOVO REGISTRO</p><h2 id="ticket-modal-title">Criar chamado</h2></div><button type="button" onClick={onClose} aria-label="Fechar"><X size={18} /></button></header><form onSubmit={submit}><label className="field full"><span>Modelo da solicitação</span><select name="template" defaultValue="Solicitação geral"><option>Solicitação geral</option><option>Manutenção de veículo</option><option>Solicitação de material</option><option>Reparo em iluminação</option><option>Suporte de informática</option><option>Produção de arte e comunicação</option><option>Agendamento de espaço</option><option>Solicitação de transporte</option><option>Compra ou contratação</option><option>Vistoria técnica</option></select><small className="field-hint">O modelo define checklist, documentos obrigatórios e prazo padrão.</small></label><label className="field full"><span>Título do chamado *</span><input name="title" required placeholder="Ex.: Reparo da iluminação da avenida" autoFocus /></label><label className="field full"><span>Descrição</span><textarea name="description" placeholder="Inclua contexto, entregáveis, local e observações..." /></label><label className="field"><span>Secretaria responsável *</span><select name="department" required value={department} onChange={(event) => setDepartment(event.target.value)}><option value="" disabled>Selecione</option>{OFFICE_CATEGORIES.map((group) => <optgroup label={group} key={group}>{OFFICES.filter((office) => office.category === group).map((office) => <option key={office.id}>{office.name}</option>)}</optgroup>)}</select></label><label className="field"><span>Responsável principal</span><select name="assigneeId" defaultValue="" disabled={!department}><option value="">{department ? "A definir" : "Selecione primeiro o setor"}</option>{eligibleUsers.map((user) => <option key={user.id} value={user.id}>{user.fullName}</option>)}</select></label><label className="field"><span>Prioridade</span><select name="priority" defaultValue="Média"><option>Urgente</option><option>Alta</option><option>Média</option><option>Baixa</option></select></label><label className="field"><span>Prazo ou SLA</span><input type="date" name="dueDate" /></label><label className="field full"><span>Colaboradores e pessoas que acompanham</span><select name="followers" defaultValue=""><option value="">Definir depois da criação</option>{eligibleUsers.map((user) => <option key={user.id} value={user.id}>{user.fullName} · {user.role}</option>)}</select></label><p className="ticket-modal-privacy"><ShieldCheck size={14} /> O chamado ficará visível ao setor responsável. Encaminhamentos, aprovações, mensagens, anotações internas e anexos serão registrados no histórico.</p><div className="modal-actions"><button type="button" className="button secondary" onClick={onClose}>Cancelar</button><button type="submit" className="button primary"><Plus size={15} /> Criar e registrar</button></div></form></section></div>;
 }
 
 function EventModal({ department, onClose, onCreate }: { department: string; onClose: () => void; onCreate: (data: FormData) => void | Promise<void> }) {
@@ -1111,6 +1165,11 @@ function formatRelative(value: string) { const minutes = Math.max(1, Math.round(
 function formatDue(value: string | null) { if (!value) return "Sem prazo"; const date = new Date(value); const day = date.getUTCDate(); if (day === 13) return `Hoje, ${formatTime(value)}`; if (day === 14) return "Amanhã"; return `${String(day).padStart(2, "0")} ago`; }
 function formatSize(size: number) { return size >= 1_000_000 ? `${(size / 1_000_000).toFixed(1)} MB` : `${Math.round(size / 1000)} KB`; }
 function sameDepartment(first: string, second: string) { return first.trim().toLocaleLowerCase("pt-BR") === second.trim().toLocaleLowerCase("pt-BR"); }
+function normalizeTicketStatus(status: string): TicketStatus {
+  if (status === "Em produção") return "Em execução";
+  if (status === "Finalizado") return "Concluído";
+  return statuses.includes(status as TicketStatus) ? status as TicketStatus : "Recebido";
+}
 function normalizeText(value: string) { return value.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase(); }
 function isSectorManager(user: User) { return !normalizeText(user.role).includes("funcionario"); }
 function makeInitials(fullName: string) { const names = fullName.trim().split(/\s+/).filter(Boolean); return `${names[0]?.[0] ?? ""}${names.length > 1 ? names[names.length - 1]?.[0] ?? "" : names[0]?.[1] ?? ""}`.toUpperCase(); }

@@ -174,7 +174,7 @@ async function updateTicket(payload: ActionPayload) {
   const actorId = String(payload.userId ?? DEMO_USER_ID);
   const id = String(payload.id ?? "");
   const status = String(payload.status ?? "");
-  const allowed = ["Recebido", "Em produção", "Aguardando aprovação", "Finalizado"];
+  const allowed = ["Recebido", "Em análise", "Aguardando aprovação", "Em execução", "Aguardando resposta", "Concluído", "Cancelado"];
   if (!id || !allowed.includes(status)) return Response.json({ error: "Chamado ou status inválido" }, { status: 400 });
   const now = new Date().toISOString();
   const database = db();
