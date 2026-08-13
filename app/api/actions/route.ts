@@ -34,22 +34,35 @@ async function createTicket(payload: ActionPayload) {
   const department = String(payload.department ?? "").trim();
   if (!title || !department) return Response.json({ error: "Título e secretaria são obrigatórios" }, { status: 400 });
 
+  const database = db();
+  const actor = await database.prepare("SELECT id, department FROM users WHERE id = ?").bind(actorId).first<{ id: string; department: string }>();
+  if (!actor) return Response.json({ error: "Usuário não encontrado" }, { status: 404 });
+  const assigneeId = payload.assigneeId ? String(payload.assigneeId) : null;
+  if (assigneeId) {
+    const assignee = await database.prepare("SELECT id FROM users WHERE id = ? AND LOWER(TRIM(department)) = LOWER(TRIM(?))")
+      .bind(assigneeId, department).first<{ id: string }>();
+    if (!assignee) return Response.json({ error: "O responsável deve pertencer ao setor do chamado" }, { status: 400 });
+  }
   const now = new Date().toISOString();
   const id = crypto.randomUUID();
-  const total = await db().prepare("SELECT COUNT(*) AS total FROM tickets").first<{ total: number }>();
+  const total = await database.prepare("SELECT COUNT(*) AS total FROM tickets").first<{ total: number }>();
   const protocol = `CH-${new Date().getUTCFullYear()}-${String(Number(total?.total ?? 0) + 188).padStart(4, "0")}`;
   const detail = `Chamado ${protocol} criado: ${title}`;
+  const departmentMembers = await database.prepare("SELECT id FROM users WHERE LOWER(TRIM(department)) = LOWER(TRIM(?)) AND id <> ?")
+    .bind(department, actorId).all<{ id: string }>();
 
-  const database = db();
   await database.batch([
     database.prepare(`INSERT INTO tickets (id, protocol, title, description, requester, department, priority, status, assignee_id, due_date, created_at, updated_at)
       VALUES (?, ?, ?, ?, ?, ?, ?, 'Recebido', ?, ?, ?, ?)`).bind(
       id, protocol, title, String(payload.description ?? ""), String(payload.requester ?? "Secretaria de Governo"), department,
-      String(payload.priority ?? "Média"), payload.assigneeId ? String(payload.assigneeId) : null,
+      String(payload.priority ?? "Média"), assigneeId,
       payload.dueDate ? String(payload.dueDate) : null, now, now,
     ),
     database.prepare("INSERT INTO audit_logs (id, actor_id, action, entity_type, entity_id, detail, created_at) VALUES (?, ?, 'chamado_criado', 'chamado', ?, ?, ?)")
       .bind(crypto.randomUUID(), actorId, id, detail, now),
+    ...departmentMembers.results.map((member) => database.prepare(`INSERT INTO notifications (id, user_id, actor_id, type, title, body, related_entity_id, read_at, created_at)
+      VALUES (?, ?, ?, 'ticket', 'Novo chamado do setor', ?, ?, NULL, ?)`)
+      .bind(crypto.randomUUID(), member.id, actorId, `${protocol}: ${title}`, id, now)),
   ]);
   return Response.json({ id, protocol, createdAt: now }, { status: 201 });
 }
@@ -62,6 +75,9 @@ async function updateTicket(payload: ActionPayload) {
   if (!id || !allowed.includes(status)) return Response.json({ error: "Chamado ou status inválido" }, { status: 400 });
   const now = new Date().toISOString();
   const database = db();
+  const access = await database.prepare(`SELECT t.id FROM tickets t JOIN users u ON u.id = ?
+    WHERE t.id = ? AND LOWER(TRIM(t.department)) = LOWER(TRIM(u.department))`).bind(actorId, id).first<{ id: string }>();
+  if (!access) return Response.json({ error: "Apenas integrantes do setor responsável podem alterar este chamado" }, { status: 403 });
   await database.batch([
     database.prepare("UPDATE tickets SET status = ?, updated_at = ? WHERE id = ?").bind(status, now, id),
     database.prepare("INSERT INTO audit_logs (id, actor_id, action, entity_type, entity_id, detail, created_at) VALUES (?, ?, 'status_atualizado', 'chamado', ?, ?, ?)")
@@ -75,15 +91,40 @@ async function sendMessage(payload: ActionPayload) {
   const conversationType = String(payload.conversationType ?? "direct");
   const conversationId = String(payload.conversationId ?? "");
   const body = String(payload.body ?? "").trim();
-  if (!conversationId || !body) return Response.json({ error: "Conversa e mensagem são obrigatórias" }, { status: 400 });
+  if (!conversationId || !body || !["direct", "group"].includes(conversationType)) return Response.json({ error: "Conversa e mensagem são obrigatórias" }, { status: 400 });
   const id = crypto.randomUUID();
   const now = new Date().toISOString();
   const database = db();
+  const actor = await database.prepare("SELECT full_name AS fullName FROM users WHERE id = ?").bind(actorId).first<{ fullName: string }>();
+  if (!actor) return Response.json({ error: "Usuário não encontrado" }, { status: 404 });
+  if (payload.ticketId) {
+    const ticketAccess = await database.prepare(`SELECT t.id FROM tickets t JOIN users u ON u.id = ?
+      WHERE t.id = ? AND LOWER(TRIM(t.department)) = LOWER(TRIM(u.department))`).bind(actorId, String(payload.ticketId)).first<{ id: string }>();
+    if (!ticketAccess) return Response.json({ error: "Este chamado é privado para o setor responsável" }, { status: 403 });
+  }
+  if (conversationType === "direct" && !(`::${conversationId}::`).includes(`::${actorId}::`)) {
+    return Response.json({ error: "Acesso negado à conversa" }, { status: 403 });
+  }
+  if (conversationType === "group") {
+    const membership = await database.prepare("SELECT user_id AS userId FROM group_members WHERE group_id = ? AND user_id = ? AND invitation_status = 'aceito'")
+      .bind(conversationId, actorId).first<{ userId: string }>();
+    if (!membership) return Response.json({ error: "Apenas participantes podem enviar mensagens neste grupo" }, { status: 403 });
+  }
+  const recipients: string[] = [];
+  const recipientId = String(payload.recipientId ?? "");
+  if (conversationType === "direct" && recipientId && recipientId !== actorId) recipients.push(recipientId);
+  if (conversationType === "group") {
+    const members = await database.prepare("SELECT user_id AS userId FROM group_members WHERE group_id = ? AND invitation_status = 'aceito' AND user_id <> ?")
+      .bind(conversationId, actorId).all<{ userId: string }>();
+    recipients.push(...members.results.map((member) => member.userId));
+  }
   await database.batch([
     database.prepare(`INSERT INTO messages (id, conversation_type, conversation_id, sender_id, body, attachment_name, attachment_key, ticket_id, created_at)
       VALUES (?, ?, ?, ?, ?, NULL, NULL, ?, ?)`).bind(id, conversationType, conversationId, actorId, body, payload.ticketId ? String(payload.ticketId) : null, now),
     database.prepare("INSERT INTO audit_logs (id, actor_id, action, entity_type, entity_id, detail, created_at) VALUES (?, ?, 'mensagem_enviada', 'mensagem', ?, ?, ?)")
       .bind(crypto.randomUUID(), actorId, id, `Mensagem enviada em ${conversationType === "group" ? "grupo" : "conversa direta"}`, now),
+    ...recipients.map((userId) => database.prepare(`INSERT INTO notifications (id, user_id, actor_id, type, title, body, related_entity_id, read_at, created_at)
+      VALUES (?, ?, ?, 'message', 'Nova mensagem', ?, ?, NULL, ?)`).bind(crypto.randomUUID(), userId, actorId, `${actor?.fullName ?? "Um usuário"} enviou uma nova mensagem.`, id, now)),
   ]);
   return Response.json({ id, createdAt: now }, { status: 201 });
 }

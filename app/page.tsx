@@ -55,12 +55,13 @@ type Ticket = { id: string; protocol: string; title: string; description: string
 type User = { id: string; fullName: string; email: string; department: string; role: string; initials: string };
 type Office = { id: string; name: string; head: string; hours: string; phone: string; email: string; address: string; category: OfficeCategory };
 type Group = { id: string; name: string; description: string; memberCount: number; createdAt: string; memberUserIds?: string[]; pendingUserIds?: string[] };
-type Message = { id: string; conversationType: ChatTab; conversationId: string; senderId: string; senderName: string; senderInitials: string; body: string; attachmentName?: string | null; ticketId?: string | null; createdAt: string };
+type Message = { id: string; conversationType: ChatTab; conversationId: string; senderId: string; senderName: string; senderInitials: string; body: string; attachmentId?: string | null; attachmentName?: string | null; attachmentSize?: number | null; attachmentContentType?: string | null; attachmentUrl?: string | null; ticketId?: string | null; createdAt: string };
 type DocumentItem = { id: string; name: string; category: string; ownerId: string; ownerName: string; ticketId?: string | null; contentType: string; size: number; createdAt: string };
 type AuditItem = { id: string; action: string; entityType: string; entityId: string; detail: string; createdAt: string; actorName: string; actorInitials: string };
 type NotificationItem = { id: string; userId: string; type: "group_invite" | "ticket" | "message" | "system"; title: string; body: string; relatedEntityId?: string | null; readAt?: string | null; createdAt: string; actorName?: string; actorInitials?: string };
 type GroupInvitation = { groupId: string; userId: string; groupName: string; description: string; invitedByName: string; invitedByInitials: string; memberCount: number; status: "convidado" | "aceito" | "recusado"; createdAt: string };
-type BootstrapPayload = { users?: User[]; tickets?: Ticket[]; groups?: Array<Group & { memberCount: string | number }>; messages?: Message[]; documents?: DocumentItem[]; audit?: AuditItem[]; notifications?: NotificationItem[]; invitations?: Array<GroupInvitation & { memberCount: string | number }> };
+type GroupMembership = { groupId: string; userId: string; status: "convidado" | "aceito" | "recusado" };
+type BootstrapPayload = { users?: User[]; tickets?: Ticket[]; groups?: Array<Group & { memberCount: string | number }>; groupMemberships?: GroupMembership[]; messages?: Message[]; documents?: DocumentItem[]; audit?: AuditItem[]; notifications?: NotificationItem[]; invitations?: Array<GroupInvitation & { memberCount: string | number }> };
 
 const OFFICE_CATEGORIES: OfficeCategory[] = ["Prefeitura e apoio", "Secretarias", "Departamentos", "Seções e subprefeitura"];
 
@@ -87,20 +88,32 @@ const OFFICES: Office[] = [
 ];
 
 const USERS: User[] = [
-  { id: "u-ana", fullName: "Ana Martins", email: "ana.martins@prefeitura.gov.br", department: "Secretaria de Governo", role: "Administrador", initials: "AM" },
-  { id: "u-rafael", fullName: "Rafael Costa", email: "rafael.costa@prefeitura.gov.br", department: "Infraestrutura", role: "Secretário", initials: "RC" },
-  { id: "u-lucas", fullName: "Lucas Mendes", email: "lucas.mendes@prefeitura.gov.br", department: "Saúde", role: "Secretário", initials: "LM" },
-  { id: "u-amanda", fullName: "Amanda Silva", email: "amanda.silva@prefeitura.gov.br", department: "Educação", role: "Secretária", initials: "AS" },
-  { id: "u-carla", fullName: "Carla Prado", email: "carla.prado@prefeitura.gov.br", department: "Procuradoria", role: "Secretária", initials: "CP" },
-  { id: "u-felipe", fullName: "Felipe Barros", email: "felipe.barros@prefeitura.gov.br", department: "Meio Ambiente", role: "Secretário", initials: "FB" },
+  { id: "u-ana", fullName: "Artur Paulo Fagundes Rabelo", email: "gabinete@varzeadapalma.mg.gov.br", department: "Secretaria de Governo", role: "Administrador", initials: "AR" },
+  { id: "u-rafael", fullName: "Bruno Gonçalves da Fonseca", email: "obras@varzeadapalma.mg.gov.br", department: "Secretaria de Infraestrutura e Transporte", role: "Secretário", initials: "BF" },
+  { id: "u-lucas", fullName: "Natália Cristina Pedrosa Cabral", email: "saude@varzeadapalma.mg.gov.br", department: "Secretaria de Saúde", role: "Secretária", initials: "NC" },
+  { id: "u-amanda", fullName: "Leila Cibeli Silveira Mendes", email: "semec@varzeadapalma.mg.gov.br", department: "Secretaria de Educação", role: "Secretária", initials: "LM" },
+  { id: "u-carla", fullName: "Jaime de Souza", email: "financas@varzeadapalma.mg.gov.br", department: "Secretaria de Administração e Finanças", role: "Secretário", initials: "JS" },
+  { id: "u-felipe", fullName: "Lucas Fontinelli de Oliveira da Silva", email: "desenvolvimentoeconomico@varzeadapalma.mg.gov.br", department: "Secretaria Municipal de Desenvolvimento Econômico, Agricultura e Meio Ambiente", role: "Secretário", initials: "LS" },
+  { id: "u-rosilene", fullName: "Rosilene Soares Souza Carvalho", email: "controladoria@varzeadapalma.mg.gov.br", department: "Controle Interno", role: "Controladora Interna", initials: "RC" },
+  { id: "u-rodrigo", fullName: "Rodrigo Aguiar Dalla Bernardina", email: "gabinete@varzeadapalma.mg.gov.br", department: "Gabinete do Prefeito", role: "Chefe de Gabinete", initials: "RB" },
+  { id: "u-wharley", fullName: "Wharley Marques de Lima", email: "ascompalma@gmail.com", department: "Secretaria de Comunicação e Eventos", role: "Secretário", initials: "WL" },
+  { id: "u-guilherme", fullName: "Guilherme Oliveira Fonseca", email: "smds@varzeadapalma.mg.gov.br", department: "Secretaria de Desenvolvimento Social", role: "Secretário", initials: "GF" },
+  { id: "u-pedro", fullName: "Pedro Umberto Baeta Camargos", email: "cultura@varzeadapalma.mg.gov.br", department: "Secretaria de Cultura e Turismo", role: "Secretário", initials: "PC" },
+  { id: "u-alan", fullName: "Alan Kelve", email: "secretariaobras50@gmail.com", department: "Departamento de Execução de Obras", role: "Responsável", initials: "AK" },
+  { id: "u-mauricio", fullName: "Maurício Hugel de Azevedo", email: "transportes.vzp@hotmail.com", department: "Departamento de Transportes", role: "Responsável", initials: "MA" },
+  { id: "u-junio", fullName: "Júnio Fernandes da Silva", email: "esporte.vzp@gmail.com", department: "Departamento de Esporte e Lazer / Subseção de Esportes", role: "Responsável", initials: "JF" },
+  { id: "u-paula", fullName: "Paula Patrício Silva", email: "vigilanciaemsaude@varzeadapalma.mg.gov.br", department: "Departamento de Vigilância Sanitária", role: "Responsável", initials: "PS" },
+  { id: "u-anselmo", fullName: "Anselmo Caetano de Paula", email: "semedpedagogicovzp@gmail.com", department: "Seção de Controle e Avaliação", role: "Responsável", initials: "AP" },
+  { id: "u-marco", fullName: "Marco Antonio Ramos", email: "marco.ramos@educacao.mg.gov.br", department: "Subseção de Patrimônio Histórico e Cultura", role: "Responsável", initials: "MR" },
+  { id: "u-dalila", fullName: "Dalila Correa", email: "sub-prefeituraguaicui@hotmail.com", department: "Subprefeitura da Barra do Guaicuí", role: "Subprefeita", initials: "DC" },
 ];
 
 const INITIAL_TICKETS: Ticket[] = [
-  { id: "t-187", protocol: "CH-2026-0187", title: "Manutenção da iluminação na Praça Central", description: "Substituição de luminárias e revisão do quadro elétrico.", requester: "Ouvidoria Municipal", department: "Infraestrutura", priority: "Alta", status: "Em produção", dueDate: "2026-08-13T19:00:00.000Z", assigneeId: "u-rafael", assigneeName: "Rafael Costa", assigneeInitials: "RC", createdAt: "2026-08-13T10:00:00.000Z", updatedAt: "2026-08-13T14:36:00.000Z" },
-  { id: "t-186", protocol: "CH-2026-0186", title: "Revisão do calendário de vacinação", description: "Validar datas, locais e comunicação da campanha.", requester: "Gabinete do Prefeito", department: "Saúde", priority: "Média", status: "Aguardando aprovação", dueDate: "2026-08-14T18:00:00.000Z", assigneeId: "u-lucas", assigneeName: "Lucas Mendes", assigneeInitials: "LM", createdAt: "2026-08-12T13:00:00.000Z", updatedAt: "2026-08-13T14:52:00.000Z" },
-  { id: "t-185", protocol: "CH-2026-0185", title: "Atualização do transporte escolar — Zona Norte", description: "Revisar itinerários antes da volta às aulas.", requester: "Secretaria de Educação", department: "Mobilidade", priority: "Alta", status: "Recebido", dueDate: "2026-08-15T18:00:00.000Z", assigneeId: "u-amanda", assigneeName: "Amanda Silva", assigneeInitials: "AS", createdAt: "2026-08-12T11:00:00.000Z", updatedAt: "2026-08-12T11:00:00.000Z" },
-  { id: "t-184", protocol: "CH-2026-0184", title: "Parecer sobre contratação emergencial", description: "Análise jurídica concluída.", requester: "Secretaria de Administração", department: "Procuradoria", priority: "Baixa", status: "Finalizado", dueDate: "2026-08-12T18:00:00.000Z", assigneeId: "u-carla", assigneeName: "Carla Prado", assigneeInitials: "CP", createdAt: "2026-08-10T09:00:00.000Z", updatedAt: "2026-08-13T12:00:00.000Z" },
-  { id: "t-183", protocol: "CH-2026-0183", title: "Liberação de área para feira de produtores", description: "Avaliação ambiental e autorização de uso.", requester: "Desenvolvimento Econômico", department: "Meio Ambiente", priority: "Média", status: "Em produção", dueDate: "2026-08-16T18:00:00.000Z", assigneeId: "u-felipe", assigneeName: "Felipe Barros", assigneeInitials: "FB", createdAt: "2026-08-11T15:00:00.000Z", updatedAt: "2026-08-13T11:00:00.000Z" },
+  { id: "t-187", protocol: "CH-2026-0187", title: "Manutenção da iluminação na Praça Central", description: "Substituição de luminárias e revisão do quadro elétrico.", requester: "Ouvidoria Municipal", department: "Secretaria de Infraestrutura e Transporte", priority: "Alta", status: "Em produção", dueDate: "2026-08-13T19:00:00.000Z", assigneeId: "u-rafael", assigneeName: "Bruno Gonçalves da Fonseca", assigneeInitials: "BF", createdAt: "2026-08-13T10:00:00.000Z", updatedAt: "2026-08-13T14:36:00.000Z" },
+  { id: "t-186", protocol: "CH-2026-0186", title: "Revisão do calendário de vacinação", description: "Validar datas, locais e comunicação da campanha.", requester: "Gabinete do Prefeito", department: "Secretaria de Saúde", priority: "Média", status: "Aguardando aprovação", dueDate: "2026-08-14T18:00:00.000Z", assigneeId: "u-lucas", assigneeName: "Natália Cristina Pedrosa Cabral", assigneeInitials: "NC", createdAt: "2026-08-12T13:00:00.000Z", updatedAt: "2026-08-13T14:52:00.000Z" },
+  { id: "t-185", protocol: "CH-2026-0185", title: "Atualização do transporte escolar — Zona Norte", description: "Revisar itinerários antes da volta às aulas.", requester: "Secretaria de Educação", department: "Secretaria de Educação", priority: "Alta", status: "Recebido", dueDate: "2026-08-15T18:00:00.000Z", assigneeId: "u-amanda", assigneeName: "Leila Cibeli Silveira Mendes", assigneeInitials: "LM", createdAt: "2026-08-12T11:00:00.000Z", updatedAt: "2026-08-12T11:00:00.000Z" },
+  { id: "t-184", protocol: "CH-2026-0184", title: "Parecer sobre contratação emergencial", description: "Análise administrativa concluída.", requester: "Secretaria de Governo", department: "Secretaria de Administração e Finanças", priority: "Baixa", status: "Finalizado", dueDate: "2026-08-12T18:00:00.000Z", assigneeId: "u-carla", assigneeName: "Jaime de Souza", assigneeInitials: "JS", createdAt: "2026-08-10T09:00:00.000Z", updatedAt: "2026-08-13T12:00:00.000Z" },
+  { id: "t-183", protocol: "CH-2026-0183", title: "Liberação de área para feira de produtores", description: "Avaliação ambiental e autorização de uso.", requester: "Gabinete do Prefeito", department: "Secretaria Municipal de Desenvolvimento Econômico, Agricultura e Meio Ambiente", priority: "Média", status: "Em produção", dueDate: "2026-08-16T18:00:00.000Z", assigneeId: "u-felipe", assigneeName: "Lucas Fontinelli de Oliveira da Silva", assigneeInitials: "LS", createdAt: "2026-08-11T15:00:00.000Z", updatedAt: "2026-08-13T11:00:00.000Z" },
 ];
 
 const INITIAL_GROUPS: Group[] = [
@@ -110,35 +123,35 @@ const INITIAL_GROUPS: Group[] = [
 ];
 
 const INITIAL_NOTIFICATIONS: NotificationItem[] = [
-  { id: "n-convite-saude", userId: "u-ana", type: "group_invite", title: "Novo convite para grupo", body: "Lucas Mendes convidou você para o Comitê de Saúde Digital.", relatedEntityId: "g-saude-digital", readAt: null, createdAt: "2026-08-13T14:45:00.000Z", actorName: "Lucas Mendes", actorInitials: "LM" },
-  { id: "n-convite-volta-aulas", userId: "u-rafael", type: "group_invite", title: "Novo convite para grupo", body: "Amanda Silva convidou você para Operação Volta às Aulas 2026.", relatedEntityId: "g-volta-aulas", readAt: null, createdAt: "2026-08-13T14:00:00.000Z", actorName: "Amanda Silva", actorInitials: "AS" },
-  { id: "n-aprovacao", userId: "u-ana", type: "ticket", title: "Chamado aguardando aprovação", body: "O chamado CH-2026-0186 está pronto para sua análise.", relatedEntityId: "t-186", readAt: null, createdAt: "2026-08-13T14:52:00.000Z", actorName: "Lucas Mendes", actorInitials: "LM" },
-  { id: "n-documento", userId: "u-ana", type: "message", title: "Documento recebido", body: "Rafael Costa enviou o Relatório técnico — Iluminação.pdf.", relatedEntityId: "m-3", readAt: "2026-08-13T14:40:00.000Z", createdAt: "2026-08-13T14:36:00.000Z", actorName: "Rafael Costa", actorInitials: "RC" },
+  { id: "n-convite-saude", userId: "u-ana", type: "group_invite", title: "Novo convite para grupo", body: "Natália Cristina Pedrosa Cabral convidou você para o Comitê de Saúde Digital.", relatedEntityId: "g-saude-digital", readAt: null, createdAt: "2026-08-13T14:45:00.000Z", actorName: "Natália Cristina Pedrosa Cabral", actorInitials: "NC" },
+  { id: "n-convite-volta-aulas", userId: "u-rafael", type: "group_invite", title: "Novo convite para grupo", body: "Leila Cibeli Silveira Mendes convidou você para Operação Volta às Aulas 2026.", relatedEntityId: "g-volta-aulas", readAt: null, createdAt: "2026-08-13T14:00:00.000Z", actorName: "Leila Cibeli Silveira Mendes", actorInitials: "LM" },
+  { id: "n-aprovacao", userId: "u-ana", type: "ticket", title: "Chamado aguardando aprovação", body: "O chamado CH-2026-0186 está pronto para sua análise.", relatedEntityId: "t-186", readAt: null, createdAt: "2026-08-13T14:52:00.000Z", actorName: "Natália Cristina Pedrosa Cabral", actorInitials: "NC" },
+  { id: "n-documento", userId: "u-ana", type: "message", title: "Documento recebido", body: "Bruno Gonçalves da Fonseca enviou o Relatório técnico — Iluminação.pdf.", relatedEntityId: "m-3", readAt: "2026-08-13T14:40:00.000Z", createdAt: "2026-08-13T14:36:00.000Z", actorName: "Bruno Gonçalves da Fonseca", actorInitials: "BF" },
 ];
 
 const INITIAL_INVITATIONS: GroupInvitation[] = [
-  { groupId: "g-saude-digital", userId: "u-ana", groupName: "Comitê de Saúde Digital", description: "Integração dos atendimentos e sistemas da rede municipal.", invitedByName: "Lucas Mendes", invitedByInitials: "LM", memberCount: 1, status: "convidado", createdAt: "2026-08-13T14:45:00.000Z" },
-  { groupId: "g-volta-aulas", userId: "u-rafael", groupName: "Operação Volta às Aulas 2026", description: "Educação, Mobilidade e Governo", invitedByName: "Amanda Silva", invitedByInitials: "AS", memberCount: 2, status: "convidado", createdAt: "2026-08-13T14:00:00.000Z" },
+  { groupId: "g-saude-digital", userId: "u-ana", groupName: "Comitê de Saúde Digital", description: "Integração dos atendimentos e sistemas da rede municipal.", invitedByName: "Natália Cristina Pedrosa Cabral", invitedByInitials: "NC", memberCount: 1, status: "convidado", createdAt: "2026-08-13T14:45:00.000Z" },
+  { groupId: "g-volta-aulas", userId: "u-rafael", groupName: "Operação Volta às Aulas 2026", description: "Educação, Mobilidade e Governo", invitedByName: "Leila Cibeli Silveira Mendes", invitedByInitials: "LM", memberCount: 2, status: "convidado", createdAt: "2026-08-13T14:00:00.000Z" },
 ];
 
 const INITIAL_MESSAGES: Message[] = [
-  { id: "m-1", conversationType: "direct", conversationId: "u-rafael", senderId: "u-rafael", senderName: "Rafael Costa", senderInitials: "RC", body: "Bom dia, Ana. A equipe já iniciou a vistoria na Praça Central.", ticketId: "t-187", createdAt: "2026-08-13T14:20:00.000Z" },
-  { id: "m-2", conversationType: "direct", conversationId: "u-rafael", senderId: "u-ana", senderName: "Ana Martins", senderInitials: "AM", body: "Ótimo. Por favor, envie o relatório técnico assim que estiver pronto.", ticketId: "t-187", createdAt: "2026-08-13T14:24:00.000Z" },
-  { id: "m-3", conversationType: "direct", conversationId: "u-rafael", senderId: "u-rafael", senderName: "Rafael Costa", senderInitials: "RC", body: "Segue a primeira versão para conferência.", attachmentName: "Relatório técnico — Iluminação.pdf", ticketId: "t-187", createdAt: "2026-08-13T14:36:00.000Z" },
-  { id: "m-4", conversationType: "group", conversationId: "g-volta-aulas", senderId: "u-amanda", senderName: "Amanda Silva", senderInitials: "AS", body: "Incluí a planilha com os novos itinerários. Precisamos da validação até amanhã.", ticketId: "t-185", createdAt: "2026-08-13T14:10:00.000Z" },
+  { id: "m-1", conversationType: "direct", conversationId: "u-ana::u-rafael", senderId: "u-rafael", senderName: "Bruno Gonçalves da Fonseca", senderInitials: "BF", body: "Bom dia, Artur. A equipe já iniciou a vistoria na Praça Central.", ticketId: "t-187", createdAt: "2026-08-13T14:20:00.000Z" },
+  { id: "m-2", conversationType: "direct", conversationId: "u-ana::u-rafael", senderId: "u-ana", senderName: "Artur Paulo Fagundes Rabelo", senderInitials: "AR", body: "Ótimo. Por favor, envie o relatório técnico assim que estiver pronto.", ticketId: "t-187", createdAt: "2026-08-13T14:24:00.000Z" },
+  { id: "m-3", conversationType: "direct", conversationId: "u-ana::u-rafael", senderId: "u-rafael", senderName: "Bruno Gonçalves da Fonseca", senderInitials: "BF", body: "Segue a primeira versão para conferência.", attachmentId: "d-1", attachmentName: "Relatório técnico — Iluminação.pdf", attachmentSize: 2480000, attachmentContentType: "application/pdf", ticketId: "t-187", createdAt: "2026-08-13T14:36:00.000Z" },
+  { id: "m-4", conversationType: "group", conversationId: "g-volta-aulas", senderId: "u-amanda", senderName: "Leila Cibeli Silveira Mendes", senderInitials: "LM", body: "Incluí a planilha com os novos itinerários. Precisamos da validação até amanhã.", ticketId: "t-185", createdAt: "2026-08-13T14:10:00.000Z" },
 ];
 
 const INITIAL_DOCS: DocumentItem[] = [
-  { id: "d-1", name: "Relatório técnico — Iluminação.pdf", category: "Relatório técnico", ownerId: "u-rafael", ownerName: "Rafael Costa", ticketId: "t-187", contentType: "application/pdf", size: 2480000, createdAt: "2026-08-13T14:36:00.000Z" },
-  { id: "d-2", name: "Itinerários escolares — Zona Norte.xlsx", category: "Planilha", ownerId: "u-amanda", ownerName: "Amanda Silva", ticketId: "t-185", contentType: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", size: 840000, createdAt: "2026-08-13T14:10:00.000Z" },
-  { id: "d-3", name: "Parecer jurídico 042-2026.pdf", category: "Parecer", ownerId: "u-carla", ownerName: "Carla Prado", ticketId: "t-184", contentType: "application/pdf", size: 1320000, createdAt: "2026-08-13T12:00:00.000Z" },
+  { id: "d-1", name: "Relatório técnico — Iluminação.pdf", category: "Relatório técnico", ownerId: "u-rafael", ownerName: "Bruno Gonçalves da Fonseca", ticketId: "t-187", contentType: "application/pdf", size: 2480000, createdAt: "2026-08-13T14:36:00.000Z" },
+  { id: "d-2", name: "Itinerários escolares — Zona Norte.xlsx", category: "Planilha", ownerId: "u-amanda", ownerName: "Leila Cibeli Silveira Mendes", ticketId: "t-185", contentType: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", size: 840000, createdAt: "2026-08-13T14:10:00.000Z" },
+  { id: "d-3", name: "Parecer administrativo 042-2026.pdf", category: "Parecer", ownerId: "u-carla", ownerName: "Jaime de Souza", ticketId: "t-184", contentType: "application/pdf", size: 1320000, createdAt: "2026-08-13T12:00:00.000Z" },
 ];
 
 const INITIAL_AUDIT: AuditItem[] = [
-  { id: "a-1", action: "status_atualizado", entityType: "chamado", entityId: "t-186", detail: "Calendário de vacinação movido para Aguardando aprovação", createdAt: "2026-08-13T14:52:00.000Z", actorName: "Lucas Mendes", actorInitials: "LM" },
-  { id: "a-2", action: "documento_enviado", entityType: "mensagem", entityId: "m-3", detail: "Relatório técnico — Iluminação.pdf enviado no chat", createdAt: "2026-08-13T14:36:00.000Z", actorName: "Rafael Costa", actorInitials: "RC" },
-  { id: "a-3", action: "grupo_criado", entityType: "grupo", entityId: "g-volta-aulas", detail: "Grupo Operação Volta às Aulas 2026 criado", createdAt: "2026-08-13T14:00:00.000Z", actorName: "Amanda Silva", actorInitials: "AS" },
-  { id: "a-4", action: "chamado_finalizado", entityType: "chamado", entityId: "t-184", detail: "Parecer sobre contratação emergencial finalizado", createdAt: "2026-08-13T12:00:00.000Z", actorName: "Carla Prado", actorInitials: "CP" },
+  { id: "a-1", action: "status_atualizado", entityType: "chamado", entityId: "t-186", detail: "Calendário de vacinação movido para Aguardando aprovação", createdAt: "2026-08-13T14:52:00.000Z", actorName: "Natália Cristina Pedrosa Cabral", actorInitials: "NC" },
+  { id: "a-2", action: "documento_enviado", entityType: "mensagem", entityId: "m-3", detail: "Relatório técnico — Iluminação.pdf enviado no chat", createdAt: "2026-08-13T14:36:00.000Z", actorName: "Bruno Gonçalves da Fonseca", actorInitials: "BF" },
+  { id: "a-3", action: "grupo_criado", entityType: "grupo", entityId: "g-volta-aulas", detail: "Grupo Operação Volta às Aulas 2026 criado", createdAt: "2026-08-13T14:00:00.000Z", actorName: "Leila Cibeli Silveira Mendes", actorInitials: "LM" },
+  { id: "a-4", action: "chamado_finalizado", entityType: "chamado", entityId: "t-184", detail: "Parecer sobre contratação emergencial finalizado", createdAt: "2026-08-13T12:00:00.000Z", actorName: "Jaime de Souza", actorInitials: "JS" },
 ];
 
 const navIcons: Record<NavItem, LucideIcon> = {
@@ -178,9 +191,15 @@ export default function Home() {
   const fileInput = useRef<HTMLInputElement>(null);
 
   const currentUser = users.find((user) => user.id === currentUserId) ?? USERS[0];
-  const currentNotifications = notifications.filter((item) => item.userId === currentUserId);
+  const privateTickets = useMemo(() => ticketData.filter((ticket) => sameDepartment(ticket.department, currentUser.department)), [currentUser.department, ticketData]);
+  const privateTicketIds = useMemo(() => new Set(privateTickets.map((ticket) => ticket.id)), [privateTickets]);
+  const privateDocuments = useMemo(() => documents.filter((document) => !document.ticketId || privateTicketIds.has(document.ticketId)), [documents, privateTicketIds]);
+  const privateMessages = useMemo(() => messages.filter((message) => !message.ticketId || privateTicketIds.has(message.ticketId)), [messages, privateTicketIds]);
+  const privateMessageIds = useMemo(() => new Set(privateMessages.map((message) => message.id)), [privateMessages]);
+  const privateAudit = useMemo(() => audit.filter((item) => item.entityType === "chamado" ? privateTicketIds.has(item.entityId) : item.entityType === "mensagem" ? privateMessageIds.has(item.entityId) : true), [audit, privateMessageIds, privateTicketIds]);
+  const currentNotifications = notifications.filter((item) => item.userId === currentUserId && (item.type !== "ticket" || !item.relatedEntityId || privateTicketIds.has(item.relatedEntityId)) && (item.type !== "message" || !item.relatedEntityId || privateMessageIds.has(item.relatedEntityId)));
   const currentInvitations = invitations.filter((item) => item.userId === currentUserId && item.status === "convidado");
-  const pendingTickets = ticketData.filter((ticket) => ticket.status === "Aguardando aprovação");
+  const pendingTickets = privateTickets.filter((ticket) => ticket.status === "Aguardando aprovação");
   const unreadCount = currentNotifications.filter((item) => !item.readAt).length;
   const pendingCount = currentInvitations.length + pendingTickets.length;
   const accessibleGroups = groups.filter((group) => !group.memberUserIds || group.memberUserIds.includes(currentUserId));
@@ -189,11 +208,14 @@ export default function Home() {
     fetch(`/api/bootstrap?userId=${encodeURIComponent(currentUserId)}`).then((response) => response.ok ? response.json() : Promise.reject()).then((data) => {
       const payload = data as BootstrapPayload;
       if (payload.users?.length) setUsers(payload.users);
-      if (payload.tickets?.length) setTicketData(payload.tickets);
-      if (Array.isArray(payload.groups)) setGroups(payload.groups.map((group) => ({ ...group, memberCount: Number(group.memberCount) })));
-      if (payload.messages?.length) setMessages(payload.messages);
-      if (payload.documents?.length) setDocuments(payload.documents);
-      if (payload.audit?.length) setAudit(payload.audit);
+      if (Array.isArray(payload.tickets)) setTicketData(payload.tickets);
+      if (Array.isArray(payload.groups)) setGroups(payload.groups.map((group) => {
+        const memberships = (payload.groupMemberships ?? []).filter((membership) => membership.groupId === group.id);
+        return { ...group, memberCount: Number(group.memberCount), memberUserIds: memberships.filter((membership) => membership.status === "aceito").map((membership) => membership.userId), pendingUserIds: memberships.filter((membership) => membership.status === "convidado").map((membership) => membership.userId) };
+      }));
+      if (Array.isArray(payload.messages)) setMessages(payload.messages);
+      if (Array.isArray(payload.documents)) setDocuments(payload.documents);
+      if (Array.isArray(payload.audit)) setAudit(payload.audit);
       if (Array.isArray(payload.notifications)) setNotifications((current) => [...current.filter((item) => item.userId !== currentUserId), ...payload.notifications!]);
       if (Array.isArray(payload.invitations)) setInvitations((current) => [...current.filter((item) => item.userId !== currentUserId), ...payload.invitations!.map((item) => ({ ...item, memberCount: Number(item.memberCount) }))]);
     }).catch(() => undefined);
@@ -201,9 +223,9 @@ export default function Home() {
 
   const filteredTickets = useMemo(() => {
     const term = search.trim().toLowerCase();
-    if (!term) return ticketData;
-    return ticketData.filter((ticket) => [ticket.protocol, ticket.title, ticket.requester, ticket.department].join(" ").toLowerCase().includes(term));
-  }, [search, ticketData]);
+    if (!term) return privateTickets;
+    return privateTickets.filter((ticket) => [ticket.protocol, ticket.title, ticket.requester, ticket.department].join(" ").toLowerCase().includes(term));
+  }, [search, privateTickets]);
 
   function notify(message: string) {
     setToast(message);
@@ -215,28 +237,30 @@ export default function Home() {
     const assigneeId = String(form.get("assigneeId") || "") || null;
     const assignee = users.find((user) => user.id === assigneeId);
     const temporary: Ticket = {
-      id: `temp-${Date.now()}`, protocol: `CH-2026-${String(ticketData.length + 188).padStart(4, "0")}`,
+      id: makeId(), protocol: `CH-2026-${String(ticketData.length + 188).padStart(4, "0")}`,
       title: String(form.get("title")), description: String(form.get("description")), requester: currentUser.department,
       department: String(form.get("department")), priority: String(form.get("priority")) as Priority, status: "Recebido",
       dueDate: String(form.get("dueDate")) || null, assigneeId, assigneeName: assignee?.fullName, assigneeInitials: assignee?.initials, createdAt: now, updatedAt: now,
     };
-    setTicketData((current) => [temporary, ...current]);
+    const belongsToCurrentDepartment = sameDepartment(temporary.department, currentUser.department);
+    if (belongsToCurrentDepartment) setTicketData((current) => [temporary, ...current]);
     addAudit("chamado_criado", "chamado", temporary.id, `${temporary.protocol} criado: ${temporary.title}`);
     setTicketModal(false);
     setActiveNav("Chamados");
-    notify("Chamado criado e registrado no histórico.");
+    notify(belongsToCurrentDepartment ? "Chamado criado e visível somente para o seu setor." : `Chamado encaminhado de forma privada para ${temporary.department}.`);
     try {
       const response = await fetch("/api/actions", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ action: "create_ticket", userId: currentUserId, requester: currentUser.department, ...Object.fromEntries(form.entries()) }) });
       if (response.ok) {
         const saved = await response.json() as { id: string; protocol: string };
-        setTicketData((current) => current.map((item) => item.id === temporary.id ? { ...item, id: saved.id, protocol: saved.protocol } : item));
+        if (belongsToCurrentDepartment) setTicketData((current) => current.map((item) => item.id === temporary.id ? { ...item, id: saved.id, protocol: saved.protocol } : item));
       }
     } catch { /* O protótipo continua funcional durante a prévia local. */ }
   }
 
   function updateStatus(id: string, status: TicketStatus) {
-    setTicketData((current) => current.map((ticket) => ticket.id === id ? { ...ticket, status, updatedAt: new Date().toISOString() } : ticket));
     const ticket = ticketData.find((item) => item.id === id);
+    if (!ticket || !sameDepartment(ticket.department, currentUser.department)) { notify("Apenas membros do setor responsável podem alterar este chamado."); return; }
+    setTicketData((current) => current.map((item) => item.id === id ? { ...item, status, updatedAt: new Date().toISOString() } : item));
     addAudit("status_atualizado", "chamado", id, `${ticket?.protocol ?? "Chamado"} movido para ${status}`);
     notify(`Chamado movido para “${status}”.`);
     void fetch("/api/actions", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ action: "update_ticket", id, status, userId: currentUserId }) }).catch(() => undefined);
@@ -247,15 +271,74 @@ export default function Home() {
   }
 
   async function uploadFile(file: File) {
-    const item: DocumentItem = { id: `temp-${Date.now()}`, name: file.name, category: "Documento", ownerId: currentUser.id, ownerName: currentUser.fullName, contentType: file.type || "application/octet-stream", size: file.size, createdAt: new Date().toISOString() };
+    if (file.size > 10 * 1024 * 1024) { notify("O arquivo deve ter no máximo 10 MB."); return; }
+    const item: DocumentItem = { id: makeId(), name: file.name, category: "Documento", ownerId: currentUser.id, ownerName: currentUser.fullName, contentType: file.type || "application/octet-stream", size: file.size, createdAt: new Date().toISOString() };
     setDocuments((current) => [item, ...current]);
     addAudit("documento_enviado", "documento", item.id, `${file.name} enviado para a plataforma`);
     notify("Arquivo anexado e registrado.");
-    const form = new FormData(); form.append("file", file); form.append("category", "Documento");
+    const form = new FormData(); form.append("file", file); form.append("category", "Documento"); form.append("userId", currentUser.id);
     try {
       const response = await fetch("/api/files", { method: "POST", body: form });
       if (response.ok) { const saved = await response.json() as { id: string }; setDocuments((current) => current.map((doc) => doc.id === item.id ? { ...doc, id: saved.id } : doc)); }
     } catch { /* Mantém a demonstração disponível. */ }
+  }
+
+  function recipientIds(conversationType: ChatTab, conversationId: string, recipientId?: string) {
+    if (conversationType === "direct") return recipientId && recipientId !== currentUserId ? [recipientId] : [];
+    return (groups.find((group) => group.id === conversationId)?.memberUserIds ?? []).filter((id) => id !== currentUserId);
+  }
+
+  function addMessageNotifications(message: Message, recipientId?: string) {
+    const recipients = recipientIds(message.conversationType, message.conversationId, recipientId);
+    if (!recipients.length) return;
+    const body = message.attachmentName
+      ? `${currentUser.fullName} enviou o documento ${message.attachmentName}.`
+      : `${currentUser.fullName} enviou uma nova mensagem.`;
+    setNotifications((current) => [
+      ...recipients.map((userId): NotificationItem => ({ id: makeId(), userId, type: "message", title: message.attachmentName ? "Novo documento na conversa" : "Nova mensagem", body, relatedEntityId: message.id, readAt: null, createdAt: message.createdAt, actorName: currentUser.fullName, actorInitials: currentUser.initials })),
+      ...current,
+    ]);
+  }
+
+  function sendMessage(message: Message, recipientId?: string) {
+    setMessages((current) => [...current, message]);
+    addMessageNotifications(message, recipientId);
+    addAudit("mensagem_enviada", "mensagem", message.id, `Mensagem enviada por ${currentUser.fullName}`);
+    void fetch("/api/actions", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ action: "send_message", userId: currentUserId, recipientId, ...message }) }).catch(() => undefined);
+  }
+
+  async function sendChatAttachment(file: File, context: { conversationType: ChatTab; conversationId: string; recipientId?: string; body: string }) {
+    if (file.size > 10 * 1024 * 1024) { notify("O documento deve ter no máximo 10 MB."); return false; }
+    const now = new Date().toISOString();
+    const tempDocumentId = makeId();
+    const tempMessageId = makeId();
+    const localUrl = URL.createObjectURL(file);
+    const documentItem: DocumentItem = { id: tempDocumentId, name: file.name, category: "Documento do chat", ownerId: currentUser.id, ownerName: currentUser.fullName, contentType: file.type || "application/octet-stream", size: file.size, createdAt: now };
+    const message: Message = { id: tempMessageId, conversationType: context.conversationType, conversationId: context.conversationId, senderId: currentUser.id, senderName: currentUser.fullName, senderInitials: currentUser.initials, body: context.body.trim(), attachmentId: tempDocumentId, attachmentName: file.name, attachmentSize: file.size, attachmentContentType: file.type || "application/octet-stream", attachmentUrl: localUrl, createdAt: now };
+    setDocuments((current) => [documentItem, ...current]);
+    setMessages((current) => [...current, message]);
+    addMessageNotifications(message, context.recipientId);
+    addAudit("documento_enviado", "mensagem", tempMessageId, `${file.name} enviado no chat`);
+    notify("Documento enviado na conversa e registrado.");
+
+    const form = new FormData();
+    form.append("file", file);
+    form.append("category", "Documento do chat");
+    form.append("userId", currentUser.id);
+    form.append("conversationType", context.conversationType);
+    form.append("conversationId", context.conversationId);
+    if (context.recipientId) form.append("recipientId", context.recipientId);
+    if (context.body.trim()) form.append("messageBody", context.body.trim());
+
+    try {
+      const response = await fetch("/api/files", { method: "POST", body: form });
+      if (!response.ok) throw new Error("Falha no envio");
+      const saved = await response.json() as { id: string; message?: { id: string; createdAt: string } };
+      setDocuments((current) => current.map((doc) => doc.id === tempDocumentId ? { ...doc, id: saved.id } : doc));
+      setMessages((current) => current.map((item) => item.id === tempMessageId ? { ...item, id: saved.message?.id ?? item.id, attachmentId: saved.id, attachmentUrl: null, createdAt: saved.message?.createdAt ?? item.createdAt } : item));
+      URL.revokeObjectURL(localUrl);
+    } catch { notify("O documento ficou visível nesta sessão, mas não foi possível salvá-lo no servidor."); }
+    return true;
   }
 
   function markNotification(id: string) {
@@ -315,6 +398,7 @@ export default function Home() {
   }
 
   const heading = getHeading(activeNav);
+  const headingTitle = activeNav === "Visão geral" ? `Bom dia, ${currentUser.fullName.split(" ")[0]}.` : heading.title;
 
   return (
     <div className="app-shell">
@@ -366,7 +450,7 @@ export default function Home() {
 
         <div className="content-wrap">
           <section className="page-heading">
-            <div><p className="eyebrow">{activeNav === "Visão geral" ? "QUINTA-FEIRA, 13 DE AGOSTO" : heading.eyebrow}</p><h1>{heading.title}</h1><p>{heading.subtitle}</p></div>
+            <div><p className="eyebrow">{activeNav === "Visão geral" ? "QUINTA-FEIRA, 13 DE AGOSTO" : heading.eyebrow}</p><h1>{headingTitle}</h1><p>{heading.subtitle}</p></div>
             <div className="heading-actions">
               {activeNav === "Comunicação" ? (
                 <button className="button secondary" onClick={() => setGroupModal(true)}><Plus size={15} /> Novo grupo</button>
@@ -385,18 +469,18 @@ export default function Home() {
             </div>
           </section>
 
-          {activeNav === "Visão geral" && <Dashboard tickets={filteredTickets} audit={audit} onNavigate={setActiveNav} />}
-          {activeNav === "Chamados" && <TicketsSection tickets={filteredTickets} onStatus={updateStatus} onNew={() => setTicketModal(true)} />}
-          {activeNav === "Comunicação" && <CommunicationSection currentUser={currentUser} users={users} groups={accessibleGroups} messages={messages} tickets={ticketData} onSend={(message) => { setMessages((current) => [...current, message]); addAudit("mensagem_enviada", "mensagem", message.id, `Mensagem enviada por ${currentUser.fullName}`); void fetch("/api/actions", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ action: "send_message", userId: currentUserId, ...message }) }).catch(() => undefined); }} onNewGroup={() => setGroupModal(true)} onAttach={() => fileInput.current?.click()} />}
+          {activeNav === "Visão geral" && <Dashboard tickets={filteredTickets} audit={privateAudit} onNavigate={setActiveNav} />}
+          {activeNav === "Chamados" && <TicketsSection tickets={filteredTickets} department={currentUser.department} onStatus={updateStatus} onNew={() => setTicketModal(true)} />}
+          {activeNav === "Comunicação" && <CommunicationSection currentUser={currentUser} users={users} groups={accessibleGroups} messages={privateMessages} tickets={privateTickets} onSend={sendMessage} onSendAttachment={sendChatAttachment} onNewGroup={() => setGroupModal(true)} />}
           {activeNav === "Notificações" && <NotificationsSection notifications={currentNotifications} onRead={markNotification} onOpenPending={() => setActiveNav("Pendências")} />}
           {activeNav === "Pendências" && <PendingSection invitations={currentInvitations} tickets={pendingTickets} onRespond={respondInvitation} onOpenTickets={() => setActiveNav("Chamados")} />}
-          {activeNav === "Documentos" && <DocumentsSection documents={documents} tickets={ticketData} onUpload={() => fileInput.current?.click()} />}
+          {activeNav === "Documentos" && <DocumentsSection documents={privateDocuments} tickets={privateTickets} onUpload={() => fileInput.current?.click()} />}
           {activeNav === "Secretarias" && <TeamSection offices={OFFICES} />}
-          {activeNav === "Auditoria" && <AuditSection audit={audit} />}
+          {activeNav === "Auditoria" && <AuditSection audit={privateAudit} />}
         </div>
       </main>
 
-      <input ref={fileInput} className="hidden-input" type="file" onChange={(event) => { const file = event.target.files?.[0]; if (file) void uploadFile(file); event.target.value = ""; }} />
+      <input ref={fileInput} className="hidden-input" type="file" accept=".pdf,.doc,.docx,.xls,.xlsx,.csv,.txt,.png,.jpg,.jpeg,.zip" onChange={(event) => { const file = event.target.files?.[0]; if (file) void uploadFile(file); event.target.value = ""; }} />
       {ticketModal && <TicketModal users={users} onClose={() => setTicketModal(false)} onCreate={createTicket} />}
       {groupModal && <GroupModal currentUserId={currentUserId} users={users} onClose={() => setGroupModal(false)} onCreate={createGroup} />}
       {toast && <div className="toast" role="status"><span><Check size={14} strokeWidth={2.5} /></span>{toast}</div>}
@@ -406,7 +490,7 @@ export default function Home() {
 
 function getHeading(active: NavItem) {
   const headings: Record<NavItem, { eyebrow: string; title: string; subtitle: string }> = {
-    "Visão geral": { eyebrow: "", title: "Bom dia, Ana.", subtitle: "Acompanhe as demandas e mantenha as secretarias alinhadas." },
+    "Visão geral": { eyebrow: "", title: "Bom dia.", subtitle: "Acompanhe as demandas e mantenha as secretarias alinhadas." },
     Chamados: { eyebrow: "GESTÃO DE DEMANDAS", title: "Chamados", subtitle: "Organize cada solicitação do recebimento à entrega final." },
     Comunicação: { eyebrow: "CENTRAL DE COMUNICAÇÃO", title: "Conversas", subtitle: "Mensagens diretas e grupos por convite entre as secretarias." },
     Notificações: { eyebrow: "CENTRAL DE AVISOS", title: "Notificações", subtitle: "Acompanhe convites, mensagens e atualizações importantes do sistema." },
@@ -490,9 +574,10 @@ function TicketTable({ tickets }: { tickets: Ticket[] }) {
   );
 }
 
-function TicketsSection({ tickets, onStatus, onNew }: { tickets: Ticket[]; onStatus: (id: string, status: TicketStatus) => void; onNew: () => void }) {
+function TicketsSection({ tickets, department, onStatus, onNew }: { tickets: Ticket[]; department: string; onStatus: (id: string, status: TicketStatus) => void; onNew: () => void }) {
   return (
     <section className="board-wrap">
+      <div className="access-note ticket-privacy-note"><span><ShieldCheck size={20} /></span><div><strong>Área privada do setor responsável</strong><p>Você está vendo somente os chamados de {department}. Apenas integrantes deste setor podem abrir e alterar essas demandas.</p></div></div>
       <div className="board-toolbar">
         <div className="filter-chip active">Todos <strong>{tickets.length}</strong></div>
         <div className="filter-chip">Alta prioridade <strong>{tickets.filter((t) => t.priority === "Alta").length}</strong></div>
@@ -526,19 +611,49 @@ function TicketsSection({ tickets, onStatus, onNew }: { tickets: Ticket[]; onSta
   );
 }
 
-function CommunicationSection({ currentUser, users, groups, messages, tickets, onSend, onNewGroup, onAttach }: { currentUser: User; users: User[]; groups: Group[]; messages: Message[]; tickets: Ticket[]; onSend: (message: Message) => void; onNewGroup: () => void; onAttach: () => void }) {
+function CommunicationSection({ currentUser, users, groups, messages, tickets, onSend, onSendAttachment, onNewGroup }: { currentUser: User; users: User[]; groups: Group[]; messages: Message[]; tickets: Ticket[]; onSend: (message: Message, recipientId?: string) => void; onSendAttachment: (file: File, context: { conversationType: ChatTab; conversationId: string; recipientId?: string; body: string }) => Promise<boolean>; onNewGroup: () => void }) {
   const [tab, setTab] = useState<ChatTab>("direct");
   const [selected, setSelected] = useState("u-rafael");
   const [draft, setDraft] = useState("");
+  const [pendingFile, setPendingFile] = useState<File | null>(null);
+  const [isUploading, setIsUploading] = useState(false);
+  const [detailPanel, setDetailPanel] = useState<"attachments" | "participants" | null>(null);
+  const [moreOpen, setMoreOpen] = useState(false);
+  const chatFileInput = useRef<HTMLInputElement>(null);
   const directUsers = users.filter((user) => user.id !== currentUser.id);
   const selectionIsValid = tab === "direct" ? directUsers.some((user) => user.id === selected) : groups.some((group) => group.id === selected);
   const effectiveSelected = selectionIsValid ? selected : tab === "direct" ? directUsers[0]?.id ?? "" : groups[0]?.id ?? "";
+  const conversationThreadId = tab === "direct" ? directConversationId(currentUser.id, effectiveSelected) : effectiveSelected;
   const selectedUser = users.find((user) => user.id === effectiveSelected);
   const selectedGroup = groups.find((group) => group.id === effectiveSelected);
-  const visibleMessages = messages.filter((message) => message.conversationType === tab && message.conversationId === effectiveSelected);
+  const visibleMessages = messages.filter((message) => message.conversationType === tab && message.conversationId === conversationThreadId);
+  const conversationAttachments = visibleMessages.filter((message) => message.attachmentName);
+  const acceptedParticipants = tab === "direct"
+    ? [currentUser, selectedUser].filter((user): user is User => Boolean(user))
+    : users.filter((user) => selectedGroup?.memberUserIds?.includes(user.id));
+  const invitedParticipants = tab === "group"
+    ? users.filter((user) => selectedGroup?.pendingUserIds?.includes(user.id))
+    : [];
 
-  function changeTab(next: ChatTab) { setTab(next); setSelected(next === "direct" ? directUsers[0]?.id ?? "" : groups[0]?.id ?? ""); }
-  function submit(event: FormEvent) { event.preventDefault(); if (!draft.trim() || !effectiveSelected) return; onSend({ id: makeId(), conversationType: tab, conversationId: effectiveSelected, senderId: currentUser.id, senderName: currentUser.fullName, senderInitials: currentUser.initials, body: draft.trim(), createdAt: new Date().toISOString() }); setDraft(""); }
+  function selectConversation(id: string) { setSelected(id); setDetailPanel(null); setMoreOpen(false); }
+  function changeTab(next: ChatTab) { setTab(next); setSelected(next === "direct" ? directUsers[0]?.id ?? "" : groups[0]?.id ?? ""); setPendingFile(null); setDetailPanel(null); setMoreOpen(false); }
+  function togglePanel(panel: "attachments" | "participants") { setDetailPanel((current) => current === panel ? null : panel); setMoreOpen(false); }
+  async function submit(event: FormEvent) {
+    event.preventDefault();
+    const body = draft.trim();
+    if ((!body && !pendingFile) || !conversationThreadId || isUploading) return;
+    const recipientId = tab === "direct" ? effectiveSelected : undefined;
+    if (pendingFile) {
+      setIsUploading(true);
+      try {
+        const sent = await onSendAttachment(pendingFile, { conversationType: tab, conversationId: conversationThreadId, recipientId, body });
+        if (sent) { setPendingFile(null); setDraft(""); }
+      } finally { setIsUploading(false); }
+      return;
+    }
+    onSend({ id: makeId(), conversationType: tab, conversationId: conversationThreadId, senderId: currentUser.id, senderName: currentUser.fullName, senderInitials: currentUser.initials, body, createdAt: new Date().toISOString() }, recipientId);
+    setDraft("");
+  }
 
   return (
     <section className="chat-shell panel">
@@ -551,11 +666,11 @@ function CommunicationSection({ currentUser, users, groups, messages, tickets, o
         {tab === "group" && <button className="new-group-row" onClick={onNewGroup}><Plus size={14} /> Criar grupo por convite</button>}
         <div className="conversation-items">
           {tab === "direct" ? directUsers.map((user, index) => (
-            <button key={user.id} className={effectiveSelected === user.id ? "conversation active" : "conversation"} onClick={() => setSelected(user.id)}>
+            <button key={user.id} className={effectiveSelected === user.id ? "conversation active" : "conversation"} onClick={() => selectConversation(user.id)}>
               <span className="avatar">{user.initials}</span><span><strong>{user.fullName}</strong><small>{user.department}</small></span>{index < 2 && <i>{index + 1}</i>}
             </button>
           )) : groups.map((group) => (
-            <button key={group.id} className={effectiveSelected === group.id ? "conversation active" : "conversation"} onClick={() => setSelected(group.id)}>
+            <button key={group.id} className={effectiveSelected === group.id ? "conversation active" : "conversation"} onClick={() => selectConversation(group.id)}>
               <span className="group-avatar"><Hash size={16} /></span><span><strong>{group.name}</strong><small>{group.memberCount} participantes · por convite</small></span>
             </button>
           ))}
@@ -566,12 +681,28 @@ function CommunicationSection({ currentUser, users, groups, messages, tickets, o
           <div className={tab === "group" ? "group-avatar" : "avatar"}>{tab === "group" ? <Hash size={16} /> : selectedUser?.initials}</div>
           <div><strong>{tab === "group" ? selectedGroup?.name : selectedUser?.fullName}</strong><span>{tab === "group" ? `${selectedGroup?.memberCount ?? 0} participantes` : selectedUser?.department}</span></div>
           <div className="chat-header-actions">
-            <button title="Compartilhar chamado"><ClipboardList size={15} /></button>
-            <button title="Participantes"><UsersRound size={15} /></button>
-            <button title="Mais opções"><MoreHorizontal size={16} /></button>
+            <button className={detailPanel === "attachments" ? "active" : ""} title="Anexos da conversa" aria-label="Ver anexos da conversa" aria-pressed={detailPanel === "attachments"} onClick={() => togglePanel("attachments")}><ClipboardList size={16} /></button>
+            <button className={detailPanel === "participants" ? "active" : ""} title="Participantes" aria-label="Ver participantes da conversa" aria-pressed={detailPanel === "participants"} onClick={() => togglePanel("participants")}><UsersRound size={16} /></button>
+            <div className="chat-more-wrap">
+              <button className={moreOpen ? "active" : ""} title="Mais opções" aria-label="Mais opções da conversa" aria-expanded={moreOpen} onClick={() => setMoreOpen((current) => !current)}><MoreHorizontal size={17} /></button>
+              {moreOpen && <div className="chat-more-menu"><button onClick={() => togglePanel("participants")}><UsersRound size={15} /> Ver participantes</button><button onClick={() => togglePanel("attachments")}><Files size={15} /> Ver anexos</button></div>}
+            </div>
           </div>
         </header>
         {tab === "group" && <div className="invite-banner"><span><Mail size={15} /></span><div><strong>Grupo com entrada por convite</strong><p>Somente participantes convidados podem visualizar e enviar mensagens.</p></div><button onClick={onNewGroup}>Gerenciar convites</button></div>}
+        {detailPanel && <aside className="chat-detail-panel" aria-label={detailPanel === "participants" ? "Participantes da conversa" : "Anexos da conversa"}>
+          <header><div><span>{detailPanel === "participants" ? <UsersRound size={18} /> : <Files size={18} />}</span><div><strong>{detailPanel === "participants" ? "Participantes" : "Anexos da conversa"}</strong><small>{detailPanel === "participants" ? `${acceptedParticipants.length} ${acceptedParticipants.length === 1 ? "participante" : "participantes"}` : `${conversationAttachments.length} ${conversationAttachments.length === 1 ? "arquivo" : "arquivos"}`}</small></div></div><button aria-label="Fechar painel" onClick={() => setDetailPanel(null)}><X size={17} /></button></header>
+          {detailPanel === "participants" ? <div className="chat-detail-list">
+            {acceptedParticipants.map((user) => <article className="chat-participant" key={user.id}><span className="avatar">{user.initials}</span><div><strong>{user.fullName}</strong><small>{user.department}</small></div><i>Participante</i></article>)}
+            {invitedParticipants.map((user) => <article className="chat-participant pending" key={user.id}><span className="avatar">{user.initials}</span><div><strong>{user.fullName}</strong><small>{user.department}</small></div><i>Convite pendente</i></article>)}
+          </div> : <div className="chat-detail-list">
+            {conversationAttachments.map((message) => {
+              const href = message.attachmentUrl ?? `/api/files?id=${encodeURIComponent(message.attachmentId ?? "")}&userId=${encodeURIComponent(currentUser.id)}`;
+              return <a className="chat-panel-file" href={href} download={message.attachmentName ?? undefined} key={message.id}><span>{fileBadge(message.attachmentName ?? "documento")}</span><div><strong>{message.attachmentName}</strong><small>{message.senderName} · {message.attachmentSize ? formatSize(message.attachmentSize) : "Arquivo"} · {formatDate(message.createdAt)}</small></div><Download size={15} /></a>;
+            })}
+            {!conversationAttachments.length && <div className="chat-panel-empty"><Paperclip size={24} /><strong>Nenhum anexo enviado</strong><p>Os documentos desta conversa aparecerão aqui.</p></div>}
+          </div>}
+        </aside>}
         <div className="message-stream">
           <div className="date-divider"><span>Hoje</span></div>
           {visibleMessages.length === 0 && <div className="empty-chat"><span><MessagesSquare size={25} /></span><strong>Comece esta conversa</strong><p>Mensagens, chamados e documentos ficarão registrados aqui.</p></div>}
@@ -579,17 +710,19 @@ function CommunicationSection({ currentUser, users, groups, messages, tickets, o
             <div key={message.id} className={message.senderId === currentUser.id ? "message own" : "message"}>
               <span className="activity-avatar blue">{message.senderInitials}</span>
               <div>
-                <div className="message-meta"><strong>{message.senderName}</strong><time>{formatTime(message.createdAt)}</time></div><p>{message.body}</p>
+                <div className="message-meta"><strong>{message.senderName}</strong><time>{formatTime(message.createdAt)}</time></div>{message.body && <p>{message.body}</p>}
                 {message.ticketId && <button className="ticket-attachment"><ClipboardList size={12} /> {tickets.find((ticket) => ticket.id === message.ticketId)?.protocol ?? "Chamado relacionado"}</button>}
-                {message.attachmentName && <button className="file-attachment"><span>PDF</span><div><strong>{message.attachmentName}</strong><small>Documento anexado</small></div><i><Download size={14} /></i></button>}
+                {message.attachmentName && (message.attachmentUrl || message.attachmentId ? <a className="file-attachment" href={message.attachmentUrl ?? `/api/files?id=${encodeURIComponent(message.attachmentId ?? "")}&userId=${encodeURIComponent(currentUser.id)}`} download={message.attachmentName}><span>{fileBadge(message.attachmentName)}</span><div><strong>{message.attachmentName}</strong><small>{message.attachmentSize ? `${formatSize(message.attachmentSize)} · ` : ""}Documento anexado</small></div><i><Download size={14} /></i></a> : <div className="file-attachment"><span>{fileBadge(message.attachmentName)}</span><div><strong>{message.attachmentName}</strong><small>Documento registrado</small></div><i><FileText size={14} /></i></div>)}
               </div>
             </div>
           ))}
         </div>
         <form className="message-composer" onSubmit={submit}>
-          <div className="compose-actions"><button type="button" onClick={onAttach} title="Anexar arquivo"><Paperclip size={16} /></button><button type="button" title="Vincular chamado"><ClipboardList size={16} /></button></div>
-          <textarea aria-label="Mensagem" placeholder="Escreva uma mensagem..." value={draft} onChange={(event) => setDraft(event.target.value)} onKeyDown={(event) => { if (event.key === "Enter" && !event.shiftKey) { event.preventDefault(); event.currentTarget.form?.requestSubmit(); } }} />
-          <button className="send-button" aria-label="Enviar mensagem"><Send size={16} /></button>
+          {pendingFile && <div className="pending-attachment"><span><FileText size={16} /></span><div><strong>{pendingFile.name}</strong><small>{formatSize(pendingFile.size)} · pronto para enviar nesta conversa</small></div><button type="button" aria-label="Remover anexo" onClick={() => setPendingFile(null)}><X size={15} /></button></div>}
+          <div className="compose-actions"><button type="button" onClick={() => chatFileInput.current?.click()} title="Anexar documento"><Paperclip size={16} /></button><button type="button" title="Vincular chamado"><ClipboardList size={16} /></button></div>
+          <textarea aria-label="Mensagem" placeholder={pendingFile ? "Adicione uma mensagem ao documento (opcional)..." : "Escreva uma mensagem..."} value={draft} onChange={(event) => setDraft(event.target.value)} onKeyDown={(event) => { if (event.key === "Enter" && !event.shiftKey) { event.preventDefault(); event.currentTarget.form?.requestSubmit(); } }} />
+          <button className="send-button" aria-label={isUploading ? "Enviando documento" : "Enviar mensagem"} disabled={isUploading || (!draft.trim() && !pendingFile)}>{isUploading ? <LoaderCircle className="spin" size={16} /> : <Send size={16} />}</button>
+          <input ref={chatFileInput} className="hidden-input" type="file" accept=".pdf,.doc,.docx,.xls,.xlsx,.csv,.txt,.png,.jpg,.jpeg,.zip" onChange={(event) => { const file = event.target.files?.[0]; if (file) setPendingFile(file); event.target.value = ""; }} />
         </form>
       </div>
     </section>
@@ -750,7 +883,9 @@ function AuditSection({ audit }: { audit: AuditItem[] }) {
 }
 
 function TicketModal({ users, onClose, onCreate }: { users: User[]; onClose: () => void; onCreate: (data: FormData) => void }) {
-  return <div className="modal-backdrop" role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget) onClose(); }}><section className="modal" role="dialog" aria-modal="true" aria-labelledby="ticket-modal-title"><header><div><p className="eyebrow">NOVO REGISTRO</p><h2 id="ticket-modal-title">Criar chamado</h2></div><button onClick={onClose} aria-label="Fechar"><X size={18} /></button></header><form action={onCreate}><label className="field full"><span>Título do chamado *</span><input name="title" required placeholder="Ex.: Reparo da iluminação da avenida" autoFocus /></label><label className="field full"><span>Descrição</span><textarea name="description" placeholder="Inclua contexto, entregáveis e observações..." /></label><label className="field"><span>Secretaria responsável *</span><select name="department" required defaultValue=""><option value="" disabled>Selecione</option>{OFFICE_CATEGORIES.map((group) => <optgroup label={group} key={group}>{OFFICES.filter((office) => office.category === group).map((office) => <option key={office.id}>{office.name}</option>)}</optgroup>)}</select></label><label className="field"><span>Responsável</span><select name="assigneeId" defaultValue=""><option value="">A definir</option>{users.map((user) => <option key={user.id} value={user.id}>{user.fullName}</option>)}</select></label><label className="field"><span>Prioridade</span><select name="priority" defaultValue="Média"><option>Alta</option><option>Média</option><option>Baixa</option></select></label><label className="field"><span>Prazo</span><input type="date" name="dueDate" /></label><div className="modal-actions"><button type="button" className="button secondary" onClick={onClose}>Cancelar</button><button className="button primary"><Plus size={15} /> Criar e registrar</button></div></form></section></div>;
+  const [department, setDepartment] = useState("");
+  const eligibleUsers = users.filter((user) => sameDepartment(user.department, department));
+  return <div className="modal-backdrop" role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget) onClose(); }}><section className="modal" role="dialog" aria-modal="true" aria-labelledby="ticket-modal-title"><header><div><p className="eyebrow">NOVO REGISTRO</p><h2 id="ticket-modal-title">Criar chamado</h2></div><button onClick={onClose} aria-label="Fechar"><X size={18} /></button></header><form action={onCreate}><label className="field full"><span>Título do chamado *</span><input name="title" required placeholder="Ex.: Reparo da iluminação da avenida" autoFocus /></label><label className="field full"><span>Descrição</span><textarea name="description" placeholder="Inclua contexto, entregáveis e observações..." /></label><label className="field"><span>Secretaria responsável *</span><select name="department" required value={department} onChange={(event) => setDepartment(event.target.value)}><option value="" disabled>Selecione</option>{OFFICE_CATEGORIES.map((group) => <optgroup label={group} key={group}>{OFFICES.filter((office) => office.category === group).map((office) => <option key={office.id}>{office.name}</option>)}</optgroup>)}</select></label><label className="field"><span>Responsável do setor</span><select name="assigneeId" defaultValue="" disabled={!department}><option value="">{department ? "A definir" : "Selecione primeiro o setor"}</option>{eligibleUsers.map((user) => <option key={user.id} value={user.id}>{user.fullName}</option>)}</select></label><label className="field"><span>Prioridade</span><select name="priority" defaultValue="Média"><option>Alta</option><option>Média</option><option>Baixa</option></select></label><label className="field"><span>Prazo</span><input type="date" name="dueDate" /></label><p className="ticket-modal-privacy"><ShieldCheck size={14} /> Depois de criado, este chamado ficará visível somente para os integrantes da secretaria responsável.</p><div className="modal-actions"><button type="button" className="button secondary" onClick={onClose}>Cancelar</button><button className="button primary"><Plus size={15} /> Criar e registrar</button></div></form></section></div>;
 }
 
 function GroupModal({ currentUserId, users, onClose, onCreate }: { currentUserId: string; users: User[]; onClose: () => void; onCreate: (group: Group, memberIds: string[]) => void }) {
@@ -760,7 +895,7 @@ function GroupModal({ currentUserId, users, onClose, onCreate }: { currentUserId
   const filtered = candidates.filter((user) => [user.fullName, user.department, user.email].join(" ").toLowerCase().includes(query.trim().toLowerCase()));
   function submit(form: FormData) { if (!selected.length) return; const name = String(form.get("name")); onCreate({ id: makeId(), name, description: String(form.get("description")), memberCount: 1, createdAt: new Date().toISOString() }, selected); }
   function toggleAll() { setSelected(selected.length === candidates.length ? [] : candidates.map((user) => user.id)); }
-  return <div className="modal-backdrop" role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget) onClose(); }}><section className="modal group-modal" role="dialog" aria-modal="true" aria-labelledby="group-modal-title"><header><div><p className="eyebrow">COMUNICAÇÃO ENTRE SECRETARIAS</p><h2 id="group-modal-title">Criar grupo por convite</h2></div><button onClick={onClose} aria-label="Fechar"><X size={18} /></button></header><form action={submit}><label className="field full"><span>Nome do grupo *</span><input name="name" required placeholder="Ex.: Operação Volta às Aulas" autoFocus /></label><label className="field full"><span>Objetivo</span><textarea name="description" placeholder="Qual é o objetivo desta conversa?" /></label><fieldset className="member-picker"><legend>Quem você deseja adicionar?</legend><div className="member-tools"><label><Search size={15} /><input aria-label="Buscar pessoa para o grupo" placeholder="Buscar por nome ou secretaria..." value={query} onChange={(event) => setQuery(event.target.value)} /></label><button type="button" onClick={toggleAll}>{selected.length === candidates.length ? "Limpar seleção" : "Selecionar todos"}</button></div><div className="member-results">{filtered.map((user) => <label className={selected.includes(user.id) ? "selected" : ""} key={user.id}><input type="checkbox" checked={selected.includes(user.id)} onChange={(event) => setSelected((current) => event.target.checked ? [...current, user.id] : current.filter((id) => id !== user.id))} /><span className="mini-avatar">{user.initials}</span><span><strong>{user.fullName}</strong><small>{user.department} · {user.email}</small></span><i>{selected.includes(user.id) ? <Check size={12} /> : <Plus size={12} />}</i></label>)}</div><p className="member-count"><UsersRound size={14} /><strong>{selected.length}</strong> {selected.length === 1 ? "pessoa selecionada" : "pessoas selecionadas"}</p></fieldset><p className="invite-note"><BellRing size={14} /> Cada participante receberá uma notificação e uma pendência no próprio acesso. O grupo só ficará disponível depois que o convite for aceito.</p><div className="modal-actions"><button type="button" className="button secondary" onClick={onClose}>Cancelar</button><button className="button primary" disabled={!selected.length}><UserPlus size={15} /> Criar e enviar {selected.length || ""} {selected.length === 1 ? "convite" : "convites"}</button></div></form></section></div>;
+  return <div className="modal-backdrop" role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget) onClose(); }}><section className="modal group-modal" role="dialog" aria-modal="true" aria-labelledby="group-modal-title"><header><div><p className="eyebrow">COMUNICAÇÃO ENTRE SECRETARIAS</p><h2 id="group-modal-title">Criar grupo por convite</h2></div><button onClick={onClose} aria-label="Fechar"><X size={18} /></button></header><form action={submit}><label className="field full"><span>Nome do grupo *</span><input name="name" required placeholder="Ex.: Operação Volta às Aulas" autoFocus /></label><label className="field full"><span>Objetivo</span><textarea name="description" placeholder="Qual é o objetivo desta conversa?" /></label><fieldset className="member-picker"><legend>Quem você deseja adicionar?</legend><div className="member-tools"><label><Search size={15} /><input aria-label="Buscar pessoa para o grupo" placeholder="Buscar por nome ou secretaria..." value={query} onChange={(event) => setQuery(event.target.value)} /></label><button type="button" onClick={toggleAll}>{selected.length === candidates.length ? "Limpar seleção" : "Selecionar todos"}</button></div><div className="member-results">{filtered.map((user) => <label className={selected.includes(user.id) ? "selected" : ""} key={user.id}><input type="checkbox" checked={selected.includes(user.id)} onChange={(event) => setSelected((current) => event.target.checked ? [...current, user.id] : current.filter((id) => id !== user.id))} /><span className="mini-avatar">{user.initials}</span><span><strong>{user.fullName}</strong><small>{user.department} · {user.role}</small></span><i>{selected.includes(user.id) ? <Check size={12} /> : <Plus size={12} />}</i></label>)}</div><p className="member-count"><UsersRound size={14} /><strong>{selected.length}</strong> {selected.length === 1 ? "pessoa selecionada" : "pessoas selecionadas"}</p></fieldset><p className="invite-note"><BellRing size={14} /> Cada participante receberá uma notificação e uma pendência no próprio acesso. O grupo só ficará disponível depois que o convite for aceito.</p><div className="modal-actions"><button type="button" className="button secondary" onClick={onClose}>Cancelar</button><button className="button primary" disabled={!selected.length}><UserPlus size={15} /> Criar e enviar {selected.length || ""} {selected.length === 1 ? "convite" : "convites"}</button></div></form></section></div>;
 }
 
 function StatusPill({ status }: { status: TicketStatus }) { return <span className={`status-pill ${statusMeta[status].color}`}><i />{statusMeta[status].short}</span>; }
@@ -771,4 +906,7 @@ function formatDateTime(value: string) { return `${formatDate(value)}, ${formatT
 function formatRelative(value: string) { const minutes = Math.max(1, Math.round((new Date("2026-08-13T15:00:00.000Z").getTime() - new Date(value).getTime()) / 60000)); return minutes < 60 ? `Há ${minutes} min` : `Há ${Math.round(minutes / 60)} h`; }
 function formatDue(value: string | null) { if (!value) return "Sem prazo"; const date = new Date(value); const day = date.getUTCDate(); if (day === 13) return `Hoje, ${formatTime(value)}`; if (day === 14) return "Amanhã"; return `${String(day).padStart(2, "0")} ago`; }
 function formatSize(size: number) { return size >= 1_000_000 ? `${(size / 1_000_000).toFixed(1)} MB` : `${Math.round(size / 1000)} KB`; }
-function makeId() { return `local-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`; }
+function sameDepartment(first: string, second: string) { return first.trim().toLocaleLowerCase("pt-BR") === second.trim().toLocaleLowerCase("pt-BR"); }
+function directConversationId(firstUserId: string, secondUserId: string) { return [firstUserId, secondUserId].sort().join("::"); }
+function fileBadge(name: string) { const extension = name.split(".").pop()?.toUpperCase() ?? "DOC"; return extension.slice(0, 4); }
+function makeId() { return crypto.randomUUID(); }
