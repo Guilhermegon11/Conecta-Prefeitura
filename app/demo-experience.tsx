@@ -17,6 +17,7 @@ import {
   Settings2,
   Sparkles,
   UserRound,
+  Workflow,
   X,
 } from "lucide-react";
 
@@ -68,10 +69,11 @@ export function DemoBanner({ onStart, onReset }: { onStart: () => void; onReset:
 }
 
 const TOUR_STEPS = [
-  { nav: "Visão geral", icon: Landmark, eyebrow: "VISÃO EXECUTIVA", title: "Comece pelo panorama da gestão", body: "Apresente volumes, prazos e atividades recentes. Os cartões e alertas levam diretamente aos registros que exigem decisão." },
+  { nav: "Visão geral", icon: Landmark, eyebrow: "VISÃO EXECUTIVA", title: "Comece pelo panorama da gestão", body: "No perfil do prefeito, use o seletor Painel setorial no topo e apresente volumes, prazos e atividades do setor escolhido." },
   { nav: "Atendimento ao Cidadão", icon: UserRound, eyebrow: "JORNADA DO CIDADÃO", title: "Registre e acompanhe solicitações", body: "Mostre protocolos, Ouvidoria, e-SIC, Carta de Serviços e satisfação em uma única jornada rastreável." },
   { nav: "Chamados", icon: ClipboardList, eyebrow: "EXECUÇÃO ENTRE SETORES", title: "Transforme a solicitação em trabalho", body: "Demonstre prioridade, responsável, SLA, checklist, encaminhamento e conclusão pelo quadro operacional." },
   { nav: "Área do Setor", icon: MapPin, eyebrow: "OPERAÇÃO ESPECIALIZADA", title: "Cada setor recebe ferramentas próprias", body: "Formulários, mapa, equipes de campo, metas e indicadores mudam conforme a unidade municipal selecionada." },
+  { nav: "Fluxos e Anotações", icon: Workflow, eyebrow: "MEMÓRIA OPERACIONAL", title: "Decisões percorrem um fluxo próprio", body: "Mostre o quadro adaptado ao setor, avance etapas e registre anotações cronológicas sem perder o contexto da providência." },
   { nav: "Configurações", icon: Settings2, eyebrow: "CONTROLE DO SECRETÁRIO", title: "Permissões simples e transparentes", body: "O secretário define o que funcionários podem visualizar, registrar ou alterar e testa o resultado pela troca de perfil." },
   { nav: "Central de Ajuda", icon: HelpCircle, eyebrow: "ADOÇÃO DA PLATAFORMA", title: "Tutoriais dentro do próprio sistema", body: "Finalize mostrando os guias passo a passo, com progresso e orientações para cada fluxo da plataforma." },
 ] as const;

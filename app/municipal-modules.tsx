@@ -406,6 +406,36 @@ const HELP_TUTORIALS: HelpTutorial[] = [
     ],
   },
   {
+    id: "eventos-multissetoriais", category: "Próximos Eventos", title: "Publicar e manter eventos multissetoriais", duration: "5 min",
+    summary: "Escolha quais setores recebem o compromisso e controle quem pode editar ou excluir.",
+    steps: [
+      { title: "Abra a agenda do setor", text: "Acesse Próximos Eventos. A lista mostra apenas compromissos publicados para o setor que está sendo visualizado." },
+      { title: "Escolha os setores destinatários", text: "Clique em Novo evento, informe data, local e pauta e marque todos os setores que devem receber o compromisso.", tip: "Use Selecionar todos apenas para agendas realmente institucionais." },
+      { title: "Edite quando houver autorização", text: "Perfis com a ação Alterar habilitada visualizam os botões Editar e Excluir. As mudanças são refletidas nas agendas selecionadas." },
+      { title: "Comunique alterações", text: "Ao publicar, alterar ou excluir, os integrantes dos setores destinatários recebem um aviso no cenário demonstrativo." },
+    ],
+  },
+  {
+    id: "fluxos-anotacoes", category: "Fluxos e Anotações", title: "Acompanhar decisões e providências do setor", duration: "7 min",
+    summary: "Quadro por etapas, modelos específicos e histórico de anotações internas.",
+    steps: [
+      { title: "Confira o fluxo especializado", text: "Abra Fluxos e Anotações. As etapas, modelos e orientações mudam conforme Saúde, Educação, Obras, Governo e as demais áreas." },
+      { title: "Crie um registro", text: "Selecione o modelo, descreva o contexto, defina prioridade, responsável e, se necessário, marque o conteúdo como restrito." },
+      { title: "Avance pelas etapas", text: "Use Avançar no cartão ou abra o histórico para alterar etapa, prioridade e responsável. Somente perfis com permissão de alteração podem movimentar o fluxo." },
+      { title: "Preserve a memória", text: "Adicione decisões, retornos e próximas providências como anotações cronológicas. O conteúdo permanece associado ao setor selecionado." },
+    ],
+  },
+  {
+    id: "visao-executiva", category: "Prefeito e vice", title: "Alternar entre todos os painéis setoriais", duration: "4 min",
+    summary: "Acesso integral do Executivo com um seletor único no topo da plataforma.",
+    steps: [
+      { title: "Entre no perfil executivo", text: "Em Visualizar como, selecione Prefeito Municipal ou Vice-prefeito. O sistema identifica o acesso integral automaticamente." },
+      { title: "Escolha o painel setorial", text: "Use o seletor Painel setorial no topo para alternar entre secretarias, departamentos, seções e subprefeitura." },
+      { title: "Navegue mantendo o setor", text: "Chamados, indicadores, arquivos, agenda, fluxos, funcionários e configurações passam a usar o setor escolhido sem trocar de conta." },
+      { title: "Valide a visão atual", text: "A faixa Visão executiva mostra qual setor está sendo visualizado. Antes de registrar ou alterar algo, confirme esse nome." },
+    ],
+  },
+  {
     id: "relatorios", category: "Relatórios", title: "Filtrar e apresentar indicadores", duration: "5 min",
     summary: "Como preparar uma visão gerencial coerente para a demonstração.",
     steps: [

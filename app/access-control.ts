@@ -1,6 +1,7 @@
 export type PermissionModule =
   | "Visão geral"
   | "Área do Setor"
+  | "Fluxos e Anotações"
   | "Chamados"
   | "Comunicação"
   | "Atendimento ao Cidadão"
@@ -36,6 +37,7 @@ export type DepartmentPermissionSettings = {
 export const PERMISSION_MODULES: Array<{ module: PermissionModule; group: string; description: string }> = [
   { module: "Visão geral", group: "Início", description: "Resumo e prioridades do setor" },
   { module: "Área do Setor", group: "Início", description: "Formulários, mapa, equipes e metas" },
+  { module: "Fluxos e Anotações", group: "Início", description: "Quadros de trabalho e registros internos adaptados ao setor" },
   { module: "Chamados", group: "Atendimento", description: "Demandas internas e execução" },
   { module: "Comunicação", group: "Atendimento", description: "Conversas, grupos e anexos" },
   { module: "Atendimento ao Cidadão", group: "Atendimento", description: "Protocolos, Ouvidoria e e-SIC" },
@@ -74,7 +76,7 @@ function profile(
 }
 
 const COMMON: PermissionModule[] = [
-  "Visão geral", "Área do Setor", "Chamados", "Comunicação", "Notificações", "Pendências",
+  "Visão geral", "Área do Setor", "Fluxos e Anotações", "Chamados", "Comunicação", "Notificações", "Pendências",
   "Anexos e Arquivos", "Próximos Eventos", "Secretarias", "Central de Ajuda",
 ];
 
@@ -86,7 +88,7 @@ export function createDefaultPermissionSettings(): DepartmentPermissionSettings 
         "Atendimento",
         "Recebe solicitações, conversa com os setores e acompanha protocolos.",
         [...COMMON, "Atendimento ao Cidadão"],
-        ["Chamados", "Comunicação", "Atendimento ao Cidadão", "Anexos e Arquivos", "Próximos Eventos"],
+        ["Fluxos e Anotações", "Chamados", "Comunicação", "Atendimento ao Cidadão", "Anexos e Arquivos", "Próximos Eventos"],
         ["Chamados", "Atendimento ao Cidadão", "Anexos e Arquivos"],
       ),
       operacional: profile(
@@ -94,22 +96,22 @@ export function createDefaultPermissionSettings(): DepartmentPermissionSettings 
         "Operacional",
         "Executa demandas, processos e registros da operação municipal.",
         [...COMMON, "Atendimento ao Cidadão", "Processos Digitais", "Gestão Municipal", "Indicadores"],
-        ["Área do Setor", "Chamados", "Comunicação", "Processos Digitais", "Gestão Municipal", "Anexos e Arquivos", "Próximos Eventos"],
-        ["Área do Setor", "Chamados", "Processos Digitais", "Gestão Municipal", "Anexos e Arquivos"],
+        ["Área do Setor", "Fluxos e Anotações", "Chamados", "Comunicação", "Processos Digitais", "Gestão Municipal", "Anexos e Arquivos", "Próximos Eventos"],
+        ["Área do Setor", "Fluxos e Anotações", "Chamados", "Processos Digitais", "Gestão Municipal", "Anexos e Arquivos", "Próximos Eventos"],
       ),
       campo: profile(
         "campo",
         "Equipe de campo",
         "Registra vistorias, localização, evidências e execução externa.",
         COMMON,
-        ["Área do Setor", "Chamados", "Comunicação", "Anexos e Arquivos"],
-        ["Área do Setor", "Chamados"],
+        ["Área do Setor", "Fluxos e Anotações", "Chamados", "Comunicação", "Anexos e Arquivos"],
+        ["Área do Setor", "Fluxos e Anotações", "Chamados"],
       ),
       consulta: profile(
         "consulta",
         "Somente consulta",
         "Acompanha informações autorizadas sem criar ou alterar registros.",
-        ["Visão geral", "Área do Setor", "Chamados", "Indicadores", "Notificações", "Anexos e Arquivos", "Secretarias", "Central de Ajuda"],
+        ["Visão geral", "Área do Setor", "Fluxos e Anotações", "Chamados", "Indicadores", "Notificações", "Anexos e Arquivos", "Secretarias", "Central de Ajuda"],
         [],
         [],
       ),

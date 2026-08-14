@@ -15,6 +15,7 @@ import {
   CheckCircle2,
   Clock3,
   ClipboardList,
+  Crown,
   Download,
   FileText,
   Files,
@@ -33,16 +34,19 @@ import {
   MessagesSquare,
   MoreHorizontal,
   Paperclip,
+  Pencil,
   Plus,
   Phone,
   Search,
   Send,
   Settings,
   ShieldCheck,
+  Trash2,
   Upload,
   UserRound,
   UserPlus,
   UsersRound,
+  Workflow,
   X,
   XCircle,
 } from "lucide-react";
@@ -56,6 +60,7 @@ import {
   SecuritySection,
 } from "./municipal-modules";
 import { SectorWorkspaceSection } from "./sector-workspaces";
+import { SectorNotesSection } from "./sector-notes";
 import { NeighborhoodMapField } from "./municipal-location";
 import { SettingsSection } from "./settings-section";
 import { DemoBanner, GlobalSearchPanel, GuidedDemo, playNotificationChime, useNotificationChime } from "./demo-experience";
@@ -82,8 +87,8 @@ type Office = { id: string; name: string; head: string; hours: string; phone: st
 type Group = { id: string; name: string; description: string; memberCount: number; createdAt: string; memberUserIds?: string[]; pendingUserIds?: string[] };
 type Message = { id: string; conversationType: ChatTab; conversationId: string; senderId: string; senderName: string; senderInitials: string; body: string; attachmentId?: string | null; attachmentName?: string | null; attachmentSize?: number | null; attachmentContentType?: string | null; attachmentUrl?: string | null; ticketId?: string | null; createdAt: string };
 type DocumentItem = { id: string; name: string; category: string; ownerId: string; ownerName: string; department: string; ticketId?: string | null; contentType: string; size: number; createdAt: string };
-type SectorEvent = { id: string; title: string; description: string; department: string; location: string; startsAt: string; endsAt?: string | null; createdBy: string; creatorName: string; creatorInitials: string; createdAt: string };
-type AuditItem = { id: string; action: string; entityType: string; entityId: string; detail: string; createdAt: string; actorName: string; actorInitials: string };
+type SectorEvent = { id: string; title: string; description: string; department: string; targetDepartments?: string[]; location: string; startsAt: string; endsAt?: string | null; createdBy: string; creatorName: string; creatorInitials: string; createdAt: string };
+type AuditItem = { id: string; action: string; entityType: string; entityId: string; detail: string; department?: string; createdAt: string; actorName: string; actorInitials: string };
 type NotificationItem = { id: string; userId: string; type: "group_invite" | "ticket" | "message" | "system"; title: string; body: string; relatedEntityId?: string | null; readAt?: string | null; createdAt: string; actorName?: string; actorInitials?: string };
 type GroupInvitation = { groupId: string; userId: string; groupName: string; description: string; invitedByName: string; invitedByInitials: string; memberCount: number; status: "convidado" | "aceito" | "recusado"; createdAt: string };
 type GroupMembership = { groupId: string; userId: string; status: "convidado" | "aceito" | "recusado" };
@@ -114,6 +119,8 @@ const OFFICES: Office[] = [
 ];
 
 const USERS: User[] = [
+  { id: "u-prefeito", fullName: "Prefeito Municipal — Demonstração", email: "prefeito@demonstracao.local", department: "Gabinete do Prefeito", role: "Prefeito", initials: "PM" },
+  { id: "u-vice", fullName: "Vice-prefeito — Demonstração", email: "vice.prefeito@demonstracao.local", department: "Gabinete do Prefeito", role: "Vice-prefeito", initials: "VP" },
   { id: "u-ana", fullName: "Artur Paulo Fagundes Rabelo", email: "gabinete@varzeadapalma.mg.gov.br", department: "Secretaria de Governo", role: "Administrador", initials: "AR" },
   { id: "u-rafael", fullName: "Bruno Gonçalves da Fonseca", email: "obras@varzeadapalma.mg.gov.br", department: "Secretaria de Infraestrutura e Transporte", role: "Secretário", initials: "BF" },
   { id: "u-lucas", fullName: "Natália Cristina Pedrosa Cabral", email: "saude@varzeadapalma.mg.gov.br", department: "Secretaria de Saúde", role: "Secretária", initials: "NC" },
@@ -183,9 +190,9 @@ const INITIAL_DOCS: DocumentItem[] = [
 ];
 
 const INITIAL_EVENTS: SectorEvent[] = [
-  { id: "e-governo-1", title: "Reunião de alinhamento do gabinete", description: "Revisão das prioridades e dos chamados em andamento.", department: "Secretaria de Governo", location: "Sala de reuniões do gabinete", startsAt: "2026-08-14T12:30:00.000Z", endsAt: "2026-08-14T13:30:00.000Z", createdBy: "u-ana", creatorName: "Artur Paulo Fagundes Rabelo", creatorInitials: "AR", createdAt: "2026-08-13T12:00:00.000Z" },
-  { id: "e-governo-2", title: "Despacho com chefias de setor", description: "Consolidação das demandas para a próxima semana.", department: "Secretaria de Governo", location: "Auditório municipal", startsAt: "2026-08-17T13:00:00.000Z", endsAt: "2026-08-17T14:30:00.000Z", createdBy: "u-ana", creatorName: "Artur Paulo Fagundes Rabelo", creatorInitials: "AR", createdAt: "2026-08-13T12:30:00.000Z" },
-  { id: "e-saude-1", title: "Revisão da campanha de vacinação", description: "Validação final do calendário e dos pontos de atendimento.", department: "Secretaria de Saúde", location: "Sala técnica da Saúde", startsAt: "2026-08-15T12:00:00.000Z", endsAt: null, createdBy: "u-lucas", creatorName: "Natália Cristina Pedrosa Cabral", creatorInitials: "NC", createdAt: "2026-08-13T13:00:00.000Z" },
+  { id: "e-governo-1", title: "Reunião de alinhamento do gabinete", description: "Revisão das prioridades e dos chamados em andamento.", department: "Secretaria de Governo", targetDepartments: ["Secretaria de Governo", "Gabinete do Prefeito"], location: "Sala de reuniões do gabinete", startsAt: "2026-08-14T12:30:00.000Z", endsAt: "2026-08-14T13:30:00.000Z", createdBy: "u-ana", creatorName: "Artur Paulo Fagundes Rabelo", creatorInitials: "AR", createdAt: "2026-08-13T12:00:00.000Z" },
+  { id: "e-governo-2", title: "Despacho com chefias de setor", description: "Consolidação das demandas para a próxima semana.", department: "Secretaria de Governo", targetDepartments: ["Secretaria de Governo", "Secretaria de Administração e Finanças", "Secretaria de Infraestrutura e Transporte", "Secretaria de Saúde", "Secretaria de Educação"], location: "Auditório municipal", startsAt: "2026-08-17T13:00:00.000Z", endsAt: "2026-08-17T14:30:00.000Z", createdBy: "u-ana", creatorName: "Artur Paulo Fagundes Rabelo", creatorInitials: "AR", createdAt: "2026-08-13T12:30:00.000Z" },
+  { id: "e-saude-1", title: "Revisão da campanha de vacinação", description: "Validação final do calendário e dos pontos de atendimento.", department: "Secretaria de Saúde", targetDepartments: ["Secretaria de Saúde", "Secretaria de Comunicação e Eventos"], location: "Sala técnica da Saúde", startsAt: "2026-08-15T12:00:00.000Z", endsAt: null, createdBy: "u-lucas", creatorName: "Natália Cristina Pedrosa Cabral", creatorInitials: "NC", createdAt: "2026-08-13T13:00:00.000Z" },
 ];
 
 const INITIAL_AUDIT: AuditItem[] = [
@@ -200,6 +207,7 @@ const INITIAL_AUDIT: AuditItem[] = [
 const navIcons: Record<NavItem, LucideIcon> = {
   "Visão geral": LayoutDashboard,
   "Área do Setor": Building2,
+  "Fluxos e Anotações": Workflow,
   Chamados: ClipboardList,
   Comunicação: MessagesSquare,
   "Atendimento ao Cidadão": Landmark,
@@ -227,14 +235,15 @@ const statusMeta: Record<TicketStatus, { color: string; short: string; icon: Luc
   Cancelado: { color: "red", short: "Cancelados", icon: XCircle },
 };
 const statuses = Object.keys(statusMeta) as TicketStatus[];
-const DEMO_STATE_KEY = "prefeitura-conecta:demo-state:v6";
-const PERMISSION_SETTINGS_KEY = "prefeitura-conecta:permission-settings:v2";
+const DEMO_STATE_KEY = "prefeitura-conecta:demo-state:v7";
+const PERMISSION_SETTINGS_KEY = "prefeitura-conecta:permission-settings:v3";
 const EXPERIENCE_SETTINGS_KEY = "prefeitura-conecta:experience-settings:v1";
 
 export default function Home() {
   const [activeNav, setActiveNav] = useState<NavItem>("Visão geral");
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [currentUserId, setCurrentUserId] = useState("u-ana");
+  const [viewedDepartment, setViewedDepartment] = useState("Secretaria de Governo");
   const [search, setSearch] = useState("");
   const [ticketData, setTicketData] = useState(INITIAL_TICKETS);
   const [users, setUsers] = useState(USERS);
@@ -247,7 +256,8 @@ export default function Home() {
   const [invitations, setInvitations] = useState(INITIAL_INVITATIONS);
   const [ticketModal, setTicketModal] = useState(false);
   const [groupModal, setGroupModal] = useState(false);
-  const [eventModal, setEventModal] = useState(false);
+  const [eventModal, setEventModal] = useState<SectorEvent | "new" | null>(null);
+  const [eventToDelete, setEventToDelete] = useState<SectorEvent | null>(null);
   const [employeeModal, setEmployeeModal] = useState(false);
   const [toast, setToast] = useState("");
   const [searchOpen, setSearchOpen] = useState(false);
@@ -260,36 +270,43 @@ export default function Home() {
   const fileInput = useRef<HTMLInputElement>(null);
 
   const currentUser = users.find((user) => user.id === currentUserId) ?? USERS[0];
-  const privateTickets = useMemo(() => ticketData.filter((ticket) => sameDepartment(ticket.department, currentUser.department)), [currentUser.department, ticketData]);
-  const privateTicketIds = useMemo(() => new Set(privateTickets.map((ticket) => ticket.id)), [privateTickets]);
-  const privateDocuments = useMemo(() => documents.filter((document) => sameDepartment(document.department, currentUser.department)), [currentUser.department, documents]);
-  const privateDocumentIds = useMemo(() => new Set(privateDocuments.map((document) => document.id)), [privateDocuments]);
-  const currentEvents = useMemo(() => events
-    .filter((event) => sameDepartment(event.department, currentUser.department))
-    .sort((first, second) => new Date(first.startsAt).getTime() - new Date(second.startsAt).getTime()), [currentUser.department, events]);
-  const currentEventIds = useMemo(() => new Set(currentEvents.map((event) => event.id)), [currentEvents]);
-  const privateMessages = useMemo(() => messages.filter((message) => !message.ticketId || privateTicketIds.has(message.ticketId)), [messages, privateTicketIds]);
-  const privateMessageIds = useMemo(() => new Set(privateMessages.map((message) => message.id)), [privateMessages]);
-  const privateAudit = useMemo(() => audit.filter((item) => {
+  const executiveAccess = isExecutiveAccess(currentUser);
+  const allDepartments = useMemo(() => Array.from(new Set([
+    ...OFFICES.map((office) => office.name),
+    ...users.map((user) => user.department),
+    ...events.flatMap((event) => event.targetDepartments ?? [event.department]),
+  ])).sort((first, second) => first.localeCompare(second, "pt-BR")), [events, users]);
+  const activeDepartment = executiveAccess ? viewedDepartment : currentUser.department;
+  const privateTickets = ticketData.filter((ticket) => sameDepartment(ticket.department, activeDepartment));
+  const privateTicketIds = new Set(privateTickets.map((ticket) => ticket.id));
+  const privateDocuments = documents.filter((document) => sameDepartment(document.department, activeDepartment));
+  const privateDocumentIds = new Set(privateDocuments.map((document) => document.id));
+  const currentEvents = events
+    .filter((event) => (event.targetDepartments?.length ? event.targetDepartments : [event.department]).some((department) => sameDepartment(department, activeDepartment)))
+    .sort((first, second) => new Date(first.startsAt).getTime() - new Date(second.startsAt).getTime());
+  const currentEventIds = new Set(currentEvents.map((event) => event.id));
+  const privateMessages = messages.filter((message) => !message.ticketId || privateTicketIds.has(message.ticketId));
+  const privateMessageIds = new Set(privateMessages.map((message) => message.id));
+  const privateAudit = audit.filter((item) => {
     if (item.entityType === "chamado") return privateTicketIds.has(item.entityId);
     if (item.entityType === "mensagem") return privateMessageIds.has(item.entityId);
     if (item.entityType === "documento") return privateDocumentIds.has(item.entityId);
-    if (item.entityType === "evento") return currentEventIds.has(item.entityId);
+    if (item.entityType === "evento") return currentEventIds.has(item.entityId) || Boolean(item.department && sameDepartment(item.department, activeDepartment));
     return false;
-  }), [audit, currentEventIds, privateDocumentIds, privateMessageIds, privateTicketIds]);
+  });
   const currentNotifications = notifications.filter((item) => item.userId === currentUserId && (item.type !== "ticket" || !item.relatedEntityId || privateTicketIds.has(item.relatedEntityId)) && (item.type !== "message" || !item.relatedEntityId || privateMessageIds.has(item.relatedEntityId)));
   const currentInvitations = invitations.filter((item) => item.userId === currentUserId && item.status === "convidado");
   const pendingTickets = privateTickets.filter((ticket) => ticket.status === "Aguardando aprovação");
   const unreadCount = currentNotifications.filter((item) => !item.readAt).length;
   const messageBadgeCount = privateMessages.filter((message) => message.senderId !== currentUserId).length;
   const pendingCount = currentInvitations.length + pendingTickets.length;
-  const accessibleGroups = groups.filter((group) => !group.memberUserIds || group.memberUserIds.includes(currentUserId));
+  const accessibleGroups = executiveAccess ? groups : groups.filter((group) => !group.memberUserIds || group.memberUserIds.includes(currentUserId));
   const activeUsers = users.filter((user) => (user.accountStatus ?? "Ativo") === "Ativo");
   const canManageEmployees = isSectorManager(currentUser);
-  const sectorUsers = useMemo(() => users.filter((user) => sameDepartment(user.department, currentUser.department)), [currentUser.department, users]);
-  const sectorEmployees = useMemo(() => sectorUsers.filter((user) => !isSectorManager(user)), [sectorUsers]);
-  const departmentPermissionSettings = useMemo(() => {
-    const configured = permissionConfigs[currentUser.department];
+  const sectorUsers = users.filter((user) => sameDepartment(user.department, activeDepartment));
+  const sectorEmployees = sectorUsers.filter((user) => !isSectorManager(user));
+  const departmentPermissionSettings = (() => {
+    const configured = permissionConfigs[activeDepartment];
     if (configured) return configured;
     const defaults = createDefaultPermissionSettings();
     sectorEmployees.forEach((employee) => {
@@ -297,11 +314,12 @@ export default function Home() {
       defaults.assignments[employee.id] = role.includes("campo") ? "campo" : role.includes("operacional") ? "operacional" : role.includes("consulta") ? "consulta" : "atendimento";
     });
     return defaults;
-  }, [currentUser.department, permissionConfigs, sectorEmployees]);
+  })();
   const currentPermission = activeNav === "Funcionários" || activeNav === "Configurações"
     ? canManageEmployees ? FULL_PERMISSION : NO_PERMISSION
     : permissionFor(activeNav, canManageEmployees, currentUser.id, departmentPermissionSettings);
   const ticketPermission = permissionFor("Chamados", canManageEmployees, currentUser.id, departmentPermissionSettings);
+  const eventPermission = permissionFor("Próximos Eventos", canManageEmployees, currentUser.id, departmentPermissionSettings);
 
   useNotificationChime(unreadCount, soundEnabled);
 
@@ -357,7 +375,7 @@ export default function Home() {
     if (!demoReady || restoredLocalState.current) return;
     fetch(`/api/bootstrap?userId=${encodeURIComponent(currentUserId)}`).then((response) => response.ok ? response.json() : Promise.reject()).then((data) => {
       const payload = data as BootstrapPayload;
-      if (payload.users?.length) setUsers([...payload.users, ...USERS.filter((user) => user.id.startsWith("u-demo-") && !payload.users!.some((saved) => saved.id === user.id))]);
+      if (payload.users?.length) setUsers([...payload.users, ...USERS.filter((user) => (user.id.startsWith("u-demo-") || user.id === "u-prefeito" || user.id === "u-vice") && !payload.users!.some((saved) => saved.id === user.id))]);
       if (payload.tickets?.length) setTicketData(payload.tickets.map((ticket) => ({ ...ticket, status: normalizeTicketStatus(ticket.status) })));
       if (payload.groups?.length) setGroups(payload.groups.map((group) => {
         const memberships = (payload.groupMemberships ?? []).filter((membership) => membership.groupId === group.id);
@@ -365,7 +383,7 @@ export default function Home() {
       }));
       if (payload.messages?.length) setMessages(payload.messages);
       if (payload.documents?.length) setDocuments(payload.documents);
-      if (payload.events?.length) setEvents(payload.events);
+      if (payload.events?.length) setEvents(payload.events.map((event) => ({ ...event, targetDepartments: event.targetDepartments?.length ? event.targetDepartments : [event.department] })));
       if (payload.audit?.length) setAudit(payload.audit);
       if (payload.notifications?.length) setNotifications((current) => [...current.filter((item) => item.userId !== currentUserId), ...payload.notifications!]);
       if (payload.invitations?.length) setInvitations((current) => [...current.filter((item) => item.userId !== currentUserId), ...payload.invitations!.map((item) => ({ ...item, memberCount: Number(item.memberCount) }))]);
@@ -387,11 +405,11 @@ export default function Home() {
     return () => window.removeEventListener("keydown", handleKeydown);
   }, [tourStep]);
 
-  const filteredTickets = useMemo(() => {
+  const filteredTickets = (() => {
     const term = search.trim().toLowerCase();
     if (!term) return privateTickets;
     return privateTickets.filter((ticket) => [ticket.protocol, ticket.title, ticket.requester, ticket.department].join(" ").toLowerCase().includes(term));
-  }, [search, privateTickets]);
+  })();
 
   function notify(message: string) {
     setToast(message);
@@ -399,11 +417,18 @@ export default function Home() {
   }
 
   function updatePermissionSettings(settings: DepartmentPermissionSettings) {
-    setPermissionConfigs((current) => ({ ...current, [currentUser.department]: settings }));
+    setPermissionConfigs((current) => ({ ...current, [activeDepartment]: settings }));
+  }
+
+  function switchUser(userId: string) {
+    const nextUser = users.find((user) => user.id === userId);
+    setCurrentUserId(userId);
+    if (nextUser) setViewedDepartment(nextUser.department);
   }
 
   function startGuidedDemo() {
-    setCurrentUserId("u-ana");
+    setCurrentUserId("u-prefeito");
+    setViewedDepartment("Secretaria de Governo");
     setActiveNav("Visão geral");
     setSidebarOpen(false);
     setTourStep(0);
@@ -420,18 +445,18 @@ export default function Home() {
     const assignee = users.find((user) => user.id === assigneeId);
     const temporary: Ticket = {
       id: makeId(), protocol: `CH-2026-${String(ticketData.length + 188).padStart(4, "0")}`,
-      title: String(form.get("title")), description: String(form.get("description")), requester: currentUser.department,
+      title: String(form.get("title")), description: String(form.get("description")), requester: activeDepartment,
       department: String(form.get("department")), priority: String(form.get("priority")) as Priority, status: "Recebido",
       dueDate: String(form.get("dueDate")) || null, assigneeId, assigneeName: assignee?.fullName, assigneeInitials: assignee?.initials, neighborhood: String(form.get("neighborhood") || ""), address: String(form.get("address") || ""), createdAt: now, updatedAt: now,
     };
-    const belongsToCurrentDepartment = sameDepartment(temporary.department, currentUser.department);
+    const belongsToCurrentDepartment = sameDepartment(temporary.department, activeDepartment);
     if (belongsToCurrentDepartment) setTicketData((current) => [temporary, ...current]);
     addAudit("chamado_criado", "chamado", temporary.id, `${temporary.protocol} criado: ${temporary.title}${temporary.neighborhood ? ` · ${temporary.neighborhood}` : ""}`);
     setTicketModal(false);
     setActiveNav("Chamados");
     notify(belongsToCurrentDepartment ? "Chamado criado e visível somente para o seu setor." : `Chamado encaminhado de forma privada para ${temporary.department}.`);
     try {
-      const response = await fetch("/api/actions", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ action: "create_ticket", userId: currentUserId, requester: currentUser.department, ...Object.fromEntries(form.entries()) }) });
+      const response = await fetch("/api/actions", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ action: "create_ticket", userId: currentUserId, requester: activeDepartment, ...Object.fromEntries(form.entries()) }) });
       if (response.ok) {
         const saved = await response.json() as { id: string; protocol: string };
         if (belongsToCurrentDepartment) setTicketData((current) => current.map((item) => item.id === temporary.id ? { ...item, id: saved.id, protocol: saved.protocol } : item));
@@ -441,7 +466,7 @@ export default function Home() {
 
   function updateStatus(id: string, status: TicketStatus) {
     const ticket = ticketData.find((item) => item.id === id);
-    if (!ticket || !sameDepartment(ticket.department, currentUser.department)) { notify("Apenas membros do setor responsável podem alterar este chamado."); return; }
+    if (!ticketPermission.edit || !ticket || !sameDepartment(ticket.department, activeDepartment)) { notify("Seu perfil não possui autorização para alterar este chamado."); return; }
     setTicketData((current) => current.map((item) => item.id === id ? { ...item, status, updatedAt: new Date().toISOString() } : item));
     addAudit("status_atualizado", "chamado", id, `${ticket?.protocol ?? "Chamado"} movido para ${status}`);
     notify(`Chamado movido para “${status}”.`);
@@ -449,14 +474,14 @@ export default function Home() {
   }
 
   function addAudit(action: string, entityType: string, entityId: string, detail: string) {
-    setAudit((current) => [{ id: makeId(), action, entityType, entityId, detail, createdAt: new Date().toISOString(), actorName: currentUser.fullName, actorInitials: currentUser.initials }, ...current]);
+    setAudit((current) => [{ id: makeId(), action, entityType, entityId, detail, department: activeDepartment, createdAt: new Date().toISOString(), actorName: currentUser.fullName, actorInitials: currentUser.initials }, ...current]);
   }
 
   async function uploadFile(file: File) {
     if (file.size > 10 * 1024 * 1024) { notify("O arquivo deve ter no máximo 10 MB."); return; }
-    const item: DocumentItem = { id: makeId(), name: file.name, category: "Arquivo do setor", ownerId: currentUser.id, ownerName: currentUser.fullName, department: currentUser.department, contentType: file.type || "application/octet-stream", size: file.size, createdAt: new Date().toISOString() };
+    const item: DocumentItem = { id: makeId(), name: file.name, category: "Arquivo do setor", ownerId: currentUser.id, ownerName: currentUser.fullName, department: activeDepartment, contentType: file.type || "application/octet-stream", size: file.size, createdAt: new Date().toISOString() };
     setDocuments((current) => [item, ...current]);
-    addAudit("documento_enviado", "documento", item.id, `${file.name} compartilhado com ${currentUser.department}`);
+    addAudit("documento_enviado", "documento", item.id, `${file.name} compartilhado com ${activeDepartment}`);
     notify("Arquivo compartilhado com todos do seu setor.");
     const form = new FormData(); form.append("file", file); form.append("category", "Arquivo do setor"); form.append("userId", currentUser.id);
     try {
@@ -465,26 +490,69 @@ export default function Home() {
     } catch { /* Mantém a demonstração disponível. */ }
   }
 
-  async function createEvent(form: FormData) {
+  function addEventNotifications(item: SectorEvent, action: "publicado" | "atualizado" | "cancelado") {
+    const targets = item.targetDepartments?.length ? item.targetDepartments : [item.department];
+    const recipients = users.filter((user) => user.id !== currentUser.id && targets.some((department) => sameDepartment(department, user.department)));
+    if (!recipients.length) return;
+    const now = new Date().toISOString();
+    setNotifications((current) => [
+      ...recipients.map((user): NotificationItem => ({
+        id: makeId(), userId: user.id, type: "system", title: action === "cancelado" ? "Evento cancelado" : action === "atualizado" ? "Evento atualizado" : "Novo evento na agenda",
+        body: action === "cancelado" ? `O evento “${item.title}” foi removido da agenda.` : `“${item.title}” foi ${action} para ${targets.length === 1 ? "o seu setor" : `${targets.length} setores`}.`,
+        relatedEntityId: item.id, readAt: null, createdAt: now, actorName: currentUser.fullName, actorInitials: currentUser.initials,
+      })),
+      ...current,
+    ]);
+  }
+
+  async function saveEvent(form: FormData, existing?: SectorEvent) {
+    const requiredPermission = existing ? eventPermission.edit : eventPermission.register;
+    if (!requiredPermission) { notify("Seu perfil não possui autorização para realizar esta ação na agenda."); return; }
     const startsAt = localDateTimeToIso(String(form.get("startsAt") ?? ""));
     const rawEndsAt = String(form.get("endsAt") ?? "");
     const endsAt = rawEndsAt ? localDateTimeToIso(rawEndsAt) : null;
+    if (endsAt && new Date(endsAt) < new Date(startsAt)) { notify("O término do evento não pode ser anterior ao início."); return; }
+    const targetDepartments = Array.from(new Set(form.getAll("targetDepartments").map(String).filter(Boolean)));
+    if (!targetDepartments.length) { notify("Selecione pelo menos um setor para publicar o evento."); return; }
+    if (existing) {
+      const updated: SectorEvent = {
+        ...existing,
+        title: String(form.get("title") ?? "").trim(), description: String(form.get("description") ?? "").trim(),
+        targetDepartments, location: String(form.get("location") ?? "").trim(), startsAt, endsAt,
+      };
+      setEvents((current) => current.map((item) => item.id === existing.id ? updated : item));
+      addAudit("evento_atualizado", "evento", existing.id, `${updated.title} atualizado para ${targetDepartments.length} ${targetDepartments.length === 1 ? "setor" : "setores"}`);
+      addEventNotifications(updated, "atualizado");
+      setEventModal(null);
+      notify("Evento atualizado e agenda dos setores sincronizada.");
+      return;
+    }
     const temporary: SectorEvent = {
       id: makeId(), title: String(form.get("title") ?? "").trim(), description: String(form.get("description") ?? "").trim(),
-      department: currentUser.department, location: String(form.get("location") ?? "").trim(), startsAt, endsAt,
+      department: activeDepartment, targetDepartments, location: String(form.get("location") ?? "").trim(), startsAt, endsAt,
       createdBy: currentUser.id, creatorName: currentUser.fullName, creatorInitials: currentUser.initials, createdAt: new Date().toISOString(),
     };
     setEvents((current) => [...current, temporary]);
-    addAudit("evento_criado", "evento", temporary.id, `${temporary.title} agendado para ${currentUser.department}`);
-    setEventModal(false);
+    addAudit("evento_criado", "evento", temporary.id, `${temporary.title} publicado para ${targetDepartments.length} ${targetDepartments.length === 1 ? "setor" : "setores"}`);
+    addEventNotifications(temporary, "publicado");
+    setEventModal(null);
     setActiveNav("Próximos Eventos");
-    notify("Evento publicado para todos do seu setor.");
+    notify(`Evento publicado para ${targetDepartments.length} ${targetDepartments.length === 1 ? "setor" : "setores"}.`);
     try {
       const response = await fetch("/api/actions", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ action: "create_event", userId: currentUser.id, title: temporary.title, description: temporary.description, location: temporary.location, startsAt, endsAt }) });
       if (!response.ok) throw new Error("Falha ao salvar evento");
       const saved = await response.json() as { id: string; createdAt: string };
       setEvents((current) => current.map((item) => item.id === temporary.id ? { ...item, id: saved.id, createdAt: saved.createdAt } : item));
     } catch { notify("O evento ficou visível nesta sessão, mas não foi possível salvá-lo no servidor."); }
+  }
+
+  function deleteEvent(item: SectorEvent) {
+    if (!eventPermission.edit) { notify("Seu perfil não possui autorização para excluir eventos."); return; }
+    setEvents((current) => current.filter((event) => event.id !== item.id));
+    addAudit("evento_excluido", "evento", item.id, `${item.title} removido da agenda`);
+    addEventNotifications(item, "cancelado");
+    setEventToDelete(null);
+    notify("Evento excluído das agendas autorizadas.");
   }
 
   function recipientIds(conversationType: ChatTab, conversationId: string, recipientId?: string) {
@@ -517,7 +585,7 @@ export default function Home() {
     const tempDocumentId = makeId();
     const tempMessageId = makeId();
     const localUrl = URL.createObjectURL(file);
-    const documentItem: DocumentItem = { id: tempDocumentId, name: file.name, category: "Documento do chat", ownerId: currentUser.id, ownerName: currentUser.fullName, department: currentUser.department, contentType: file.type || "application/octet-stream", size: file.size, createdAt: now };
+    const documentItem: DocumentItem = { id: tempDocumentId, name: file.name, category: "Documento do chat", ownerId: currentUser.id, ownerName: currentUser.fullName, department: activeDepartment, contentType: file.type || "application/octet-stream", size: file.size, createdAt: now };
     const message: Message = { id: tempMessageId, conversationType: context.conversationType, conversationId: context.conversationId, senderId: currentUser.id, senderName: currentUser.fullName, senderInitials: currentUser.initials, body: context.body.trim(), attachmentId: tempDocumentId, attachmentName: file.name, attachmentSize: file.size, attachmentContentType: file.type || "application/octet-stream", attachmentUrl: localUrl, createdAt: now };
     setDocuments((current) => [documentItem, ...current]);
     setMessages((current) => [...current, message]);
@@ -610,7 +678,7 @@ export default function Home() {
       id: temporaryId,
       fullName,
       email,
-      department: currentUser.department,
+      department: activeDepartment,
       role: "Funcionário",
       initials: makeInitials(fullName),
       accountStatus: "Aguardando criação de senha",
@@ -622,6 +690,7 @@ export default function Home() {
     setEmployeeModal(false);
     setActiveNav("Funcionários");
     notify("Convite simulado. Nenhum e-mail real foi enviado.");
+    if (executiveAccess) return;
     try {
       const response = await fetch("/api/actions", {
         method: "POST",
@@ -648,7 +717,7 @@ export default function Home() {
   }
 
   const heading = getHeading(activeNav);
-  const headingTitle = activeNav === "Visão geral" ? `Bom dia, ${currentUser.fullName.split(" ")[0]}.` : activeNav === "Área do Setor" ? currentUser.department : heading.title;
+  const headingTitle = activeNav === "Visão geral" ? `Bom dia, ${currentUser.fullName.split(" ")[0]}.` : activeNav === "Área do Setor" ? activeDepartment : heading.title;
 
   return (
     <div className={`app-shell ${motionEnabled ? "motion-enabled" : "motion-reduced"}`}>
@@ -681,7 +750,7 @@ export default function Home() {
         </div>
         <div className="sidebar-profile">
           <div className="avatar avatar-large">{currentUser.initials}</div>
-          <div className="profile-copy"><strong>{currentUser.fullName}</strong><span>{currentUser.department}</span></div>
+          <div className="profile-copy"><strong>{currentUser.fullName}</strong><span>{executiveAccess ? `${currentUser.role} · acesso executivo` : currentUser.department}</span></div>
           <button className="icon-button" aria-label="Opções do perfil"><MoreHorizontal size={18} /></button>
         </div>
       </aside>
@@ -689,7 +758,7 @@ export default function Home() {
 
       <main className="main-area">
         <DemoBanner onStart={startGuidedDemo} onReset={resetDemo} />
-        <header className="topbar">
+        <header className={`topbar ${executiveAccess ? "executive-topbar" : ""}`}>
           <button className="mobile-menu" aria-label="Abrir menu" onClick={() => setSidebarOpen(true)}><Menu size={21} /></button>
           <div className="global-search-wrap">
             <label className="search-box">
@@ -697,11 +766,12 @@ export default function Home() {
               <input type="search" placeholder="Buscar em toda a plataforma..." value={search} onFocus={() => setSearchOpen(true)} onChange={(event) => { setSearch(event.target.value); setSearchOpen(true); }} />
               <kbd>⌘ K</kbd>
             </label>
-            {searchOpen && search.trim() && <GlobalSearchPanel query={search} tickets={ticketData} users={activeUsers} documents={documents} events={events} offices={OFFICES} onOpen={(nav) => setActiveNav(nav as NavItem)} onClose={() => setSearchOpen(false)} />}
+            {searchOpen && search.trim() && <GlobalSearchPanel query={search} tickets={privateTickets} users={activeUsers} documents={privateDocuments} events={currentEvents} offices={OFFICES} onOpen={(nav) => setActiveNav(nav as NavItem)} onClose={() => setSearchOpen(false)} />}
           </div>
+          {executiveAccess && <label className="executive-sector-switch"><span className="executive-switch-icon"><Crown size={17} /></span><span><small>PAINEL SETORIAL</small><select aria-label="Selecionar setor para a visão executiva" value={activeDepartment} onChange={(event) => setViewedDepartment(event.target.value)}>{allDepartments.map((department) => <option key={department}>{department}</option>)}</select></span></label>}
           <div className="top-actions">
             <button className="icon-button notification-button" aria-label={`Notificações${unreadCount ? `: ${unreadCount} novas` : ""}`} onClick={() => setActiveNav("Notificações")}><Bell size={18} />{unreadCount > 0 && <span />}</button>
-            <label className="account-switch"><div className="avatar">{currentUser.initials}</div><span><small>VISUALIZAR COMO</small><select aria-label="Visualizar como usuário" value={currentUserId} onChange={(event) => setCurrentUserId(event.target.value)}>{activeUsers.map((user) => <option key={user.id} value={user.id}>{user.fullName} — {user.department}</option>)}</select></span></label>
+            <label className="account-switch"><div className="avatar">{currentUser.initials}</div><span><small>VISUALIZAR COMO</small><select aria-label="Visualizar como usuário" value={currentUserId} onChange={(event) => switchUser(event.target.value)}>{activeUsers.map((user) => <option key={user.id} value={user.id}>{user.fullName} — {user.department}</option>)}</select></span></label>
           </div>
         </header>
 
@@ -715,7 +785,7 @@ export default function Home() {
               ) : activeNav === "Anexos e Arquivos" ? (
                 currentPermission.register && <button type="button" className="button secondary" onClick={() => fileInput.current?.click()}><Upload size={15} /> Anexar arquivo</button>
               ) : activeNav === "Próximos Eventos" ? (
-                currentPermission.register && <button type="button" className="button secondary" onClick={() => setEventModal(true)}><CalendarPlus size={15} /> Novo evento</button>
+                currentPermission.register && <button type="button" className="button secondary" onClick={() => setEventModal("new")}><CalendarPlus size={15} /> Novo evento</button>
               ) : activeNav === "Funcionários" ? (
                 <button type="button" className="button secondary" onClick={() => setEmployeeModal(true)}><UserPlus size={15} /> Convidar funcionário</button>
               ) : activeNav === "Secretarias" ? (
@@ -724,35 +794,37 @@ export default function Home() {
                 <button className="button secondary" onClick={markAllNotifications}><CheckCheck size={15} /> Marcar todas como lidas</button>
               ) : activeNav === "Pendências" ? (
                 <button className="button secondary" onClick={() => setActiveNav("Chamados")}><ClipboardList size={15} /> Ver chamados</button>
-              ) : activeNav === "Configurações" || activeNav === "Central de Ajuda" || activeNav === "Área do Setor" ? (
+              ) : activeNav === "Configurações" || activeNav === "Central de Ajuda" || activeNav === "Área do Setor" || activeNav === "Fluxos e Anotações" ? (
                 null
               ) : (
                 <button className="button secondary"><Download size={15} /> Exportar relatório</button>
               )}
-              {ticketPermission.register && activeNav !== "Configurações" && activeNav !== "Central de Ajuda" && activeNav !== "Área do Setor" && <button type="button" className="button primary" onClick={() => setTicketModal(true)} aria-haspopup="dialog"><Plus size={16} /> Novo chamado</button>}
+              {ticketPermission.register && activeNav !== "Configurações" && activeNav !== "Central de Ajuda" && activeNav !== "Área do Setor" && activeNav !== "Fluxos e Anotações" && <button type="button" className="button primary" onClick={() => setTicketModal(true)} aria-haspopup="dialog"><Plus size={16} /> Novo chamado</button>}
             </div>
           </section>
 
+          {executiveAccess && <div className="executive-access-bar"><Crown size={18} /><span><strong>Visão executiva com acesso integral</strong><small>Visualizando agora: {activeDepartment}</small></span><button type="button" onClick={() => setActiveNav("Área do Setor")}>Abrir painel do setor <ArrowRight size={13} /></button></div>}
           {!canManageEmployees && <div className="employee-access-scope"><ShieldCheck size={16} /><span><strong>Acesso como funcionário</strong><small>{currentPermission.register ? "Pode registrar" : "Somente consulta"} · {currentPermission.edit ? "Pode alterar neste módulo" : "Alterações bloqueadas pelo secretário"}</small></span><button onClick={() => setActiveNav("Central de Ajuda")}>Entender permissões</button></div>}
 
           {activeNav === "Visão geral" && <Dashboard tickets={filteredTickets} audit={privateAudit} onNavigate={setActiveNav} />}
-          {activeNav === "Área do Setor" && <SectorWorkspaceSection key={currentUser.department} department={currentUser.department} userName={currentUser.fullName} userRole={currentUser.role} departments={Array.from(new Set(users.map((user) => user.department)))} notify={notify} />}
-          {activeNav === "Chamados" && <TicketsSection tickets={filteredTickets} department={currentUser.department} onStatus={updateStatus} onNew={() => setTicketModal(true)} />}
+          {activeNav === "Área do Setor" && <SectorWorkspaceSection key={activeDepartment} department={activeDepartment} userName={currentUser.fullName} userRole={currentUser.role} departments={allDepartments} notify={notify} />}
+          {activeNav === "Fluxos e Anotações" && <SectorNotesSection key={activeDepartment} department={activeDepartment} userName={currentUser.fullName} team={sectorUsers.map((user) => ({ id: user.id, name: user.fullName, role: user.role }))} notify={notify} />}
+          {activeNav === "Chamados" && <TicketsSection tickets={filteredTickets} department={activeDepartment} onStatus={updateStatus} onNew={() => setTicketModal(true)} />}
           {activeNav === "Comunicação" && <CommunicationSection currentUser={currentUser} users={activeUsers} groups={accessibleGroups} messages={privateMessages} tickets={privateTickets} onSend={sendMessage} onSendAttachment={sendChatAttachment} onNewGroup={() => setGroupModal(true)} />}
-          {activeNav === "Atendimento ao Cidadão" && <CitizenServiceSection department={currentUser.department} notify={notify} />}
-          {activeNav === "Processos Digitais" && <ProcessesSection department={currentUser.department} notify={notify} />}
-          {activeNav === "Gestão Municipal" && <MunicipalManagementSection department={currentUser.department} notify={notify} />}
-          {activeNav === "Indicadores" && <IndicatorsSection department={currentUser.department} notify={notify} />}
+          {activeNav === "Atendimento ao Cidadão" && <CitizenServiceSection department={activeDepartment} notify={notify} />}
+          {activeNav === "Processos Digitais" && <ProcessesSection department={activeDepartment} notify={notify} />}
+          {activeNav === "Gestão Municipal" && <MunicipalManagementSection department={activeDepartment} notify={notify} />}
+          {activeNav === "Indicadores" && <IndicatorsSection department={activeDepartment} notify={notify} />}
           {activeNav === "Notificações" && <NotificationsSection notifications={currentNotifications} onRead={markNotification} onOpenPending={() => setActiveNav("Pendências")} />}
           {activeNav === "Pendências" && <PendingSection invitations={currentInvitations} tickets={pendingTickets} onRespond={respondInvitation} onOpenTickets={() => setActiveNav("Chamados")} />}
-          {activeNav === "Anexos e Arquivos" && <DocumentsSection documents={privateDocuments} department={currentUser.department} currentUserId={currentUser.id} onUpload={() => fileInput.current?.click()} />}
-          {activeNav === "Próximos Eventos" && <EventsSection events={currentEvents} department={currentUser.department} onNew={() => setEventModal(true)} />}
-          {activeNav === "Funcionários" && canManageEmployees && <EmployeesSection users={sectorUsers} department={currentUser.department} onInvite={() => setEmployeeModal(true)} onResend={resendEmployeeInvite} />}
+          {activeNav === "Anexos e Arquivos" && <DocumentsSection documents={privateDocuments} department={activeDepartment} currentUserId={currentUser.id} onUpload={() => fileInput.current?.click()} />}
+          {activeNav === "Próximos Eventos" && <EventsSection events={currentEvents} department={activeDepartment} onNew={() => setEventModal("new")} onEdit={setEventModal} onDelete={setEventToDelete} />}
+          {activeNav === "Funcionários" && canManageEmployees && <EmployeesSection users={sectorUsers} department={activeDepartment} onInvite={() => setEmployeeModal(true)} onResend={resendEmployeeInvite} />}
           {activeNav === "Secretarias" && <TeamSection offices={OFFICES} />}
-          {activeNav === "Segurança e LGPD" && <SecuritySection department={currentUser.department} notify={notify} />}
-          {activeNav === "Auditoria" && <AuditSection audit={privateAudit} department={currentUser.department} />}
+          {activeNav === "Segurança e LGPD" && <SecuritySection department={activeDepartment} notify={notify} />}
+          {activeNav === "Auditoria" && <AuditSection audit={privateAudit} department={activeDepartment} />}
           {activeNav === "Central de Ajuda" && <HelpCenterSection notify={notify} />}
-          {activeNav === "Configurações" && canManageEmployees && <SettingsSection key={currentUser.department} department={currentUser.department} managerName={currentUser.fullName} employees={sectorEmployees} settings={departmentPermissionSettings} soundEnabled={soundEnabled} motionEnabled={motionEnabled} onSettingsChange={updatePermissionSettings} onSoundChange={setSoundEnabled} onMotionChange={setMotionEnabled} onTestSound={() => { playNotificationChime(); notify("Som de notificação reproduzido."); }} onResetDemo={resetDemo} notify={notify} />}
+          {activeNav === "Configurações" && canManageEmployees && <SettingsSection key={activeDepartment} department={activeDepartment} managerName={currentUser.fullName} employees={sectorEmployees} settings={departmentPermissionSettings} soundEnabled={soundEnabled} motionEnabled={motionEnabled} onSettingsChange={updatePermissionSettings} onSoundChange={setSoundEnabled} onMotionChange={setMotionEnabled} onTestSound={() => { playNotificationChime(); notify("Som de notificação reproduzido."); }} onResetDemo={resetDemo} notify={notify} />}
         </div>
         </PermissionProvider>
       </main>
@@ -760,8 +832,9 @@ export default function Home() {
       <input ref={fileInput} className="hidden-input" type="file" accept=".pdf,.doc,.docx,.xls,.xlsx,.csv,.txt,.png,.jpg,.jpeg,.zip" onChange={(event) => { const file = event.target.files?.[0]; if (file) void uploadFile(file); event.target.value = ""; }} />
       {ticketModal && <TicketModal users={activeUsers} onClose={() => setTicketModal(false)} onCreate={createTicket} />}
       {groupModal && <GroupModal currentUserId={currentUserId} users={activeUsers} onClose={() => setGroupModal(false)} onCreate={createGroup} />}
-      {eventModal && <EventModal department={currentUser.department} onClose={() => setEventModal(false)} onCreate={createEvent} />}
-      {employeeModal && canManageEmployees && <EmployeeInviteModal department={currentUser.department} onClose={() => setEmployeeModal(false)} onInvite={inviteEmployee} />}
+      {eventModal && <EventModal department={activeDepartment} departments={allDepartments} event={eventModal === "new" ? undefined : eventModal} onClose={() => setEventModal(null)} onSave={(form) => saveEvent(form, eventModal === "new" ? undefined : eventModal)} />}
+      {eventToDelete && <EventDeleteModal event={eventToDelete} onClose={() => setEventToDelete(null)} onConfirm={() => deleteEvent(eventToDelete)} />}
+      {employeeModal && canManageEmployees && <EmployeeInviteModal department={activeDepartment} onClose={() => setEmployeeModal(false)} onInvite={inviteEmployee} />}
       {tourStep !== null && <GuidedDemo step={tourStep} onStep={setTourStep} onNavigate={(nav) => setActiveNav(nav as NavItem)} onClose={() => setTourStep(null)} />}
       {toast && <div className="toast" role="status"><span><Check size={14} strokeWidth={2.5} /></span>{toast}</div>}
     </div>
@@ -772,6 +845,7 @@ function getHeading(active: NavItem) {
   const headings: Record<NavItem, { eyebrow: string; title: string; subtitle: string }> = {
     "Visão geral": { eyebrow: "", title: "Bom dia.", subtitle: "Acompanhe as demandas e mantenha as secretarias alinhadas." },
     "Área do Setor": { eyebrow: "AMBIENTE ESPECIALIZADO", title: "Área do Setor", subtitle: "Formulários, indicadores, equipes e fluxos adaptados às responsabilidades da unidade selecionada." },
+    "Fluxos e Anotações": { eyebrow: "MEMÓRIA OPERACIONAL", title: "Fluxos e Anotações", subtitle: "Organize decisões, providências e registros internos em etapas próprias para cada setor." },
     Chamados: { eyebrow: "GESTÃO DE DEMANDAS", title: "Chamados", subtitle: "Organize cada solicitação do recebimento à entrega final." },
     Comunicação: { eyebrow: "CENTRAL DE COMUNICAÇÃO", title: "Conversas", subtitle: "Mensagens diretas e grupos por convite entre as secretarias." },
     "Atendimento ao Cidadão": { eyebrow: "PROTOCOLO, OUVIDORIA E SERVIÇOS", title: "Atendimento ao Cidadão", subtitle: "Registre, encaminhe e acompanhe solicitações, manifestações e pedidos de informação." },
@@ -1112,16 +1186,17 @@ function DocumentsSection({ documents, department, currentUserId, onUpload }: { 
   );
 }
 
-function EventsSection({ events, department, onNew }: { events: SectorEvent[]; department: string; onNew: () => void }) {
+function EventsSection({ events, department, onNew, onEdit, onDelete }: { events: SectorEvent[]; department: string; onNew: () => void; onEdit: (event: SectorEvent) => void; onDelete: (event: SectorEvent) => void }) {
   const access = useCurrentPermission();
   return (
     <section className="events-layout">
-      <div className="access-note events-access-note"><span><CalendarDays size={20} /></span><div><strong>Agenda de {department}</strong><p>Somente os integrantes deste setor visualizam e cadastram os compromissos abaixo.</p></div><strong className="directory-total">{events.length} {events.length === 1 ? "evento" : "eventos"}</strong></div>
+      <div className="access-note events-access-note"><span><CalendarDays size={20} /></span><div><strong>Agenda de {department}</strong><p>Exibe apenas eventos destinados a este setor. Edição e exclusão respeitam as permissões definidas pelo responsável.</p></div><strong className="directory-total">{events.length} {events.length === 1 ? "evento" : "eventos"}</strong></div>
       {events.length ? <div className="events-grid">{events.map((event) => {
         const calendar = eventDateParts(event.startsAt);
+        const targets = event.targetDepartments?.length ? event.targetDepartments : [event.department];
         return <article className="panel event-card" key={event.id}>
           <div className="event-date"><small>{calendar.month}</small><strong>{calendar.day}</strong><span>{calendar.weekday}</span></div>
-          <div className="event-copy"><div className="event-meta"><span><Clock3 size={13} /> {formatEventRange(event.startsAt, event.endsAt)}</span>{event.location && <span><MapPin size={13} /> {event.location}</span>}</div><h2>{event.title}</h2><p>{event.description || "Sem observações adicionais."}</p><footer><span className="mini-avatar">{event.creatorInitials}</span><span>Criado por <strong>{event.creatorName}</strong></span></footer></div>
+          <div className="event-copy"><div className="event-card-top"><div className="event-meta"><span><Clock3 size={13} /> {formatEventRange(event.startsAt, event.endsAt)}</span>{event.location && <span><MapPin size={13} /> {event.location}</span>}</div>{access.edit && <div className="event-card-actions"><button type="button" onClick={() => onEdit(event)} aria-label={`Editar ${event.title}`}><Pencil size={13} /> Editar</button><button type="button" className="danger" onClick={() => onDelete(event)} aria-label={`Excluir ${event.title}`}><Trash2 size={13} /> Excluir</button></div>}</div><h2>{event.title}</h2><p>{event.description || "Sem observações adicionais."}</p><div className="event-sector-tags" aria-label={`Visível para ${targets.length} setores`}>{targets.slice(0, 3).map((target) => <span key={target}><Building2 size={11} /> {target}</span>)}{targets.length > 3 && <span>+{targets.length - 3} setores</span>}</div><footer><span className="mini-avatar">{event.creatorInitials}</span><span>Criado por <strong>{event.creatorName}</strong></span><i>{targets.length} {targets.length === 1 ? "setor" : "setores"}</i></footer></div>
         </article>;
       })}</div> : <div className="panel module-empty events-empty"><CalendarDays size={34} /><strong>Nenhum evento agendado</strong><p>{access.register ? "Cadastre reuniões, prazos e compromissos importantes para o seu setor." : "Os próximos compromissos autorizados aparecerão aqui."}</p>{access.register && <button type="button" className="button primary" onClick={onNew}><CalendarPlus size={15} /> Criar primeiro evento</button>}</div>}
     </section>
@@ -1282,10 +1357,45 @@ function TicketModal({ users, onClose, onCreate }: { users: User[]; onClose: () 
   </div>;
 }
 
-function EventModal({ department, onClose, onCreate }: { department: string; onClose: () => void; onCreate: (data: FormData) => void | Promise<void> }) {
-  const [startsAt, setStartsAt] = useState("");
-  function submit(event: FormEvent<HTMLFormElement>) { event.preventDefault(); void onCreate(new FormData(event.currentTarget)); }
-  return <div className="modal-backdrop" role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget) onClose(); }}><section className="modal event-modal" role="dialog" aria-modal="true" aria-labelledby="event-modal-title"><header><div><p className="eyebrow">AGENDA DO SETOR</p><h2 id="event-modal-title">Cadastrar próximo evento</h2></div><button type="button" onClick={onClose} aria-label="Fechar"><X size={18} /></button></header><form onSubmit={submit}><label className="field full"><span>Título do evento *</span><input name="title" required placeholder="Ex.: Reunião de planejamento" autoFocus /></label><label className="field full"><span>Descrição</span><textarea name="description" placeholder="Inclua pauta, orientações ou informações relevantes..." /></label><label className="field"><span>Início *</span><input type="datetime-local" name="startsAt" required value={startsAt} onChange={(event) => setStartsAt(event.target.value)} /></label><label className="field"><span>Término</span><input type="datetime-local" name="endsAt" min={startsAt} /></label><label className="field full"><span>Local</span><input name="location" placeholder="Ex.: Sala de reuniões, Auditório municipal ou online" /></label><p className="ticket-modal-privacy"><ShieldCheck size={14} /> Este evento será publicado somente na agenda de {department}.</p><div className="modal-actions"><button type="button" className="button secondary" onClick={onClose}>Cancelar</button><button type="submit" className="button primary"><CalendarPlus size={15} /> Publicar evento</button></div></form></section></div>;
+function toDateTimeLocal(value?: string | null) {
+  if (!value) return "";
+  const parts = new Intl.DateTimeFormat("sv-SE", { year: "numeric", month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit", hourCycle: "h23", timeZone: "America/Sao_Paulo" }).formatToParts(new Date(value));
+  const part = (type: Intl.DateTimeFormatPartTypes) => parts.find((item) => item.type === type)?.value ?? "";
+  return `${part("year")}-${part("month")}-${part("day")}T${part("hour")}:${part("minute")}`;
+}
+
+function EventModal({ department, departments, event, onClose, onSave }: { department: string; departments: string[]; event?: SectorEvent; onClose: () => void; onSave: (data: FormData) => void | Promise<void> }) {
+  const [startsAt, setStartsAt] = useState(() => toDateTimeLocal(event?.startsAt));
+  const [selectedDepartments, setSelectedDepartments] = useState<string[]>(() => event?.targetDepartments?.length ? event.targetDepartments : [department]);
+  const [selectionError, setSelectionError] = useState("");
+  const editing = Boolean(event);
+
+  function toggleDepartment(target: string, checked: boolean) {
+    setSelectionError("");
+    setSelectedDepartments((current) => checked ? Array.from(new Set([...current, target])) : current.filter((item) => item !== target));
+  }
+
+  function submit(submitEvent: FormEvent<HTMLFormElement>) {
+    submitEvent.preventDefault();
+    if (!selectedDepartments.length) { setSelectionError("Selecione ao menos um setor para continuar."); return; }
+    void onSave(new FormData(submitEvent.currentTarget));
+  }
+
+  return <div className="modal-backdrop" role="presentation" onMouseDown={(backdropEvent) => { if (backdropEvent.target === backdropEvent.currentTarget) onClose(); }}><section className="modal event-modal" role="dialog" aria-modal="true" aria-labelledby="event-modal-title"><header><div><p className="eyebrow">AGENDA MULTISSETORIAL</p><h2 id="event-modal-title">{editing ? "Editar evento" : "Cadastrar próximo evento"}</h2></div><button type="button" onClick={onClose} aria-label="Fechar"><X size={18} /></button></header><form onSubmit={submit}>
+    <label className="field full"><span>Título do evento *</span><input name="title" required defaultValue={event?.title} placeholder="Ex.: Reunião de planejamento" autoFocus /></label>
+    <label className="field full"><span>Descrição</span><textarea name="description" defaultValue={event?.description} placeholder="Inclua pauta, orientações ou informações relevantes..." /></label>
+    <label className="field"><span>Início *</span><input type="datetime-local" name="startsAt" required value={startsAt} onChange={(changeEvent) => setStartsAt(changeEvent.target.value)} /></label>
+    <label className="field"><span>Término</span><input type="datetime-local" name="endsAt" min={startsAt} defaultValue={toDateTimeLocal(event?.endsAt)} /></label>
+    <label className="field full"><span>Local</span><input name="location" defaultValue={event?.location} placeholder="Ex.: Sala de reuniões, Auditório municipal ou online" /></label>
+    <fieldset className="event-sector-selector"><legend>Setores que visualizarão o evento *</legend><header><span><Building2 size={15} /> {selectedDepartments.length} {selectedDepartments.length === 1 ? "setor selecionado" : "setores selecionados"}</span><div><button type="button" onClick={() => setSelectedDepartments([department])}>Somente o atual</button><button type="button" onClick={() => setSelectedDepartments(departments)}>Selecionar todos</button></div></header><div>{departments.map((target) => <label key={target} className={selectedDepartments.includes(target) ? "selected" : ""}><input type="checkbox" name="targetDepartments" value={target} checked={selectedDepartments.includes(target)} onChange={(changeEvent) => toggleDepartment(target, changeEvent.target.checked)} /><span><i>{selectedDepartments.includes(target) ? <Check size={12} /> : <Plus size={12} />}</i><strong>{target}</strong>{sameDepartment(target, department) && <small>Setor visualizado agora</small>}</span></label>)}</div>{selectionError && <p><AlertTriangle size={13} /> {selectionError}</p>}</fieldset>
+    <p className="ticket-modal-privacy"><ShieldCheck size={14} /> O evento aparecerá somente nas agendas dos setores selecionados. Apenas perfis com permissão de alteração poderão editar ou excluir.</p>
+    <div className="modal-actions"><button type="button" className="button secondary" onClick={onClose}>Cancelar</button><button type="submit" className="button primary">{editing ? <Pencil size={15} /> : <CalendarPlus size={15} />}{editing ? "Salvar alterações" : "Publicar evento"}</button></div>
+  </form></section></div>;
+}
+
+function EventDeleteModal({ event, onClose, onConfirm }: { event: SectorEvent; onClose: () => void; onConfirm: () => void }) {
+  const targets = event.targetDepartments?.length ? event.targetDepartments : [event.department];
+  return <div className="modal-backdrop" role="presentation" onMouseDown={(backdropEvent) => { if (backdropEvent.target === backdropEvent.currentTarget) onClose(); }}><section className="modal event-delete-modal" role="alertdialog" aria-modal="true" aria-labelledby="event-delete-title"><header><div><p className="eyebrow">CONFIRMAR EXCLUSÃO</p><h2 id="event-delete-title">Excluir evento?</h2></div><button type="button" onClick={onClose} aria-label="Fechar"><X size={18} /></button></header><div className="event-delete-body"><span><Trash2 size={22} /></span><div><strong>{event.title}</strong><p>O evento será removido de {targets.length} {targets.length === 1 ? "setor" : "setores"} e essa ação ficará registrada na auditoria da demonstração.</p></div></div><footer className="modal-actions"><button type="button" className="button secondary" onClick={onClose}>Cancelar</button><button type="button" className="button event-delete-confirm" onClick={onConfirm}><Trash2 size={15} /> Excluir evento</button></footer></section></div>;
 }
 
 function EmployeeInviteModal({ department, onClose, onInvite }: { department: string; onClose: () => void; onInvite: (data: FormData) => void | Promise<void> }) {
@@ -1314,7 +1424,7 @@ function auditCategory(item: AuditItem) {
 }
 function auditActionLabel(item: AuditItem) {
   if (item.action === "documento_enviado") return item.entityType === "mensagem" ? "Anexo enviado" : "Arquivo enviado";
-  const labels: Record<string, string> = { chamado_criado: "Chamado criado", status_atualizado: "Status atualizado", chamado_finalizado: "Chamado finalizado", mensagem_enviada: "Mensagem enviada", evento_criado: "Evento criado" };
+  const labels: Record<string, string> = { chamado_criado: "Chamado criado", status_atualizado: "Status atualizado", chamado_finalizado: "Chamado finalizado", mensagem_enviada: "Mensagem enviada", evento_criado: "Evento criado", evento_atualizado: "Evento atualizado", evento_excluido: "Evento excluído" };
   return labels[item.action] ?? item.action.replaceAll("_", " ");
 }
 function formatHeadingDate(value: Date) { return new Intl.DateTimeFormat("pt-BR", { weekday: "long", day: "2-digit", month: "long", timeZone: "America/Sao_Paulo" }).format(value).toLocaleUpperCase("pt-BR"); }
@@ -1351,6 +1461,7 @@ function normalizeTicketStatus(status: string): TicketStatus {
   return statuses.includes(status as TicketStatus) ? status as TicketStatus : "Recebido";
 }
 function normalizeText(value: string) { return value.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase(); }
+function isExecutiveAccess(user: User) { const role = normalizeText(user.role).replaceAll(" ", "-"); return role === "prefeito" || role === "vice-prefeito"; }
 function isSectorManager(user: User) { return !normalizeText(user.role).includes("funcionario"); }
 function makeInitials(fullName: string) { const names = fullName.trim().split(/\s+/).filter(Boolean); return `${names[0]?.[0] ?? ""}${names.length > 1 ? names[names.length - 1]?.[0] ?? "" : names[0]?.[1] ?? ""}`.toUpperCase(); }
 function directConversationId(firstUserId: string, secondUserId: string) { return [firstUserId, secondUserId].sort().join("::"); }
