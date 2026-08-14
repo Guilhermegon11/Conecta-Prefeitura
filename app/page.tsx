@@ -55,6 +55,7 @@ import {
   SecuritySection,
 } from "./municipal-modules";
 import { SectorWorkspaceSection } from "./sector-workspaces";
+import { NeighborhoodMapField } from "./municipal-location";
 
 type TicketStatus = "Recebido" | "Em análise" | "Aguardando aprovação" | "Em execução" | "Aguardando resposta" | "Concluído" | "Cancelado";
 type Priority = "Urgente" | "Alta" | "Média" | "Baixa";
@@ -62,7 +63,7 @@ type NavItem = "Visão geral" | "Área do Setor" | "Chamados" | "Comunicação" 
 type ChatTab = "direct" | "group";
 type OfficeCategory = "Prefeitura e apoio" | "Secretarias" | "Departamentos" | "Seções e subprefeitura";
 
-type Ticket = { id: string; protocol: string; title: string; description: string; requester: string; department: string; priority: Priority; status: TicketStatus; dueDate: string | null; assigneeId: string | null; assigneeName?: string; assigneeInitials?: string; createdAt: string; updatedAt: string };
+type Ticket = { id: string; protocol: string; title: string; description: string; requester: string; department: string; priority: Priority; status: TicketStatus; dueDate: string | null; assigneeId: string | null; assigneeName?: string; assigneeInitials?: string; neighborhood?: string; address?: string; createdAt: string; updatedAt: string };
 type AccountStatus = "Ativo" | "Aguardando criação de senha";
 type User = { id: string; fullName: string; email: string; department: string; role: string; initials: string; accountStatus?: AccountStatus; invitedAt?: string | null; invitedBy?: string | null };
 type Office = { id: string; name: string; head: string; hours: string; phone: string; email: string; address: string; category: OfficeCategory };
@@ -289,11 +290,11 @@ export default function Home() {
       id: makeId(), protocol: `CH-2026-${String(ticketData.length + 188).padStart(4, "0")}`,
       title: String(form.get("title")), description: String(form.get("description")), requester: currentUser.department,
       department: String(form.get("department")), priority: String(form.get("priority")) as Priority, status: "Recebido",
-      dueDate: String(form.get("dueDate")) || null, assigneeId, assigneeName: assignee?.fullName, assigneeInitials: assignee?.initials, createdAt: now, updatedAt: now,
+      dueDate: String(form.get("dueDate")) || null, assigneeId, assigneeName: assignee?.fullName, assigneeInitials: assignee?.initials, neighborhood: String(form.get("neighborhood") || ""), address: String(form.get("address") || ""), createdAt: now, updatedAt: now,
     };
     const belongsToCurrentDepartment = sameDepartment(temporary.department, currentUser.department);
     if (belongsToCurrentDepartment) setTicketData((current) => [temporary, ...current]);
-    addAudit("chamado_criado", "chamado", temporary.id, `${temporary.protocol} criado: ${temporary.title}`);
+    addAudit("chamado_criado", "chamado", temporary.id, `${temporary.protocol} criado: ${temporary.title}${temporary.neighborhood ? ` · ${temporary.neighborhood}` : ""}`);
     setTicketModal(false);
     setActiveNav("Chamados");
     notify(belongsToCurrentDepartment ? "Chamado criado e visível somente para o seu setor." : `Chamado encaminhado de forma privada para ${temporary.department}.`);
@@ -740,7 +741,7 @@ function TicketsSection({ tickets, department, onStatus, onNew }: { tickets: Tic
                 {columnTickets.map((ticket) => (
                   <article className="kanban-card" key={ticket.id}>
                     <div className="card-meta"><span className={`priority-label ${ticket.priority.toLowerCase().replace("é", "e")}`}>{ticket.priority}</span><button aria-label={`Opções de ${ticket.protocol}`}><MoreHorizontal size={17} /></button></div>
-                    <h3>{ticket.title}</h3><p>{ticket.description}</p><small>{ticket.protocol} · {ticket.requester}</small>
+                    <h3>{ticket.title}</h3><p>{ticket.description}</p><small>{ticket.protocol} · {ticket.requester}{ticket.neighborhood ? ` · ${ticket.neighborhood}` : ""}</small>
                     <div className="ticket-template-line"><span>{ticket.priority === "Urgente" ? "Atendimento imediato" : "Prazo setorial"}</span><span>{ticket.assigneeName ? "Responsável definido" : "Aguardando atribuição"}</span></div>
                     <div className="kanban-footer"><span className="mini-avatar">{ticket.assigneeInitials ?? "--"}</span><span className={formatDue(ticket.dueDate).startsWith("Hoje") ? "due urgent" : "due"}><Clock3 size={12} /> {formatDue(ticket.dueDate)}</span></div>
                     <label className="move-label">Mover para<select aria-label={`Mover ${ticket.protocol}`} value={ticket.status} onChange={(event) => onStatus(ticket.id, event.target.value as TicketStatus)}>{statuses.map((option) => <option key={option}>{option}</option>)}</select></label>
@@ -1103,9 +1104,28 @@ function LockKeyholeIcon() { return <ShieldCheck size={13} />; }
 
 function TicketModal({ users, onClose, onCreate }: { users: User[]; onClose: () => void; onCreate: (data: FormData) => void | Promise<void> }) {
   const [department, setDepartment] = useState("");
+  const [neighborhood, setNeighborhood] = useState("");
+  const [address, setAddress] = useState("");
   const eligibleUsers = users.filter((user) => sameDepartment(user.department, department));
   function submit(event: FormEvent<HTMLFormElement>) { event.preventDefault(); void onCreate(new FormData(event.currentTarget)); }
-  return <div className="modal-backdrop" role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget) onClose(); }}><section className="modal" role="dialog" aria-modal="true" aria-labelledby="ticket-modal-title"><header><div><p className="eyebrow">NOVO REGISTRO</p><h2 id="ticket-modal-title">Criar chamado</h2></div><button type="button" onClick={onClose} aria-label="Fechar"><X size={18} /></button></header><form onSubmit={submit}><label className="field full"><span>Modelo da solicitação</span><select name="template" defaultValue="Solicitação geral"><option>Solicitação geral</option><option>Manutenção de veículo</option><option>Solicitação de material</option><option>Reparo em iluminação</option><option>Suporte de informática</option><option>Produção de arte e comunicação</option><option>Agendamento de espaço</option><option>Solicitação de transporte</option><option>Compra ou contratação</option><option>Vistoria técnica</option></select><small className="field-hint">O modelo define checklist, documentos obrigatórios e prazo padrão.</small></label><label className="field full"><span>Título do chamado *</span><input name="title" required placeholder="Ex.: Reparo da iluminação da avenida" autoFocus /></label><label className="field full"><span>Descrição</span><textarea name="description" placeholder="Inclua contexto, entregáveis, local e observações..." /></label><label className="field"><span>Secretaria responsável *</span><select name="department" required value={department} onChange={(event) => setDepartment(event.target.value)}><option value="" disabled>Selecione</option>{OFFICE_CATEGORIES.map((group) => <optgroup label={group} key={group}>{OFFICES.filter((office) => office.category === group).map((office) => <option key={office.id}>{office.name}</option>)}</optgroup>)}</select></label><label className="field"><span>Responsável principal</span><select name="assigneeId" defaultValue="" disabled={!department}><option value="">{department ? "A definir" : "Selecione primeiro o setor"}</option>{eligibleUsers.map((user) => <option key={user.id} value={user.id}>{user.fullName}</option>)}</select></label><label className="field"><span>Prioridade</span><select name="priority" defaultValue="Média"><option>Urgente</option><option>Alta</option><option>Média</option><option>Baixa</option></select></label><label className="field"><span>Prazo ou SLA</span><input type="date" name="dueDate" /></label><label className="field full"><span>Colaboradores e pessoas que acompanham</span><select name="followers" defaultValue=""><option value="">Definir depois da criação</option>{eligibleUsers.map((user) => <option key={user.id} value={user.id}>{user.fullName} · {user.role}</option>)}</select></label><p className="ticket-modal-privacy"><ShieldCheck size={14} /> O chamado ficará visível ao setor responsável. Encaminhamentos, aprovações, mensagens, anotações internas e anexos serão registrados no histórico.</p><div className="modal-actions"><button type="button" className="button secondary" onClick={onClose}>Cancelar</button><button type="submit" className="button primary"><Plus size={15} /> Criar e registrar</button></div></form></section></div>;
+  return <div className="modal-backdrop" role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget) onClose(); }}>
+    <section className="modal ticket-create-modal" role="dialog" aria-modal="true" aria-labelledby="ticket-modal-title">
+      <header><div><p className="eyebrow">NOVO REGISTRO</p><h2 id="ticket-modal-title">Criar chamado</h2></div><button type="button" onClick={onClose} aria-label="Fechar"><X size={18} /></button></header>
+      <form onSubmit={submit}>
+        <label className="field full"><span>Modelo da solicitação</span><select name="template" defaultValue="Solicitação geral"><option>Solicitação geral</option><option>Manutenção de veículo</option><option>Solicitação de material</option><option>Reparo em iluminação</option><option>Suporte de informática</option><option>Produção de arte e comunicação</option><option>Agendamento de espaço</option><option>Solicitação de transporte</option><option>Compra ou contratação</option><option>Vistoria técnica</option></select><small className="field-hint">O modelo define checklist, documentos obrigatórios e prazo padrão.</small></label>
+        <label className="field full"><span>Título do chamado *</span><input name="title" required placeholder="Ex.: Reparo da iluminação da avenida" autoFocus /></label>
+        <label className="field full"><span>Descrição</span><textarea name="description" placeholder="Inclua contexto, entregáveis, local e observações..." /></label>
+        <NeighborhoodMapField neighborhood={neighborhood} address={address} onNeighborhoodChange={setNeighborhood} onAddressChange={setAddress} />
+        <label className="field"><span>Secretaria responsável *</span><select name="department" required value={department} onChange={(event) => setDepartment(event.target.value)}><option value="" disabled>Selecione</option>{OFFICE_CATEGORIES.map((group) => <optgroup label={group} key={group}>{OFFICES.filter((office) => office.category === group).map((office) => <option key={office.id}>{office.name}</option>)}</optgroup>)}</select></label>
+        <label className="field"><span>Responsável principal</span><select name="assigneeId" defaultValue="" disabled={!department}><option value="">{department ? "A definir" : "Selecione primeiro o setor"}</option>{eligibleUsers.map((user) => <option key={user.id} value={user.id}>{user.fullName}</option>)}</select></label>
+        <label className="field"><span>Prioridade</span><select name="priority" defaultValue="Média"><option>Urgente</option><option>Alta</option><option>Média</option><option>Baixa</option></select></label>
+        <label className="field"><span>Prazo ou SLA</span><input type="date" name="dueDate" /></label>
+        <label className="field full"><span>Colaboradores e pessoas que acompanham</span><select name="followers" defaultValue=""><option value="">Definir depois da criação</option>{eligibleUsers.map((user) => <option key={user.id} value={user.id}>{user.fullName} · {user.role}</option>)}</select></label>
+        <p className="ticket-modal-privacy"><ShieldCheck size={14} /> O chamado ficará visível ao setor responsável. Encaminhamentos, aprovações, mensagens, anotações internas e anexos serão registrados no histórico.</p>
+        <div className="modal-actions"><button type="button" className="button secondary" onClick={onClose}>Cancelar</button><button type="submit" className="button primary"><Plus size={15} /> Criar e registrar</button></div>
+      </form>
+    </section>
+  </div>;
 }
 
 function EventModal({ department, onClose, onCreate }: { department: string; onClose: () => void; onCreate: (data: FormData) => void | Promise<void> }) {

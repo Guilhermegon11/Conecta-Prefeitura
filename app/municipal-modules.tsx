@@ -26,6 +26,7 @@ import {
   ListChecks,
   LockKeyhole,
   MessageSquareText,
+  MapPin,
   Plus,
   QrCode,
   Search,
@@ -36,6 +37,7 @@ import {
   X,
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
+import { NeighborhoodMapField } from "./municipal-location";
 
 type Notify = (message: string) => void;
 type CitizenTab = "Protocolos" | "Ouvidoria e e-SIC" | "Carta de serviços" | "Satisfação";
@@ -53,6 +55,8 @@ type CitizenProtocol = {
   department: string;
   due: string;
   confidential?: boolean;
+  neighborhood?: string;
+  address?: string;
 };
 
 type ServiceItem = {
@@ -170,6 +174,9 @@ export function CitizenServiceSection({ department, notify }: { department: stri
   const [query, setQuery] = useState("");
   const [protocols, setProtocols] = useState(INITIAL_PROTOCOLS);
   const [modal, setModal] = useState(false);
+  const [selectedService, setSelectedService] = useState<ServiceItem | null>(null);
+  const [serviceNeighborhood, setServiceNeighborhood] = useState("");
+  const [serviceAddress, setServiceAddress] = useState("");
   const visible = protocols.filter((item) => [item.protocol, item.subject, item.requester, item.kind, item.department].join(" ").toLowerCase().includes(query.toLowerCase()));
 
   function createProtocol(event: FormEvent<HTMLFormElement>) {
@@ -186,6 +193,24 @@ export function CitizenServiceSection({ department, notify }: { department: stri
     setProtocols((current) => [item, ...current]);
     setModal(false);
     notify(`Protocolo ${item.protocol} registrado e encaminhado para triagem.`);
+  }
+
+  function createServiceRequest(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (!selectedService) return;
+    const form = new FormData(event.currentTarget);
+    const item: CitizenProtocol = {
+      id: makeDemoId(), protocol: `SERV-2026-${String(protocols.length + 482).padStart(5, "0")}`,
+      subject: selectedService.title, requester: String(form.get("requester")) || "Solicitante não identificado",
+      channel: "Carta de serviços digital", kind: "Serviço", status: "Recebido", department: selectedService.department,
+      due: selectedService.deadline, neighborhood: serviceNeighborhood, address: serviceAddress,
+    };
+    setProtocols((current) => [item, ...current]);
+    setSelectedService(null);
+    setServiceNeighborhood("");
+    setServiceAddress("");
+    setTab("Protocolos");
+    notify(`${item.protocol} registrado para ${serviceNeighborhood}. A área foi vinculada ao mapa municipal.`);
   }
 
   return (
@@ -213,11 +238,12 @@ export function CitizenServiceSection({ department, notify }: { department: stri
         <FeaturePanel icon={LockKeyhole} title="Proteção da identidade" description="Dados pessoais e denúncias ficam restritos aos perfis autorizados, com registro de cada acesso." items={["Classificação de sigilo", "Mascaramento de dados", "Trilha de auditoria", "Termo de responsabilidade"]} action="Ver regras de acesso" onAction={() => notify("Regras de sigilo exibidas conforme o perfil atual.")} />
       </div>}
 
-      {tab === "Carta de serviços" && <article className="panel service-catalog-panel"><div className="catalog-heading"><div><p className="eyebrow">SERVIÇOS AO CIDADÃO</p><h2>Carta de serviços municipal</h2><p>Informações claras sobre requisitos, canais e prazo esperado para cada atendimento.</p></div><label className="module-search"><Search size={15} /><input aria-label="Buscar serviço" placeholder="Buscar serviço..." /></label></div><div className="service-grid">{SERVICES.map((service) => <article key={service.title}><span><Landmark size={18} /></span><h3>{service.title}</h3><p>{service.department}</p><dl><div><dt>Prazo</dt><dd>{service.deadline}</dd></div><div><dt>Documentos</dt><dd>{service.documents}</dd></div><div><dt>Atendimento</dt><dd>{service.channel}</dd></div></dl><button onClick={() => notify(`Formulário de “${service.title}” aberto para preenchimento.`)}>Solicitar serviço <ChevronRight size={13} /></button></article>)}</div></article>}
+      {tab === "Carta de serviços" && <article className="panel service-catalog-panel"><div className="catalog-heading"><div><p className="eyebrow">SERVIÇOS AO CIDADÃO</p><h2>Carta de serviços municipal</h2><p>Informações claras sobre requisitos, canais e prazo esperado para cada atendimento.</p></div><label className="module-search"><Search size={15} /><input aria-label="Buscar serviço" placeholder="Buscar serviço..." /></label></div><div className="service-grid">{SERVICES.map((service) => <article key={service.title}><span><Landmark size={18} /></span><h3>{service.title}</h3><p>{service.department}</p><dl><div><dt>Prazo</dt><dd>{service.deadline}</dd></div><div><dt>Documentos</dt><dd>{service.documents}</dd></div><div><dt>Atendimento</dt><dd>{service.channel}</dd></div></dl><button onClick={() => { setSelectedService(service); setServiceNeighborhood(""); setServiceAddress(""); }}>Solicitar serviço <ChevronRight size={13} /></button></article>)}</div></article>}
 
       {tab === "Satisfação" && <div className="satisfaction-layout"><article className="panel satisfaction-score"><span><Star size={24} /></span><strong>4,7</strong><p>média de 184 avaliações em agosto</p><div>{[1,2,3,4,5].map((star) => <Star key={star} size={16} fill="currentColor" />)}</div></article><article className="panel satisfaction-breakdown"><h2>Qualidade percebida</h2>{[["Resultado do atendimento",92],["Clareza das informações",89],["Tempo de resposta",84],["Cordialidade",96]].map(([label,value]) => <div className="rating-row" key={String(label)}><span>{label}</span><div><i style={{width:`${value}%`}} /></div><strong>{value}%</strong></div>)}</article><article className="panel satisfaction-comments"><h2>Comentários recentes</h2><blockquote>“Recebi o número do protocolo e consegui acompanhar cada atualização.”<cite>Atendimento de iluminação · 12 ago.</cite></blockquote><blockquote>“A lista de documentos evitou uma segunda ida ao setor.”<cite>Matrícula escolar · 11 ago.</cite></blockquote></article></div>}
 
       {modal && <ModalShell eyebrow="ATENDIMENTO AO CIDADÃO" title="Registrar novo protocolo" onClose={() => setModal(false)}><form onSubmit={createProtocol}><label className="field"><span>Tipo de manifestação *</span><select name="kind" required defaultValue="Solicitação"><option>Solicitação</option><option>Reclamação</option><option>Sugestão</option><option>Elogio</option><option>Denúncia</option><option>Acesso à informação</option></select></label><label className="field"><span>Setor responsável</span><input name="department" defaultValue={department} /></label><label className="field full"><span>Assunto *</span><input name="subject" required placeholder="Descreva o assunto principal" /></label><label className="field full"><span>Nome do solicitante</span><input name="requester" placeholder="Deixe em branco se não houver identificação" /></label><label className="field full"><span>Descrição detalhada *</span><textarea name="description" required placeholder="Registre a manifestação e as informações necessárias para a triagem" /></label><label className="municipal-check full"><input type="checkbox" name="confidential" /> <span>Restringir dados pessoais e identidade aos responsáveis autorizados</span></label><div className="modal-actions"><button type="button" className="button secondary" onClick={() => setModal(false)}>Cancelar</button><button className="button primary"><FileBadge size={15} /> Gerar protocolo</button></div></form></ModalShell>}
+      {selectedService && <ModalShell eyebrow="CARTA DE SERVIÇOS" title={selectedService.title} onClose={() => setSelectedService(null)}><form onSubmit={createServiceRequest}><div className="service-request-summary full"><Landmark size={18} /><div><strong>{selectedService.department}</strong><span>{selectedService.deadline} · {selectedService.documents}</span></div></div><label className="field full"><span>Nome do solicitante</span><input name="requester" placeholder="Nome da pessoa, empresa ou entidade" /></label><NeighborhoodMapField neighborhood={serviceNeighborhood} address={serviceAddress} onNeighborhoodChange={setServiceNeighborhood} onAddressChange={setServiceAddress} /><label className="field full"><span>Descrição do serviço</span><textarea name="description" placeholder="Descreva a necessidade e acrescente referências para a equipe responsável." /></label><p className="ticket-modal-privacy"><ShieldCheck size={14} /> O bairro e o endereço serão vinculados ao protocolo para orientar a triagem e o atendimento em campo.</p><div className="modal-actions"><button type="button" className="button secondary" onClick={() => setSelectedService(null)}>Cancelar</button><button className="button primary"><MapPin size={15} /> Solicitar e localizar</button></div></form></ModalShell>}
     </section>
   );
 }
