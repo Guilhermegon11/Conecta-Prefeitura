@@ -37,6 +37,7 @@ import {
   Phone,
   Search,
   Send,
+  Settings,
   ShieldCheck,
   Upload,
   UserRound,
@@ -56,10 +57,21 @@ import {
 } from "./municipal-modules";
 import { SectorWorkspaceSection } from "./sector-workspaces";
 import { NeighborhoodMapField } from "./municipal-location";
+import { SettingsSection } from "./settings-section";
+import { DemoBanner, GlobalSearchPanel, GuidedDemo, playNotificationChime, useNotificationChime } from "./demo-experience";
+import {
+  createDefaultPermissionSettings,
+  FULL_PERMISSION,
+  NO_PERMISSION,
+  permissionFor,
+  type DepartmentPermissionSettings,
+  type PermissionModule,
+} from "./access-control";
+import { PermissionProvider, useCurrentPermission } from "./permission-context";
 
 type TicketStatus = "Recebido" | "Em análise" | "Aguardando aprovação" | "Em execução" | "Aguardando resposta" | "Concluído" | "Cancelado";
 type Priority = "Urgente" | "Alta" | "Média" | "Baixa";
-type NavItem = "Visão geral" | "Área do Setor" | "Chamados" | "Comunicação" | "Atendimento ao Cidadão" | "Processos Digitais" | "Gestão Municipal" | "Indicadores" | "Notificações" | "Pendências" | "Anexos e Arquivos" | "Próximos Eventos" | "Funcionários" | "Secretarias" | "Segurança e LGPD" | "Auditoria" | "Central de Ajuda";
+type NavItem = PermissionModule | "Funcionários" | "Configurações";
 type ChatTab = "direct" | "group";
 type OfficeCategory = "Prefeitura e apoio" | "Secretarias" | "Departamentos" | "Seções e subprefeitura";
 
@@ -120,9 +132,15 @@ const USERS: User[] = [
   { id: "u-anselmo", fullName: "Anselmo Caetano de Paula", email: "semedpedagogicovzp@gmail.com", department: "Seção de Controle e Avaliação", role: "Responsável", initials: "AP" },
   { id: "u-marco", fullName: "Marco Antonio Ramos", email: "marco.ramos@educacao.mg.gov.br", department: "Subseção de Patrimônio Histórico e Cultura", role: "Responsável", initials: "MR" },
   { id: "u-dalila", fullName: "Dalila Correa", email: "sub-prefeituraguaicui@hotmail.com", department: "Subprefeitura da Barra do Guaicuí", role: "Subprefeita", initials: "DC" },
+  { id: "u-demo-mariana", fullName: "Mariana Castro", email: "mariana.castro@demonstracao.local", department: "Secretaria de Governo", role: "Funcionário · Atendimento", initials: "MC" },
+  { id: "u-demo-andre", fullName: "André Lima", email: "andre.lima@demonstracao.local", department: "Secretaria de Governo", role: "Funcionário · Operacional", initials: "AL" },
+  { id: "u-demo-camila", fullName: "Camila Nunes", email: "camila.nunes@demonstracao.local", department: "Secretaria de Infraestrutura e Transporte", role: "Funcionário · Equipe de campo", initials: "CN" },
 ];
 
 const INITIAL_TICKETS: Ticket[] = [
+  { id: "t-190", protocol: "CH-2026-0190", title: "Consolidar prioridades para a reunião do secretariado", description: "Reunir os pontos críticos enviados pelos setores e preparar a pauta executiva.", requester: "Gabinete do Prefeito", department: "Secretaria de Governo", priority: "Alta", status: "Recebido", dueDate: "2026-08-14T16:00:00.000Z", assigneeId: "u-ana", assigneeName: "Artur Paulo Fagundes Rabelo", assigneeInitials: "AR", createdAt: "2026-08-13T15:05:00.000Z", updatedAt: "2026-08-13T15:05:00.000Z" },
+  { id: "t-189", protocol: "CH-2026-0189", title: "Revisar comunicado sobre serviços municipais", description: "Validar as informações recebidas antes da publicação nos canais oficiais.", requester: "Secretaria de Comunicação e Eventos", department: "Secretaria de Governo", priority: "Média", status: "Em análise", dueDate: "2026-08-14T18:00:00.000Z", assigneeId: "u-demo-mariana", assigneeName: "Mariana Castro", assigneeInitials: "MC", createdAt: "2026-08-13T13:20:00.000Z", updatedAt: "2026-08-13T15:12:00.000Z" },
+  { id: "t-188", protocol: "CH-2026-0188", title: "Validar cronograma da audiência pública", description: "Conferir responsáveis, local, acessibilidade e etapas de divulgação.", requester: "Assessoria do Gabinete", department: "Secretaria de Governo", priority: "Média", status: "Aguardando aprovação", dueDate: "2026-08-15T17:00:00.000Z", assigneeId: "u-demo-andre", assigneeName: "André Lima", assigneeInitials: "AL", createdAt: "2026-08-12T16:00:00.000Z", updatedAt: "2026-08-13T14:48:00.000Z" },
   { id: "t-187", protocol: "CH-2026-0187", title: "Manutenção da iluminação na Praça Central", description: "Substituição de luminárias e revisão do quadro elétrico.", requester: "Ouvidoria Municipal", department: "Secretaria de Infraestrutura e Transporte", priority: "Alta", status: "Em execução", dueDate: "2026-08-13T19:00:00.000Z", assigneeId: "u-rafael", assigneeName: "Bruno Gonçalves da Fonseca", assigneeInitials: "BF", createdAt: "2026-08-13T10:00:00.000Z", updatedAt: "2026-08-13T14:36:00.000Z" },
   { id: "t-186", protocol: "CH-2026-0186", title: "Revisão do calendário de vacinação", description: "Validar datas, locais e comunicação da campanha.", requester: "Gabinete do Prefeito", department: "Secretaria de Saúde", priority: "Média", status: "Aguardando aprovação", dueDate: "2026-08-14T18:00:00.000Z", assigneeId: "u-lucas", assigneeName: "Natália Cristina Pedrosa Cabral", assigneeInitials: "NC", createdAt: "2026-08-12T13:00:00.000Z", updatedAt: "2026-08-13T14:52:00.000Z" },
   { id: "t-185", protocol: "CH-2026-0185", title: "Atualização do transporte escolar — Zona Norte", description: "Revisar itinerários antes da volta às aulas.", requester: "Secretaria de Educação", department: "Secretaria de Educação", priority: "Alta", status: "Recebido", dueDate: "2026-08-15T18:00:00.000Z", assigneeId: "u-amanda", assigneeName: "Leila Cibeli Silveira Mendes", assigneeInitials: "LM", createdAt: "2026-08-12T11:00:00.000Z", updatedAt: "2026-08-12T11:00:00.000Z" },
@@ -137,6 +155,7 @@ const INITIAL_GROUPS: Group[] = [
 ];
 
 const INITIAL_NOTIFICATIONS: NotificationItem[] = [
+  { id: "n-governo-aprovacao", userId: "u-ana", type: "ticket", title: "Cronograma pronto para aprovação", body: "André Lima concluiu a conferência do chamado CH-2026-0188.", relatedEntityId: "t-188", readAt: null, createdAt: "2026-08-13T14:48:00.000Z", actorName: "André Lima", actorInitials: "AL" },
   { id: "n-convite-saude", userId: "u-ana", type: "group_invite", title: "Novo convite para grupo", body: "Natália Cristina Pedrosa Cabral convidou você para o Comitê de Saúde Digital.", relatedEntityId: "g-saude-digital", readAt: null, createdAt: "2026-08-13T14:45:00.000Z", actorName: "Natália Cristina Pedrosa Cabral", actorInitials: "NC" },
   { id: "n-convite-volta-aulas", userId: "u-rafael", type: "group_invite", title: "Novo convite para grupo", body: "Leila Cibeli Silveira Mendes convidou você para Operação Volta às Aulas 2026.", relatedEntityId: "g-volta-aulas", readAt: null, createdAt: "2026-08-13T14:00:00.000Z", actorName: "Leila Cibeli Silveira Mendes", actorInitials: "LM" },
   { id: "n-aprovacao", userId: "u-ana", type: "ticket", title: "Chamado aguardando aprovação", body: "O chamado CH-2026-0186 está pronto para sua análise.", relatedEntityId: "t-186", readAt: null, createdAt: "2026-08-13T14:52:00.000Z", actorName: "Natália Cristina Pedrosa Cabral", actorInitials: "NC" },
@@ -149,6 +168,8 @@ const INITIAL_INVITATIONS: GroupInvitation[] = [
 ];
 
 const INITIAL_MESSAGES: Message[] = [
+  { id: "m-gov-1", conversationType: "direct", conversationId: "u-ana::u-demo-mariana", senderId: "u-demo-mariana", senderName: "Mariana Castro", senderInitials: "MC", body: "Revisei o comunicado e sinalizei dois trechos que ainda precisam de confirmação.", ticketId: "t-189", createdAt: "2026-08-13T15:12:00.000Z" },
+  { id: "m-gov-2", conversationType: "direct", conversationId: "u-ana::u-demo-andre", senderId: "u-demo-andre", senderName: "André Lima", senderInitials: "AL", body: "O cronograma da audiência está pronto para sua aprovação.", ticketId: "t-188", createdAt: "2026-08-13T14:48:00.000Z" },
   { id: "m-1", conversationType: "direct", conversationId: "u-ana::u-rafael", senderId: "u-rafael", senderName: "Bruno Gonçalves da Fonseca", senderInitials: "BF", body: "Bom dia, Artur. A equipe já iniciou a vistoria na Praça Central.", ticketId: "t-187", createdAt: "2026-08-13T14:20:00.000Z" },
   { id: "m-2", conversationType: "direct", conversationId: "u-ana::u-rafael", senderId: "u-ana", senderName: "Artur Paulo Fagundes Rabelo", senderInitials: "AR", body: "Ótimo. Por favor, envie o relatório técnico assim que estiver pronto.", ticketId: "t-187", createdAt: "2026-08-13T14:24:00.000Z" },
   { id: "m-3", conversationType: "direct", conversationId: "u-ana::u-rafael", senderId: "u-rafael", senderName: "Bruno Gonçalves da Fonseca", senderInitials: "BF", body: "Segue a primeira versão para conferência.", attachmentId: "d-1", attachmentName: "Relatório técnico — Iluminação.pdf", attachmentSize: 2480000, attachmentContentType: "application/pdf", ticketId: "t-187", createdAt: "2026-08-13T14:36:00.000Z" },
@@ -168,6 +189,8 @@ const INITIAL_EVENTS: SectorEvent[] = [
 ];
 
 const INITIAL_AUDIT: AuditItem[] = [
+  { id: "a-gov-1", action: "status_atualizado", entityType: "chamado", entityId: "t-188", detail: "Cronograma da audiência movido para Aguardando aprovação", createdAt: "2026-08-13T14:48:00.000Z", actorName: "André Lima", actorInitials: "AL" },
+  { id: "a-gov-2", action: "chamado_criado", entityType: "chamado", entityId: "t-190", detail: "Prioridades da reunião do secretariado registradas", createdAt: "2026-08-13T15:05:00.000Z", actorName: "Artur Paulo Fagundes Rabelo", actorInitials: "AR" },
   { id: "a-1", action: "status_atualizado", entityType: "chamado", entityId: "t-186", detail: "Calendário de vacinação movido para Aguardando aprovação", createdAt: "2026-08-13T14:52:00.000Z", actorName: "Natália Cristina Pedrosa Cabral", actorInitials: "NC" },
   { id: "a-2", action: "documento_enviado", entityType: "mensagem", entityId: "m-3", detail: "Relatório técnico — Iluminação.pdf enviado no chat", createdAt: "2026-08-13T14:36:00.000Z", actorName: "Bruno Gonçalves da Fonseca", actorInitials: "BF" },
   { id: "a-3", action: "grupo_criado", entityType: "grupo", entityId: "g-volta-aulas", detail: "Grupo Operação Volta às Aulas 2026 criado", createdAt: "2026-08-13T14:00:00.000Z", actorName: "Leila Cibeli Silveira Mendes", actorInitials: "LM" },
@@ -192,6 +215,7 @@ const navIcons: Record<NavItem, LucideIcon> = {
   "Segurança e LGPD": ShieldCheck,
   Auditoria: History,
   "Central de Ajuda": HelpCircle,
+  Configurações: Settings,
 };
 const statusMeta: Record<TicketStatus, { color: string; short: string; icon: LucideIcon }> = {
   Recebido: { color: "blue", short: "Recebidos", icon: Inbox },
@@ -203,6 +227,9 @@ const statusMeta: Record<TicketStatus, { color: string; short: string; icon: Luc
   Cancelado: { color: "red", short: "Cancelados", icon: XCircle },
 };
 const statuses = Object.keys(statusMeta) as TicketStatus[];
+const DEMO_STATE_KEY = "prefeitura-conecta:demo-state:v6";
+const PERMISSION_SETTINGS_KEY = "prefeitura-conecta:permission-settings:v2";
+const EXPERIENCE_SETTINGS_KEY = "prefeitura-conecta:experience-settings:v1";
 
 export default function Home() {
   const [activeNav, setActiveNav] = useState<NavItem>("Visão geral");
@@ -223,6 +250,13 @@ export default function Home() {
   const [eventModal, setEventModal] = useState(false);
   const [employeeModal, setEmployeeModal] = useState(false);
   const [toast, setToast] = useState("");
+  const [searchOpen, setSearchOpen] = useState(false);
+  const [tourStep, setTourStep] = useState<number | null>(null);
+  const [soundEnabled, setSoundEnabled] = useState(true);
+  const [motionEnabled, setMotionEnabled] = useState(true);
+  const [permissionConfigs, setPermissionConfigs] = useState<Record<string, DepartmentPermissionSettings>>({});
+  const [demoReady, setDemoReady] = useState(false);
+  const restoredLocalState = useRef(false);
   const fileInput = useRef<HTMLInputElement>(null);
 
   const currentUser = users.find((user) => user.id === currentUserId) ?? USERS[0];
@@ -247,29 +281,111 @@ export default function Home() {
   const currentInvitations = invitations.filter((item) => item.userId === currentUserId && item.status === "convidado");
   const pendingTickets = privateTickets.filter((ticket) => ticket.status === "Aguardando aprovação");
   const unreadCount = currentNotifications.filter((item) => !item.readAt).length;
+  const messageBadgeCount = privateMessages.filter((message) => message.senderId !== currentUserId).length;
   const pendingCount = currentInvitations.length + pendingTickets.length;
   const accessibleGroups = groups.filter((group) => !group.memberUserIds || group.memberUserIds.includes(currentUserId));
   const activeUsers = users.filter((user) => (user.accountStatus ?? "Ativo") === "Ativo");
   const canManageEmployees = isSectorManager(currentUser);
-  const sectorUsers = users.filter((user) => sameDepartment(user.department, currentUser.department));
+  const sectorUsers = useMemo(() => users.filter((user) => sameDepartment(user.department, currentUser.department)), [currentUser.department, users]);
+  const sectorEmployees = useMemo(() => sectorUsers.filter((user) => !isSectorManager(user)), [sectorUsers]);
+  const departmentPermissionSettings = useMemo(() => {
+    const configured = permissionConfigs[currentUser.department];
+    if (configured) return configured;
+    const defaults = createDefaultPermissionSettings();
+    sectorEmployees.forEach((employee) => {
+      const role = normalizeText(employee.role);
+      defaults.assignments[employee.id] = role.includes("campo") ? "campo" : role.includes("operacional") ? "operacional" : role.includes("consulta") ? "consulta" : "atendimento";
+    });
+    return defaults;
+  }, [currentUser.department, permissionConfigs, sectorEmployees]);
+  const currentPermission = activeNav === "Funcionários" || activeNav === "Configurações"
+    ? canManageEmployees ? FULL_PERMISSION : NO_PERMISSION
+    : permissionFor(activeNav, canManageEmployees, currentUser.id, departmentPermissionSettings);
+  const ticketPermission = permissionFor("Chamados", canManageEmployees, currentUser.id, departmentPermissionSettings);
+
+  useNotificationChime(unreadCount, soundEnabled);
 
   useEffect(() => {
+    const timer = window.setTimeout(() => {
+      try {
+        const experience = JSON.parse(localStorage.getItem(EXPERIENCE_SETTINGS_KEY) ?? "null") as { soundEnabled?: boolean; motionEnabled?: boolean } | null;
+        if (typeof experience?.soundEnabled === "boolean") setSoundEnabled(experience.soundEnabled);
+        if (typeof experience?.motionEnabled === "boolean") setMotionEnabled(experience.motionEnabled);
+        const savedPermissions = JSON.parse(localStorage.getItem(PERMISSION_SETTINGS_KEY) ?? "null") as Record<string, DepartmentPermissionSettings> | null;
+        if (savedPermissions) setPermissionConfigs(savedPermissions);
+        const demo = JSON.parse(localStorage.getItem(DEMO_STATE_KEY) ?? "null") as {
+          ticketData?: Ticket[]; users?: User[]; groups?: Group[]; messages?: Message[]; documents?: DocumentItem[];
+          events?: SectorEvent[]; audit?: AuditItem[]; notifications?: NotificationItem[]; invitations?: GroupInvitation[];
+        } | null;
+        if (demo) {
+          if (demo.ticketData?.length) setTicketData(demo.ticketData);
+          if (demo.users?.length) setUsers(demo.users);
+          if (demo.groups?.length) setGroups(demo.groups);
+          if (demo.messages?.length) setMessages(demo.messages);
+          if (demo.documents?.length) setDocuments(demo.documents);
+          if (demo.events?.length) setEvents(demo.events);
+          if (demo.audit?.length) setAudit(demo.audit);
+          if (demo.notifications?.length) setNotifications(demo.notifications);
+          if (demo.invitations?.length) setInvitations(demo.invitations);
+          restoredLocalState.current = true;
+        }
+      } catch {
+        // Um cenário inválido é simplesmente ignorado e os dados originais são usados.
+      } finally {
+        setDemoReady(true);
+      }
+    }, 0);
+    return () => window.clearTimeout(timer);
+  }, []);
+
+  useEffect(() => {
+    if (!demoReady) return;
+    localStorage.setItem(EXPERIENCE_SETTINGS_KEY, JSON.stringify({ soundEnabled, motionEnabled }));
+  }, [demoReady, motionEnabled, soundEnabled]);
+
+  useEffect(() => {
+    if (!demoReady) return;
+    localStorage.setItem(PERMISSION_SETTINGS_KEY, JSON.stringify(permissionConfigs));
+  }, [demoReady, permissionConfigs]);
+
+  useEffect(() => {
+    if (!demoReady) return;
+    localStorage.setItem(DEMO_STATE_KEY, JSON.stringify({ ticketData, users, groups, messages, documents, events, audit, notifications, invitations }));
+  }, [audit, demoReady, documents, events, groups, invitations, messages, notifications, ticketData, users]);
+
+  useEffect(() => {
+    if (!demoReady || restoredLocalState.current) return;
     fetch(`/api/bootstrap?userId=${encodeURIComponent(currentUserId)}`).then((response) => response.ok ? response.json() : Promise.reject()).then((data) => {
       const payload = data as BootstrapPayload;
-      if (payload.users?.length) setUsers(payload.users);
-      if (Array.isArray(payload.tickets)) setTicketData(payload.tickets.map((ticket) => ({ ...ticket, status: normalizeTicketStatus(ticket.status) })));
-      if (Array.isArray(payload.groups)) setGroups(payload.groups.map((group) => {
+      if (payload.users?.length) setUsers([...payload.users, ...USERS.filter((user) => user.id.startsWith("u-demo-") && !payload.users!.some((saved) => saved.id === user.id))]);
+      if (payload.tickets?.length) setTicketData(payload.tickets.map((ticket) => ({ ...ticket, status: normalizeTicketStatus(ticket.status) })));
+      if (payload.groups?.length) setGroups(payload.groups.map((group) => {
         const memberships = (payload.groupMemberships ?? []).filter((membership) => membership.groupId === group.id);
         return { ...group, memberCount: Number(group.memberCount), memberUserIds: memberships.filter((membership) => membership.status === "aceito").map((membership) => membership.userId), pendingUserIds: memberships.filter((membership) => membership.status === "convidado").map((membership) => membership.userId) };
       }));
-      if (Array.isArray(payload.messages)) setMessages(payload.messages);
-      if (Array.isArray(payload.documents)) setDocuments(payload.documents);
-      if (Array.isArray(payload.events)) setEvents(payload.events);
-      if (Array.isArray(payload.audit)) setAudit(payload.audit);
-      if (Array.isArray(payload.notifications)) setNotifications((current) => [...current.filter((item) => item.userId !== currentUserId), ...payload.notifications!]);
-      if (Array.isArray(payload.invitations)) setInvitations((current) => [...current.filter((item) => item.userId !== currentUserId), ...payload.invitations!.map((item) => ({ ...item, memberCount: Number(item.memberCount) }))]);
+      if (payload.messages?.length) setMessages(payload.messages);
+      if (payload.documents?.length) setDocuments(payload.documents);
+      if (payload.events?.length) setEvents(payload.events);
+      if (payload.audit?.length) setAudit(payload.audit);
+      if (payload.notifications?.length) setNotifications((current) => [...current.filter((item) => item.userId !== currentUserId), ...payload.notifications!]);
+      if (payload.invitations?.length) setInvitations((current) => [...current.filter((item) => item.userId !== currentUserId), ...payload.invitations!.map((item) => ({ ...item, memberCount: Number(item.memberCount) }))]);
     }).catch(() => undefined);
-  }, [currentUserId]);
+  }, [currentUserId, demoReady]);
+
+  useEffect(() => {
+    if (currentPermission.view) return;
+    const timer = window.setTimeout(() => setActiveNav("Visão geral"), 0);
+    return () => window.clearTimeout(timer);
+  }, [currentPermission.view, currentUserId]);
+
+  useEffect(() => {
+    function handleKeydown(event: KeyboardEvent) {
+      if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === "k") { event.preventDefault(); setSearchOpen(true); }
+      if (event.key === "Escape") { setSearchOpen(false); if (tourStep !== null) setTourStep(null); }
+    }
+    window.addEventListener("keydown", handleKeydown);
+    return () => window.removeEventListener("keydown", handleKeydown);
+  }, [tourStep]);
 
   const filteredTickets = useMemo(() => {
     const term = search.trim().toLowerCase();
@@ -280,6 +396,22 @@ export default function Home() {
   function notify(message: string) {
     setToast(message);
     window.setTimeout(() => setToast(""), 2800);
+  }
+
+  function updatePermissionSettings(settings: DepartmentPermissionSettings) {
+    setPermissionConfigs((current) => ({ ...current, [currentUser.department]: settings }));
+  }
+
+  function startGuidedDemo() {
+    setCurrentUserId("u-ana");
+    setActiveNav("Visão geral");
+    setSidebarOpen(false);
+    setTourStep(0);
+  }
+
+  function resetDemo() {
+    Object.keys(localStorage).filter((key) => key.startsWith("prefeitura-conecta:")).forEach((key) => localStorage.removeItem(key));
+    window.location.reload();
   }
 
   async function createTicket(form: FormData) {
@@ -519,7 +651,7 @@ export default function Home() {
   const headingTitle = activeNav === "Visão geral" ? `Bom dia, ${currentUser.fullName.split(" ")[0]}.` : activeNav === "Área do Setor" ? currentUser.department : heading.title;
 
   return (
-    <div className="app-shell">
+    <div className={`app-shell ${motionEnabled ? "motion-enabled" : "motion-reduced"}`}>
       <aside className={`sidebar ${sidebarOpen ? "sidebar-open" : ""}`}>
         <div className="brand">
           <div className="brand-mark" aria-hidden="true"><Landmark size={21} strokeWidth={2.2} /></div>
@@ -527,13 +659,16 @@ export default function Home() {
         </div>
         <nav className="main-nav" aria-label="Navegação principal">
           <span className="nav-label">MENU PRINCIPAL</span>
-          {(Object.keys(navIcons) as NavItem[]).filter((item) => item !== "Funcionários" || canManageEmployees).map((item) => {
+          {(Object.keys(navIcons) as NavItem[]).filter((item) => {
+            if (item === "Funcionários" || item === "Configurações") return canManageEmployees;
+            return permissionFor(item, canManageEmployees, currentUser.id, departmentPermissionSettings).view;
+          }).map((item) => {
             const NavIcon = navIcons[item];
             return (
               <button type="button" key={item} className={activeNav === item ? "nav-item active" : "nav-item"} onClick={() => { setActiveNav(item); setSidebarOpen(false); }}>
                 <span className="nav-icon" aria-hidden="true"><NavIcon size={18} strokeWidth={2} /></span>
                 <span>{item}</span>
-                {item === "Comunicação" && <span className="nav-badge">5</span>}
+                {item === "Comunicação" && messageBadgeCount > 0 && <span className="nav-badge">{messageBadgeCount}</span>}
                 {item === "Notificações" && unreadCount > 0 && <span className="nav-badge">{unreadCount}</span>}
                 {item === "Pendências" && pendingCount > 0 && <span className="nav-badge pending-badge">{pendingCount}</span>}
               </button>
@@ -553,29 +688,34 @@ export default function Home() {
       {sidebarOpen && <button className="sidebar-scrim" aria-label="Fechar menu" onClick={() => setSidebarOpen(false)} />}
 
       <main className="main-area">
+        <DemoBanner onStart={startGuidedDemo} onReset={resetDemo} />
         <header className="topbar">
           <button className="mobile-menu" aria-label="Abrir menu" onClick={() => setSidebarOpen(true)}><Menu size={21} /></button>
-          <label className="search-box">
-            <Search size={18} aria-hidden="true" />
-            <input type="search" placeholder="Buscar chamados, pessoas ou documentos..." value={search} onChange={(event) => setSearch(event.target.value)} />
-            <kbd>⌘ K</kbd>
-          </label>
+          <div className="global-search-wrap">
+            <label className="search-box">
+              <Search size={18} aria-hidden="true" />
+              <input type="search" placeholder="Buscar em toda a plataforma..." value={search} onFocus={() => setSearchOpen(true)} onChange={(event) => { setSearch(event.target.value); setSearchOpen(true); }} />
+              <kbd>⌘ K</kbd>
+            </label>
+            {searchOpen && search.trim() && <GlobalSearchPanel query={search} tickets={ticketData} users={activeUsers} documents={documents} events={events} offices={OFFICES} onOpen={(nav) => setActiveNav(nav as NavItem)} onClose={() => setSearchOpen(false)} />}
+          </div>
           <div className="top-actions">
             <button className="icon-button notification-button" aria-label={`Notificações${unreadCount ? `: ${unreadCount} novas` : ""}`} onClick={() => setActiveNav("Notificações")}><Bell size={18} />{unreadCount > 0 && <span />}</button>
             <label className="account-switch"><div className="avatar">{currentUser.initials}</div><span><small>VISUALIZAR COMO</small><select aria-label="Visualizar como usuário" value={currentUserId} onChange={(event) => setCurrentUserId(event.target.value)}>{activeUsers.map((user) => <option key={user.id} value={user.id}>{user.fullName} — {user.department}</option>)}</select></span></label>
           </div>
         </header>
 
-        <div className={`content-wrap ${activeNav === "Comunicação" ? "chat-content" : ""}`}>
+        <PermissionProvider permission={currentPermission}>
+        <div className={`content-wrap ${activeNav === "Comunicação" ? "chat-content" : ""} ${currentPermission.register ? "can-register" : "read-only-register"} ${currentPermission.edit ? "can-edit" : "read-only-edit"}`}>
           <section className="page-heading">
-            <div><p className="eyebrow">{activeNav === "Visão geral" ? "QUINTA-FEIRA, 13 DE AGOSTO" : heading.eyebrow}</p><h1>{headingTitle}</h1><p>{heading.subtitle}</p></div>
+            <div><p className="eyebrow">{activeNav === "Visão geral" ? formatHeadingDate(new Date()) : heading.eyebrow}</p><h1>{headingTitle}</h1><p>{heading.subtitle}</p></div>
             <div className="heading-actions">
               {activeNav === "Comunicação" ? (
-                <button className="button secondary" onClick={() => setGroupModal(true)}><Plus size={15} /> Novo grupo</button>
+                currentPermission.register && <button className="button secondary" onClick={() => setGroupModal(true)}><Plus size={15} /> Novo grupo</button>
               ) : activeNav === "Anexos e Arquivos" ? (
-                <button type="button" className="button secondary" onClick={() => fileInput.current?.click()}><Upload size={15} /> Anexar arquivo</button>
+                currentPermission.register && <button type="button" className="button secondary" onClick={() => fileInput.current?.click()}><Upload size={15} /> Anexar arquivo</button>
               ) : activeNav === "Próximos Eventos" ? (
-                <button type="button" className="button secondary" onClick={() => setEventModal(true)}><CalendarPlus size={15} /> Novo evento</button>
+                currentPermission.register && <button type="button" className="button secondary" onClick={() => setEventModal(true)}><CalendarPlus size={15} /> Novo evento</button>
               ) : activeNav === "Funcionários" ? (
                 <button type="button" className="button secondary" onClick={() => setEmployeeModal(true)}><UserPlus size={15} /> Convidar funcionário</button>
               ) : activeNav === "Secretarias" ? (
@@ -584,12 +724,16 @@ export default function Home() {
                 <button className="button secondary" onClick={markAllNotifications}><CheckCheck size={15} /> Marcar todas como lidas</button>
               ) : activeNav === "Pendências" ? (
                 <button className="button secondary" onClick={() => setActiveNav("Chamados")}><ClipboardList size={15} /> Ver chamados</button>
+              ) : activeNav === "Configurações" || activeNav === "Central de Ajuda" || activeNav === "Área do Setor" ? (
+                null
               ) : (
                 <button className="button secondary"><Download size={15} /> Exportar relatório</button>
               )}
-              <button type="button" className="button primary" onClick={() => setTicketModal(true)} aria-haspopup="dialog"><Plus size={16} /> Novo chamado</button>
+              {ticketPermission.register && activeNav !== "Configurações" && activeNav !== "Central de Ajuda" && activeNav !== "Área do Setor" && <button type="button" className="button primary" onClick={() => setTicketModal(true)} aria-haspopup="dialog"><Plus size={16} /> Novo chamado</button>}
             </div>
           </section>
+
+          {!canManageEmployees && <div className="employee-access-scope"><ShieldCheck size={16} /><span><strong>Acesso como funcionário</strong><small>{currentPermission.register ? "Pode registrar" : "Somente consulta"} · {currentPermission.edit ? "Pode alterar neste módulo" : "Alterações bloqueadas pelo secretário"}</small></span><button onClick={() => setActiveNav("Central de Ajuda")}>Entender permissões</button></div>}
 
           {activeNav === "Visão geral" && <Dashboard tickets={filteredTickets} audit={privateAudit} onNavigate={setActiveNav} />}
           {activeNav === "Área do Setor" && <SectorWorkspaceSection key={currentUser.department} department={currentUser.department} userName={currentUser.fullName} userRole={currentUser.role} departments={Array.from(new Set(users.map((user) => user.department)))} notify={notify} />}
@@ -608,7 +752,9 @@ export default function Home() {
           {activeNav === "Segurança e LGPD" && <SecuritySection department={currentUser.department} notify={notify} />}
           {activeNav === "Auditoria" && <AuditSection audit={privateAudit} department={currentUser.department} />}
           {activeNav === "Central de Ajuda" && <HelpCenterSection notify={notify} />}
+          {activeNav === "Configurações" && canManageEmployees && <SettingsSection key={currentUser.department} department={currentUser.department} managerName={currentUser.fullName} employees={sectorEmployees} settings={departmentPermissionSettings} soundEnabled={soundEnabled} motionEnabled={motionEnabled} onSettingsChange={updatePermissionSettings} onSoundChange={setSoundEnabled} onMotionChange={setMotionEnabled} onTestSound={() => { playNotificationChime(); notify("Som de notificação reproduzido."); }} onResetDemo={resetDemo} notify={notify} />}
         </div>
+        </PermissionProvider>
       </main>
 
       <input ref={fileInput} className="hidden-input" type="file" accept=".pdf,.doc,.docx,.xls,.xlsx,.csv,.txt,.png,.jpg,.jpeg,.zip" onChange={(event) => { const file = event.target.files?.[0]; if (file) void uploadFile(file); event.target.value = ""; }} />
@@ -616,6 +762,7 @@ export default function Home() {
       {groupModal && <GroupModal currentUserId={currentUserId} users={activeUsers} onClose={() => setGroupModal(false)} onCreate={createGroup} />}
       {eventModal && <EventModal department={currentUser.department} onClose={() => setEventModal(false)} onCreate={createEvent} />}
       {employeeModal && canManageEmployees && <EmployeeInviteModal department={currentUser.department} onClose={() => setEmployeeModal(false)} onInvite={inviteEmployee} />}
+      {tourStep !== null && <GuidedDemo step={tourStep} onStep={setTourStep} onNavigate={(nav) => setActiveNav(nav as NavItem)} onClose={() => setTourStep(null)} />}
       {toast && <div className="toast" role="status"><span><Check size={14} strokeWidth={2.5} /></span>{toast}</div>}
     </div>
   );
@@ -640,6 +787,7 @@ function getHeading(active: NavItem) {
     "Segurança e LGPD": { eyebrow: "GOVERNANÇA DIGITAL", title: "Segurança e LGPD", subtitle: "Gerencie permissões, dados pessoais, retenção, auditoria e resposta a incidentes." },
     Auditoria: { eyebrow: "RASTREABILIDADE DO SETOR", title: "Histórico de atividades", subtitle: "Registro cronológico de chamados, mensagens, anexos e eventos relevantes do seu setor." },
     "Central de Ajuda": { eyebrow: "CONHECIMENTO E SUPORTE", title: "Central de Ajuda", subtitle: "Consulte guias, procedimentos e orientações sobre os módulos da plataforma." },
+    Configurações: { eyebrow: "CONTROLE DO SECRETÁRIO", title: "Configurações", subtitle: "Defina permissões dos funcionários e ajuste a experiência da demonstração." },
   };
   return headings[active];
 }
@@ -718,6 +866,7 @@ function TicketTable({ tickets }: { tickets: Ticket[] }) {
 }
 
 function TicketsSection({ tickets, department, onStatus, onNew }: { tickets: Ticket[]; department: string; onStatus: (id: string, status: TicketStatus) => void; onNew: () => void }) {
+  const access = useCurrentPermission();
   const [selectedTicket, setSelectedTicket] = useState<Ticket | null>(null);
   return (
     <section className="board-wrap">
@@ -728,7 +877,7 @@ function TicketsSection({ tickets, department, onStatus, onNew }: { tickets: Tic
         <div className="filter-chip">Alta prioridade <strong>{tickets.filter((t) => t.priority === "Alta").length}</strong></div>
         <div className="board-spacer" />
         <button className="button secondary"><List size={15} /> Lista</button>
-        <button className="button primary" onClick={onNew}><Plus size={16} /> Criar chamado</button>
+        {access.register && <button className="button primary" onClick={onNew}><Plus size={16} /> Criar chamado</button>}
       </div>
       <div className="kanban-board">
         {statuses.map((status) => {
@@ -744,7 +893,7 @@ function TicketsSection({ tickets, department, onStatus, onNew }: { tickets: Tic
                     <h3>{ticket.title}</h3><p>{ticket.description}</p><small>{ticket.protocol} · {ticket.requester}{ticket.neighborhood ? ` · ${ticket.neighborhood}` : ""}</small>
                     <div className="ticket-template-line"><span>{ticket.priority === "Urgente" ? "Atendimento imediato" : "Prazo setorial"}</span><span>{ticket.assigneeName ? "Responsável definido" : "Aguardando atribuição"}</span></div>
                     <div className="kanban-footer"><span className="mini-avatar">{ticket.assigneeInitials ?? "--"}</span><span className={formatDue(ticket.dueDate).startsWith("Hoje") ? "due urgent" : "due"}><Clock3 size={12} /> {formatDue(ticket.dueDate)}</span></div>
-                    <label className="move-label">Mover para<select aria-label={`Mover ${ticket.protocol}`} value={ticket.status} onChange={(event) => onStatus(ticket.id, event.target.value as TicketStatus)}>{statuses.map((option) => <option key={option}>{option}</option>)}</select></label>
+                    {access.edit ? <label className="move-label">Mover para<select aria-label={`Mover ${ticket.protocol}`} value={ticket.status} onChange={(event) => onStatus(ticket.id, event.target.value as TicketStatus)}>{statuses.map((option) => <option key={option}>{option}</option>)}</select></label> : <span className="read-only-chip"><ShieldCheck size={11} /> Somente consulta</span>}
                     <button className="ticket-detail-button" onClick={() => setSelectedTicket(ticket)}>Abrir detalhes e checklist <ArrowRight size={12} /></button>
                   </article>
                 ))}
@@ -760,6 +909,7 @@ function TicketsSection({ tickets, department, onStatus, onNew }: { tickets: Tic
 }
 
 function CommunicationSection({ currentUser, users, groups, messages, tickets, onSend, onSendAttachment, onNewGroup }: { currentUser: User; users: User[]; groups: Group[]; messages: Message[]; tickets: Ticket[]; onSend: (message: Message, recipientId?: string) => void; onSendAttachment: (file: File, context: { conversationType: ChatTab; conversationId: string; recipientId?: string; body: string }) => Promise<boolean>; onNewGroup: () => void }) {
+  const access = useCurrentPermission();
   const [tab, setTab] = useState<ChatTab>("direct");
   const [selected, setSelected] = useState("u-rafael");
   const [draft, setDraft] = useState("");
@@ -811,7 +961,7 @@ function CommunicationSection({ currentUser, users, groups, messages, tickets, o
           <button className={tab === "group" ? "active" : ""} onClick={() => changeTab("group")}>Grupos <span>{groups.length}</span></button>
         </div>
         <label className="conversation-search"><Search size={15} /><input placeholder="Buscar conversa..." /></label>
-        {tab === "group" && <button className="new-group-row" onClick={onNewGroup}><Plus size={14} /> Criar grupo por convite</button>}
+        {tab === "group" && access.register && <button className="new-group-row" onClick={onNewGroup}><Plus size={14} /> Criar grupo por convite</button>}
         <div className="conversation-items">
           {tab === "direct" ? directUsers.map((user, index) => (
             <button key={user.id} className={effectiveSelected === user.id ? "conversation active" : "conversation"} onClick={() => selectConversation(user.id)}>
@@ -837,7 +987,7 @@ function CommunicationSection({ currentUser, users, groups, messages, tickets, o
             </div>
           </div>
         </header>
-        {tab === "group" && <div className="invite-banner"><span><Mail size={15} /></span><div><strong>Grupo com entrada por convite</strong><p>Somente participantes convidados podem visualizar e enviar mensagens.</p></div><button onClick={onNewGroup}>Gerenciar convites</button></div>}
+        {tab === "group" && <div className="invite-banner"><span><Mail size={15} /></span><div><strong>Grupo com entrada por convite</strong><p>Somente participantes convidados podem visualizar e enviar mensagens.</p></div>{access.register && <button onClick={onNewGroup}>Gerenciar convites</button>}</div>}
         {detailPanel && <aside className="chat-detail-panel" aria-label={detailPanel === "participants" ? "Participantes da conversa" : "Anexos da conversa"}>
           <header><div><span>{detailPanel === "participants" ? <UsersRound size={18} /> : <Files size={18} />}</span><div><strong>{detailPanel === "participants" ? "Participantes" : "Anexos da conversa"}</strong><small>{detailPanel === "participants" ? `${acceptedParticipants.length} ${acceptedParticipants.length === 1 ? "participante" : "participantes"}` : `${conversationAttachments.length} ${conversationAttachments.length === 1 ? "arquivo" : "arquivos"}`}</small></div></div><button aria-label="Fechar painel" onClick={() => setDetailPanel(null)}><X size={17} /></button></header>
           {detailPanel === "participants" ? <div className="chat-detail-list">
@@ -865,13 +1015,13 @@ function CommunicationSection({ currentUser, users, groups, messages, tickets, o
             </div>
           ))}
         </div>
-        <form className="message-composer" onSubmit={submit}>
+        {access.register ? <form className="message-composer" onSubmit={submit}>
           {pendingFile && <div className="pending-attachment"><span><FileText size={16} /></span><div><strong>{pendingFile.name}</strong><small>{formatSize(pendingFile.size)} · pronto para enviar nesta conversa</small></div><button type="button" aria-label="Remover anexo" onClick={() => setPendingFile(null)}><X size={15} /></button></div>}
           <div className="compose-actions"><button type="button" onClick={() => chatFileInput.current?.click()} title="Anexar documento"><Paperclip size={16} /></button><button type="button" title="Vincular chamado"><ClipboardList size={16} /></button></div>
           <textarea aria-label="Mensagem" placeholder={pendingFile ? "Adicione uma mensagem ao documento (opcional)..." : "Escreva uma mensagem..."} value={draft} onChange={(event) => setDraft(event.target.value)} onKeyDown={(event) => { if (event.key === "Enter" && !event.shiftKey) { event.preventDefault(); event.currentTarget.form?.requestSubmit(); } }} />
           <button className="send-button" aria-label={isUploading ? "Enviando documento" : "Enviar mensagem"} disabled={isUploading || (!draft.trim() && !pendingFile)}>{isUploading ? <LoaderCircle className="spin" size={16} /> : <Send size={16} />}</button>
           <input ref={chatFileInput} className="hidden-input" type="file" accept=".pdf,.doc,.docx,.xls,.xlsx,.csv,.txt,.png,.jpg,.jpeg,.zip" onChange={(event) => { const file = event.target.files?.[0]; if (file) setPendingFile(file); event.target.value = ""; }} />
-        </form>
+        </form> : <div className="read-only-composer"><ShieldCheck size={16} /><span><strong>Conversa em modo de consulta</strong><small>O secretário não autorizou o envio de mensagens para este perfil.</small></span></div>}
       </div>
     </section>
   );
@@ -907,6 +1057,7 @@ function NotificationsSection({ notifications, onRead, onOpenPending }: { notifi
 }
 
 function PendingSection({ invitations, tickets, onRespond, onOpenTickets }: { invitations: GroupInvitation[]; tickets: Ticket[]; onRespond: (invitation: GroupInvitation, response: "aceito" | "recusado") => void; onOpenTickets: () => void }) {
+  const access = useCurrentPermission();
   return (
     <section className="pending-shell">
       <div className="pending-summary">
@@ -921,7 +1072,7 @@ function PendingSection({ invitations, tickets, onRespond, onOpenTickets }: { in
             <article className="invitation-card" key={`${invitation.groupId}-${invitation.userId}`}>
               <span className="invitation-avatar">{invitation.invitedByInitials}</span>
               <div className="invitation-copy"><small>CONVITE DE {invitation.invitedByName.toUpperCase()}</small><h3>{invitation.groupName}</h3><p>{invitation.description}</p><div><span><UsersRound size={13} /> {invitation.memberCount} {invitation.memberCount === 1 ? "participante" : "participantes"}</span><span><Clock3 size={13} /> {formatRelative(invitation.createdAt)}</span></div></div>
-              <div className="invitation-actions"><button className="button primary" onClick={() => onRespond(invitation, "aceito")}><Check size={15} /> Aceitar convite</button><button className="button secondary danger" onClick={() => onRespond(invitation, "recusado")}><XCircle size={15} /> Recusar</button></div>
+              {access.edit && <div className="invitation-actions"><button className="button primary" onClick={() => onRespond(invitation, "aceito")}><Check size={15} /> Aceitar convite</button><button className="button secondary danger" onClick={() => onRespond(invitation, "recusado")}><XCircle size={15} /> Recusar</button></div>}
             </article>
           ))}
           {!invitations.length && <div className="module-empty compact"><CheckCheck size={28} /><strong>Nenhum convite pendente</strong><p>Quando alguém convidar você para um grupo, a solicitação aparecerá aqui.</p></div>}
@@ -940,6 +1091,7 @@ function PendingSection({ invitations, tickets, onRespond, onOpenTickets }: { in
 }
 
 function DocumentsSection({ documents, department, currentUserId, onUpload }: { documents: DocumentItem[]; department: string; currentUserId: string; onUpload: () => void }) {
+  const access = useCurrentPermission();
   const [query, setQuery] = useState("");
   const visibleDocuments = documents.filter((document) => [document.name, document.ownerName, document.category].join(" ").toLowerCase().includes(query.trim().toLowerCase()));
   return (
@@ -948,12 +1100,12 @@ function DocumentsSection({ documents, department, currentUserId, onUpload }: { 
       <article className="panel documents-panel">
         <div className="module-toolbar">
           <label className="module-search"><Search size={15} /><input aria-label="Buscar arquivo" placeholder="Buscar por nome, categoria ou responsável..." value={query} onChange={(event) => setQuery(event.target.value)} /></label>
-          <button type="button" className="button primary" onClick={onUpload}><Upload size={15} /> Anexar arquivo</button>
+          {access.register && <button type="button" className="button primary" onClick={onUpload}><Upload size={15} /> Anexar arquivo</button>}
         </div>
         <div className="document-table">
           <div className="document-row document-head"><span>Arquivo</span><span>Compartilhado por</span><span>Setor</span><span>Enviado em</span><span /></div>
           {visibleDocuments.map((doc) => <div className="document-row" key={doc.id}><div className="document-name"><span className="file-type"><FileText size={17} /></span><div><strong>{doc.name}</strong><small>{doc.category} · {formatSize(doc.size)}</small></div></div><span>{doc.ownerName}</span><span className="doc-department">{doc.department}</span><span>{formatDate(doc.createdAt)}</span><a className="table-menu" href={`/api/files?id=${encodeURIComponent(doc.id)}&userId=${encodeURIComponent(currentUserId)}`} aria-label={`Baixar ${doc.name}`} title="Baixar arquivo"><Download size={16} /></a></div>)}
-          {!visibleDocuments.length && <div className="module-empty"><Files size={30} /><strong>Nenhum arquivo encontrado</strong><p>Anexe o primeiro documento do setor ou ajuste a busca.</p><button type="button" className="button primary" onClick={onUpload}><Upload size={15} /> Anexar arquivo</button></div>}
+          {!visibleDocuments.length && <div className="module-empty"><Files size={30} /><strong>Nenhum arquivo encontrado</strong><p>{access.register ? "Anexe o primeiro documento do setor ou ajuste a busca." : "Ajuste a busca ou solicite acesso de registro ao secretário."}</p>{access.register && <button type="button" className="button primary" onClick={onUpload}><Upload size={15} /> Anexar arquivo</button>}</div>}
         </div>
       </article>
     </section>
@@ -961,6 +1113,7 @@ function DocumentsSection({ documents, department, currentUserId, onUpload }: { 
 }
 
 function EventsSection({ events, department, onNew }: { events: SectorEvent[]; department: string; onNew: () => void }) {
+  const access = useCurrentPermission();
   return (
     <section className="events-layout">
       <div className="access-note events-access-note"><span><CalendarDays size={20} /></span><div><strong>Agenda de {department}</strong><p>Somente os integrantes deste setor visualizam e cadastram os compromissos abaixo.</p></div><strong className="directory-total">{events.length} {events.length === 1 ? "evento" : "eventos"}</strong></div>
@@ -970,7 +1123,7 @@ function EventsSection({ events, department, onNew }: { events: SectorEvent[]; d
           <div className="event-date"><small>{calendar.month}</small><strong>{calendar.day}</strong><span>{calendar.weekday}</span></div>
           <div className="event-copy"><div className="event-meta"><span><Clock3 size={13} /> {formatEventRange(event.startsAt, event.endsAt)}</span>{event.location && <span><MapPin size={13} /> {event.location}</span>}</div><h2>{event.title}</h2><p>{event.description || "Sem observações adicionais."}</p><footer><span className="mini-avatar">{event.creatorInitials}</span><span>Criado por <strong>{event.creatorName}</strong></span></footer></div>
         </article>;
-      })}</div> : <div className="panel module-empty events-empty"><CalendarDays size={34} /><strong>Nenhum evento agendado</strong><p>Cadastre reuniões, prazos e compromissos importantes para o seu setor.</p><button type="button" className="button primary" onClick={onNew}><CalendarPlus size={15} /> Criar primeiro evento</button></div>}
+      })}</div> : <div className="panel module-empty events-empty"><CalendarDays size={34} /><strong>Nenhum evento agendado</strong><p>{access.register ? "Cadastre reuniões, prazos e compromissos importantes para o seu setor." : "Os próximos compromissos autorizados aparecerão aqui."}</p>{access.register && <button type="button" className="button primary" onClick={onNew}><CalendarPlus size={15} /> Criar primeiro evento</button>}</div>}
     </section>
   );
 }
@@ -1087,6 +1240,7 @@ function AuditSection({ audit, department }: { audit: AuditItem[]; department: s
 }
 
 function TicketDetailModal({ ticket, onClose, onStatus }: { ticket: Ticket; onClose: () => void; onStatus: (status: TicketStatus) => void }) {
+  const access = useCurrentPermission();
   const [tab, setTab] = useState<"mensagens" | "interno">("mensagens");
   const [note, setNote] = useState("");
   const [feedback, setFeedback] = useState("");
@@ -1097,7 +1251,7 @@ function TicketDetailModal({ ticket, onClose, onStatus }: { ticket: Ticket; onCl
     { id: "approve", label: "Submeter ao responsável pela aprovação", done: ticket.status === "Concluído" },
     { id: "proof", label: "Anexar comprovante, parecer ou fotografia final", done: ticket.status === "Concluído" },
   ]);
-  return <div className="modal-backdrop" role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget) onClose(); }}><section className="modal ticket-detail-modal" role="dialog" aria-modal="true" aria-labelledby="ticket-detail-title"><header><div><p className="eyebrow">{ticket.protocol} · {ticket.requester}</p><h2 id="ticket-detail-title">{ticket.title}</h2></div><button type="button" onClick={onClose} aria-label="Fechar"><X size={18} /></button></header><div className="ticket-detail-body"><div className="ticket-detail-meta"><StatusPill status={ticket.status} /><span className={`priority-label ${ticket.priority.toLowerCase().replace("é", "e")}`}>{ticket.priority}</span><span><Clock3 size={13} /> SLA: {formatDue(ticket.dueDate)}</span></div><p className="ticket-detail-description">{ticket.description}</p><div className="ticket-ownership"><div><small>Responsável principal</small><strong><span className="mini-avatar">{ticket.assigneeInitials ?? "--"}</span>{ticket.assigneeName ?? "A definir"}</strong></div><div><small>Colaboradores</small><strong><span className="avatar-stack"><i>AK</i><i>MC</i><i>+2</i></span>4 participantes</strong></div><div><small>Aprovador</small><strong><ShieldCheck size={14} /> Responsável pelo setor</strong></div></div><div className="ticket-detail-grid"><article className="ticket-checklist"><header><div><h3>Checklist de execução</h3><p>{checklist.filter((item) => item.done).length} de {checklist.length} etapas concluídas</p></div><span>{Math.round(checklist.filter((item) => item.done).length / checklist.length * 100)}%</span></header>{checklist.map((item) => <label key={item.id} className={item.done ? "done" : ""}><input type="checkbox" checked={item.done} onChange={() => setChecklist((current) => current.map((entry) => entry.id === item.id ? { ...entry, done: !entry.done } : entry))} /><span>{item.label}</span></label>)}<button><Plus size={13} /> Adicionar etapa</button></article><article className="ticket-movement"><h3>Encaminhar para outro setor</h3><p>O setor de origem e todo o histórico serão preservados.</p><select aria-label="Setor de destino" value={forwardDepartment} onChange={(event) => setForwardDepartment(event.target.value)}><option value="">Selecione o setor de destino</option>{OFFICES.filter((office) => office.name !== ticket.department).map((office) => <option key={office.id}>{office.name}</option>)}</select><textarea aria-label="Motivo do encaminhamento" placeholder="Justificativa do encaminhamento..." /><button className="button secondary" disabled={!forwardDepartment} onClick={() => { setFeedback(`Encaminhamento preparado para ${forwardDepartment}.`); setForwardDepartment(""); }}>Registrar encaminhamento</button>{feedback && <small className="ticket-inline-feedback"><Check size={11} /> {feedback}</small>}</article></div><article className="ticket-conversation"><div className="ticket-conversation-tabs"><button className={tab === "mensagens" ? "active" : ""} onClick={() => setTab("mensagens")}>Mensagens do chamado</button><button className={tab === "interno" ? "active" : ""} onClick={() => setTab("interno")}><LockKeyholeIcon /> Anotações internas</button></div><div className="ticket-note-feed">{tab === "mensagens" ? <><p><strong>Solicitante</strong><span>A solicitação foi registrada com endereço e fotografias do local.</span><small>13 ago., 08:42</small></p><p><strong>{ticket.assigneeName ?? "Equipe responsável"}</strong><span>A análise inicial foi realizada e o atendimento segue o prazo indicado.</span><small>13 ago., 11:18</small></p></> : <><p className="internal-note"><strong>Nota restrita ao setor</strong><span>Verificar disponibilidade da equipe antes de confirmar a data ao solicitante.</span><small>Somente integrantes autorizados podem visualizar</small></p></>} </div><div className="ticket-note-compose"><input aria-label={tab === "interno" ? "Adicionar anotação interna" : "Escrever mensagem do chamado"} value={note} onChange={(event) => setNote(event.target.value)} placeholder={tab === "interno" ? "Adicionar anotação interna..." : "Escrever atualização para os participantes..."} /><button disabled={!note.trim()} onClick={() => { setFeedback(tab === "interno" ? "Anotação interna registrada." : "Mensagem registrada no chamado."); setNote(""); }}><Send size={14} /></button></div></article><footer className="ticket-detail-footer"><label>Etapa atual<select value={ticket.status} onChange={(event) => onStatus(event.target.value as TicketStatus)}>{statuses.map((status) => <option key={status}>{status}</option>)}</select></label><button className="button secondary" onClick={onClose}>Fechar</button><button className="button primary" onClick={() => { onStatus("Concluído"); setFeedback("Chamado concluído e pesquisa de satisfação liberada."); }}><CheckCircle2 size={15} /> Concluir atendimento</button></footer></div></section></div>;
+  return <div className="modal-backdrop" role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget) onClose(); }}><section className="modal ticket-detail-modal" role="dialog" aria-modal="true" aria-labelledby="ticket-detail-title"><header><div><p className="eyebrow">{ticket.protocol} · {ticket.requester}</p><h2 id="ticket-detail-title">{ticket.title}</h2></div><button type="button" onClick={onClose} aria-label="Fechar"><X size={18} /></button></header><div className="ticket-detail-body"><div className="ticket-detail-meta"><StatusPill status={ticket.status} /><span className={`priority-label ${ticket.priority.toLowerCase().replace("é", "e")}`}>{ticket.priority}</span><span><Clock3 size={13} /> SLA: {formatDue(ticket.dueDate)}</span>{!access.edit && <span className="read-only-chip"><ShieldCheck size={11} /> Somente consulta</span>}</div><p className="ticket-detail-description">{ticket.description}</p><div className="ticket-ownership"><div><small>Responsável principal</small><strong><span className="mini-avatar">{ticket.assigneeInitials ?? "--"}</span>{ticket.assigneeName ?? "A definir"}</strong></div><div><small>Colaboradores</small><strong><span className="avatar-stack"><i>AK</i><i>MC</i><i>+2</i></span>4 participantes</strong></div><div><small>Aprovador</small><strong><ShieldCheck size={14} /> Responsável pelo setor</strong></div></div><div className="ticket-detail-grid"><article className="ticket-checklist"><header><div><h3>Checklist de execução</h3><p>{checklist.filter((item) => item.done).length} de {checklist.length} etapas concluídas</p></div><span>{Math.round(checklist.filter((item) => item.done).length / checklist.length * 100)}%</span></header>{checklist.map((item) => <label key={item.id} className={item.done ? "done" : ""}><input type="checkbox" checked={item.done} disabled={!access.edit} onChange={() => setChecklist((current) => current.map((entry) => entry.id === item.id ? { ...entry, done: !entry.done } : entry))} /><span>{item.label}</span></label>)}{access.edit && <button><Plus size={13} /> Adicionar etapa</button>}</article><article className="ticket-movement"><h3>Encaminhar para outro setor</h3><p>O setor de origem e todo o histórico serão preservados.</p><select aria-label="Setor de destino" disabled={!access.edit} value={forwardDepartment} onChange={(event) => setForwardDepartment(event.target.value)}><option value="">Selecione o setor de destino</option>{OFFICES.filter((office) => office.name !== ticket.department).map((office) => <option key={office.id}>{office.name}</option>)}</select><textarea aria-label="Motivo do encaminhamento" disabled={!access.edit} placeholder={access.edit ? "Justificativa do encaminhamento..." : "Alteração bloqueada pelo perfil"} />{access.edit && <button className="button secondary" disabled={!forwardDepartment} onClick={() => { setFeedback(`Encaminhamento preparado para ${forwardDepartment}.`); setForwardDepartment(""); }}>Registrar encaminhamento</button>}{feedback && <small className="ticket-inline-feedback"><Check size={11} /> {feedback}</small>}</article></div><article className="ticket-conversation"><div className="ticket-conversation-tabs"><button className={tab === "mensagens" ? "active" : ""} onClick={() => setTab("mensagens")}>Mensagens do chamado</button><button className={tab === "interno" ? "active" : ""} onClick={() => setTab("interno")}><LockKeyholeIcon /> Anotações internas</button></div><div className="ticket-note-feed">{tab === "mensagens" ? <><p><strong>Solicitante</strong><span>A solicitação foi registrada com endereço e fotografias do local.</span><small>13 ago., 08:42</small></p><p><strong>{ticket.assigneeName ?? "Equipe responsável"}</strong><span>A análise inicial foi realizada e o atendimento segue o prazo indicado.</span><small>13 ago., 11:18</small></p></> : <><p className="internal-note"><strong>Nota restrita ao setor</strong><span>Verificar disponibilidade da equipe antes de confirmar a data ao solicitante.</span><small>Somente integrantes autorizados podem visualizar</small></p></>} </div>{access.edit && <div className="ticket-note-compose"><input aria-label={tab === "interno" ? "Adicionar anotação interna" : "Escrever mensagem do chamado"} value={note} onChange={(event) => setNote(event.target.value)} placeholder={tab === "interno" ? "Adicionar anotação interna..." : "Escrever atualização para os participantes..."} /><button disabled={!note.trim()} onClick={() => { setFeedback(tab === "interno" ? "Anotação interna registrada." : "Mensagem registrada no chamado."); setNote(""); }}><Send size={14} /></button></div>}</article><footer className="ticket-detail-footer">{access.edit && <label>Etapa atual<select value={ticket.status} onChange={(event) => onStatus(event.target.value as TicketStatus)}>{statuses.map((status) => <option key={status}>{status}</option>)}</select></label>}<button className="button secondary" onClick={onClose}>Fechar</button>{access.edit && <button className="button primary" onClick={() => { onStatus("Concluído"); setFeedback("Chamado concluído e pesquisa de satisfação liberada."); }}><CheckCircle2 size={15} /> Concluir atendimento</button>}</footer></div></section></div>;
 }
 
 function LockKeyholeIcon() { return <ShieldCheck size={13} />; }
@@ -1163,6 +1317,7 @@ function auditActionLabel(item: AuditItem) {
   const labels: Record<string, string> = { chamado_criado: "Chamado criado", status_atualizado: "Status atualizado", chamado_finalizado: "Chamado finalizado", mensagem_enviada: "Mensagem enviada", evento_criado: "Evento criado" };
   return labels[item.action] ?? item.action.replaceAll("_", " ");
 }
+function formatHeadingDate(value: Date) { return new Intl.DateTimeFormat("pt-BR", { weekday: "long", day: "2-digit", month: "long", timeZone: "America/Sao_Paulo" }).format(value).toLocaleUpperCase("pt-BR"); }
 function formatDate(value: string) { return new Intl.DateTimeFormat("pt-BR", { day: "2-digit", month: "short", year: "numeric", timeZone: "America/Sao_Paulo" }).format(new Date(value)).replace(" de ", " "); }
 function formatTime(value: string) { return new Intl.DateTimeFormat("pt-BR", { hour: "2-digit", minute: "2-digit", timeZone: "America/Sao_Paulo" }).format(new Date(value)); }
 function formatDateTime(value: string) { return `${formatDate(value)}, ${formatTime(value)}`; }
@@ -1181,8 +1336,13 @@ function formatEventRange(startsAt: string, endsAt?: string | null) {
   return sameDay ? `${formatDate(startsAt)} · ${start}–${formatTime(endsAt)}` : `${formatDateTime(startsAt)} até ${formatDateTime(endsAt)}`;
 }
 function localDateTimeToIso(value: string) { return new Date(value).toISOString(); }
-function formatRelative(value: string) { const minutes = Math.max(1, Math.round((new Date("2026-08-13T15:00:00.000Z").getTime() - new Date(value).getTime()) / 60000)); return minutes < 60 ? `Há ${minutes} min` : `Há ${Math.round(minutes / 60)} h`; }
-function formatDue(value: string | null) { if (!value) return "Sem prazo"; const date = new Date(value); const day = date.getUTCDate(); if (day === 13) return `Hoje, ${formatTime(value)}`; if (day === 14) return "Amanhã"; return `${String(day).padStart(2, "0")} ago`; }
+function formatRelative(value: string) { return formatDateTime(value); }
+function saoPauloDay(value: Date) {
+  const parts = new Intl.DateTimeFormat("en-US", { year: "numeric", month: "2-digit", day: "2-digit", timeZone: "America/Sao_Paulo" }).formatToParts(value);
+  const number = (type: Intl.DateTimeFormatPartTypes) => Number(parts.find((part) => part.type === type)?.value ?? 0);
+  return Date.UTC(number("year"), number("month") - 1, number("day"));
+}
+function formatDue(value: string | null) { if (!value) return "Sem prazo"; const days = Math.round((saoPauloDay(new Date(value)) - saoPauloDay(new Date())) / 86400000); if (days === 0) return `Hoje, ${formatTime(value)}`; if (days === 1) return "Amanhã"; if (days === -1) return "Ontem"; return formatDate(value); }
 function formatSize(size: number) { return size >= 1_000_000 ? `${(size / 1_000_000).toFixed(1)} MB` : `${Math.round(size / 1000)} KB`; }
 function sameDepartment(first: string, second: string) { return first.trim().toLocaleLowerCase("pt-BR") === second.trim().toLocaleLowerCase("pt-BR"); }
 function normalizeTicketStatus(status: string): TicketStatus {

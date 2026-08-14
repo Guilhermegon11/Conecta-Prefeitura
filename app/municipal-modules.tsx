@@ -38,6 +38,7 @@ import {
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import { NeighborhoodMapField } from "./municipal-location";
+import { useCurrentPermission } from "./permission-context";
 
 type Notify = (message: string) => void;
 type CitizenTab = "Protocolos" | "Ouvidoria e e-SIC" | "Carta de serviços" | "Satisfação";
@@ -170,6 +171,7 @@ function ModalShell({ title, eyebrow, onClose, children }: { title: string; eyeb
 }
 
 export function CitizenServiceSection({ department, notify }: { department: string; notify: Notify }) {
+  const access = useCurrentPermission();
   const [tab, setTab] = useState<CitizenTab>("Protocolos");
   const [query, setQuery] = useState("");
   const [protocols, setProtocols] = useState(INITIAL_PROTOCOLS);
@@ -227,18 +229,18 @@ export function CitizenServiceSection({ department, notify }: { department: stri
           <MetricCard icon={CheckCircle2} label="Concluídos no mês" value="126" detail="Avaliação média 4,7/5" tone="green" />
         </div>
         <article className="panel municipal-table-panel">
-          <div className="module-toolbar"><label className="module-search"><Search size={15} /><input aria-label="Buscar protocolo" value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Buscar protocolo, cidadão ou assunto..." /></label><select aria-label="Filtrar protocolos"><option>Todos os status</option><option>Recebidos</option><option>Em atendimento</option><option>Aguardando resposta</option><option>Concluídos</option></select><button className="button primary" onClick={() => setModal(true)}><Plus size={15} /> Novo protocolo</button></div>
+          <div className="module-toolbar"><label className="module-search"><Search size={15} /><input aria-label="Buscar protocolo" value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Buscar protocolo, cidadão ou assunto..." /></label><select aria-label="Filtrar protocolos"><option>Todos os status</option><option>Recebidos</option><option>Em atendimento</option><option>Aguardando resposta</option><option>Concluídos</option></select>{access.register && <button className="button primary" onClick={() => setModal(true)}><Plus size={15} /> Novo protocolo</button>}</div>
           <div className="municipal-data-table citizen-table"><div className="municipal-table-row municipal-table-head"><span>Protocolo e assunto</span><span>Solicitante</span><span>Tipo</span><span>Setor responsável</span><span>Prazo</span><span>Status</span></div>{visible.map((item) => <button className="municipal-table-row" key={item.id} onClick={() => notify(`${item.protocol}: acompanhamento público disponível com dados internos protegidos.`)}><span><strong>{item.subject}</strong><small>{item.protocol} · {item.channel}</small></span><span>{item.requester}</span><span>{item.confidential && <LockKeyhole size={12} />} {item.kind}</span><span>{item.department}</span><span>{item.due}</span><StatusTag>{item.status}</StatusTag></button>)}</div>
         </article>
       </>}
 
       {tab === "Ouvidoria e e-SIC" && <div className="citizen-feature-grid">
-        <FeaturePanel icon={MessageSquareText} title="Ouvidoria municipal" description="Receba solicitações, reclamações, sugestões, elogios e denúncias, com classificação e encaminhamento controlados." items={["Identificação sigilosa ou manifestação anônima", "Prazos e resposta conclusiva", "Encaminhamento entre unidades", "Relatórios por assunto e canal"]} action="Registrar manifestação" onAction={() => setModal(true)} />
-        <FeaturePanel icon={FileClock} title="Acesso à informação — e-SIC" description="Organize pedidos de informação, prorrogações, recursos e respostas fornecidas ao cidadão." items={["Contagem automática do prazo", "Registro de prorrogação e justificativa", "Recursos em primeira e segunda instância", "Versão pública dos documentos entregues"]} action="Novo pedido e-SIC" onAction={() => setModal(true)} />
+        <FeaturePanel icon={MessageSquareText} title="Ouvidoria municipal" description="Receba solicitações, reclamações, sugestões, elogios e denúncias, com classificação e encaminhamento controlados." items={["Identificação sigilosa ou manifestação anônima", "Prazos e resposta conclusiva", "Encaminhamento entre unidades", "Relatórios por assunto e canal"]} action={access.register ? "Registrar manifestação" : "Consultar orientações"} onAction={() => access.register ? setModal(true) : notify("Seu perfil possui acesso de consulta à Ouvidoria.")} />
+        <FeaturePanel icon={FileClock} title="Acesso à informação — e-SIC" description="Organize pedidos de informação, prorrogações, recursos e respostas fornecidas ao cidadão." items={["Contagem automática do prazo", "Registro de prorrogação e justificativa", "Recursos em primeira e segunda instância", "Versão pública dos documentos entregues"]} action={access.register ? "Novo pedido e-SIC" : "Consultar orientações"} onAction={() => access.register ? setModal(true) : notify("Seu perfil possui acesso de consulta ao e-SIC.")} />
         <FeaturePanel icon={LockKeyhole} title="Proteção da identidade" description="Dados pessoais e denúncias ficam restritos aos perfis autorizados, com registro de cada acesso." items={["Classificação de sigilo", "Mascaramento de dados", "Trilha de auditoria", "Termo de responsabilidade"]} action="Ver regras de acesso" onAction={() => notify("Regras de sigilo exibidas conforme o perfil atual.")} />
       </div>}
 
-      {tab === "Carta de serviços" && <article className="panel service-catalog-panel"><div className="catalog-heading"><div><p className="eyebrow">SERVIÇOS AO CIDADÃO</p><h2>Carta de serviços municipal</h2><p>Informações claras sobre requisitos, canais e prazo esperado para cada atendimento.</p></div><label className="module-search"><Search size={15} /><input aria-label="Buscar serviço" placeholder="Buscar serviço..." /></label></div><div className="service-grid">{SERVICES.map((service) => <article key={service.title}><span><Landmark size={18} /></span><h3>{service.title}</h3><p>{service.department}</p><dl><div><dt>Prazo</dt><dd>{service.deadline}</dd></div><div><dt>Documentos</dt><dd>{service.documents}</dd></div><div><dt>Atendimento</dt><dd>{service.channel}</dd></div></dl><button onClick={() => { setSelectedService(service); setServiceNeighborhood(""); setServiceAddress(""); }}>Solicitar serviço <ChevronRight size={13} /></button></article>)}</div></article>}
+      {tab === "Carta de serviços" && <article className="panel service-catalog-panel"><div className="catalog-heading"><div><p className="eyebrow">SERVIÇOS AO CIDADÃO</p><h2>Carta de serviços municipal</h2><p>Informações claras sobre requisitos, canais e prazo esperado para cada atendimento.</p></div><label className="module-search"><Search size={15} /><input aria-label="Buscar serviço" placeholder="Buscar serviço..." /></label></div><div className="service-grid">{SERVICES.map((service) => <article key={service.title}><span><Landmark size={18} /></span><h3>{service.title}</h3><p>{service.department}</p><dl><div><dt>Prazo</dt><dd>{service.deadline}</dd></div><div><dt>Documentos</dt><dd>{service.documents}</dd></div><div><dt>Atendimento</dt><dd>{service.channel}</dd></div></dl><button onClick={() => access.register ? (setSelectedService(service), setServiceNeighborhood(""), setServiceAddress("")) : notify("Seu perfil pode consultar a Carta de Serviços, mas não registrar solicitações.")}>{access.register ? "Solicitar serviço" : "Ver orientações"} <ChevronRight size={13} /></button></article>)}</div></article>}
 
       {tab === "Satisfação" && <div className="satisfaction-layout"><article className="panel satisfaction-score"><span><Star size={24} /></span><strong>4,7</strong><p>média de 184 avaliações em agosto</p><div>{[1,2,3,4,5].map((star) => <Star key={star} size={16} fill="currentColor" />)}</div></article><article className="panel satisfaction-breakdown"><h2>Qualidade percebida</h2>{[["Resultado do atendimento",92],["Clareza das informações",89],["Tempo de resposta",84],["Cordialidade",96]].map(([label,value]) => <div className="rating-row" key={String(label)}><span>{label}</span><div><i style={{width:`${value}%`}} /></div><strong>{value}%</strong></div>)}</article><article className="panel satisfaction-comments"><h2>Comentários recentes</h2><blockquote>“Recebi o número do protocolo e consegui acompanhar cada atualização.”<cite>Atendimento de iluminação · 12 ago.</cite></blockquote><blockquote>“A lista de documentos evitou uma segunda ida ao setor.”<cite>Matrícula escolar · 11 ago.</cite></blockquote></article></div>}
 
@@ -249,6 +251,7 @@ export function CitizenServiceSection({ department, notify }: { department: stri
 }
 
 export function ProcessesSection({ department, notify }: { department: string; notify: Notify }) {
+  const access = useCurrentPermission();
   const [tab, setTab] = useState<ProcessTab>("Processos");
   const [processes, setProcesses] = useState(INITIAL_PROCESSES);
   const [selected, setSelected] = useState(INITIAL_PROCESSES[0]);
@@ -263,19 +266,21 @@ export function ProcessesSection({ department, notify }: { department: string; n
 
   return <section className="municipal-module-shell">
     <div className="module-tabs wide-tabs" role="tablist" aria-label="Módulos de processos digitais">{(["Processos", "Despachos e pareceres", "Documentos e versões", "Assinaturas"] as ProcessTab[]).map((item) => <button key={item} className={tab === item ? "active" : ""} onClick={() => setTab(item)}>{item}</button>)}</div>
-    {tab === "Processos" && <><div className="process-overview"><article className="panel process-stat"><FileText size={20} /><span><strong>64</strong><small>processos em tramitação</small></span></article><article className="panel process-stat"><Clock3 size={20} /><span><strong>8</strong><small>aguardando despacho</small></span></article><article className="panel process-stat"><FileSignature size={20} /><span><strong>5</strong><small>aguardando assinatura</small></span></article><article className="panel process-stat"><CheckCircle2 size={20} /><span><strong>31</strong><small>concluídos no mês</small></span></article></div><div className="process-layout"><article className="panel process-list"><div className="module-toolbar"><label className="module-search"><Search size={15} /><input aria-label="Buscar processo" placeholder="Buscar processo ou interessado..." /></label><button className="button primary" onClick={() => setModal(true)}><Plus size={15} /> Novo processo</button></div>{processes.map((item) => <button key={item.id} className={selected.id === item.id ? "process-row active" : "process-row"} onClick={() => setSelected(item)}><span><strong>{item.subject}</strong><small>{item.protocol} · {item.interested}</small></span><StatusTag>{item.status}</StatusTag><ChevronRight size={15} /></button>)}</article><ProcessDetail item={selected} notify={notify} /></div></>}
+    {tab === "Processos" && <><div className="process-overview"><article className="panel process-stat"><FileText size={20} /><span><strong>64</strong><small>processos em tramitação</small></span></article><article className="panel process-stat"><Clock3 size={20} /><span><strong>8</strong><small>aguardando despacho</small></span></article><article className="panel process-stat"><FileSignature size={20} /><span><strong>5</strong><small>aguardando assinatura</small></span></article><article className="panel process-stat"><CheckCircle2 size={20} /><span><strong>31</strong><small>concluídos no mês</small></span></article></div><div className="process-layout"><article className="panel process-list"><div className="module-toolbar"><label className="module-search"><Search size={15} /><input aria-label="Buscar processo" placeholder="Buscar processo ou interessado..." /></label>{access.register && <button className="button primary" onClick={() => setModal(true)}><Plus size={15} /> Novo processo</button>}</div>{processes.map((item) => <button key={item.id} className={selected.id === item.id ? "process-row active" : "process-row"} onClick={() => setSelected(item)}><span><strong>{item.subject}</strong><small>{item.protocol} · {item.interested}</small></span><StatusTag>{item.status}</StatusTag><ChevronRight size={15} /></button>)}</article><ProcessDetail item={selected} notify={notify} /></div></>}
     {tab === "Despachos e pareceres" && <div className="document-workspace"><article className="panel document-editor"><header><div><p className="eyebrow">MINUTA ADMINISTRATIVA</p><h2>Despacho de encaminhamento</h2></div><span>Salvo às 15:42</span></header><div className="editor-toolbar"><button><strong>B</strong></button><button><em>I</em></button><button><ListChecks size={14} /></button><select aria-label="Modelo de documento"><option>Despacho</option><option>Parecer técnico</option><option>Memorando</option><option>Decisão administrativa</option></select></div><textarea aria-label="Conteúdo do despacho" defaultValue={`Processo: ${selected.protocol}\nInteressado: ${selected.interested}\n\nEncaminhe-se o presente processo ao setor competente para análise e manifestação, observando-se os documentos e prazos registrados nos autos.`} /><footer><button className="button secondary" onClick={() => notify("Minuta salva no processo.")}>Salvar minuta</button><button className="button primary" onClick={() => notify("Despacho registrado na linha do tempo do processo.")}><FileCheck2 size={15} /> Finalizar despacho</button></footer></article><aside className="panel template-list"><h2>Modelos disponíveis</h2>{["Despacho de encaminhamento","Parecer técnico","Solicitação de diligência","Termo de juntada","Decisão administrativa"].map((item,index) => <button key={item}><FileText size={15} /><span><strong>{item}</strong><small>{index + 2} campos automáticos</small></span><ChevronRight size={13} /></button>)}</aside></div>}
-    {tab === "Documentos e versões" && <article className="panel municipal-table-panel"><div className="module-toolbar"><div><strong>Documentos de {selected.protocol}</strong><small>Versões anteriores permanecem disponíveis para auditoria e restauração.</small></div><button className="button primary" onClick={() => notify("Seletor de arquivo aberto para adicionar uma nova versão.")}><Plus size={15} /> Adicionar documento</button></div><div className="version-list">{[["Termo de referência.pdf","Versão 3","Jaime de Souza","Hoje, 10:21","Vigente"],["Pesquisa de preços.xlsx","Versão 2","Mariana Castro","12 ago., 16:08","Vigente"],["Parecer técnico.docx","Versão 1","Bruno Fonseca","11 ago., 09:44","Substituído"],["Minuta do contrato.pdf","Versão 4","Assessoria Jurídica","Hoje, 11:42","Em revisão"]].map((item) => <div key={item[0]}><span className="version-icon"><FileText size={17} /></span><span><strong>{item[0]}</strong><small>{item[1]} · {item[2]} · {item[3]}</small></span><StatusTag>{item[4]}</StatusTag><button onClick={() => notify(`${item[0]} preparado para download.`)}>Baixar</button><button onClick={() => notify(`Histórico de versões de ${item[0]} exibido.`)}>Versões</button></div>)}</div></article>}
+    {tab === "Documentos e versões" && <article className="panel municipal-table-panel"><div className="module-toolbar"><div><strong>Documentos de {selected.protocol}</strong><small>Versões anteriores permanecem disponíveis para auditoria e restauração.</small></div>{access.register && <button className="button primary" onClick={() => notify("Seletor de arquivo aberto para adicionar uma nova versão.")}><Plus size={15} /> Adicionar documento</button>}</div><div className="version-list">{[["Termo de referência.pdf","Versão 3","Jaime de Souza","Hoje, 10:21","Vigente"],["Pesquisa de preços.xlsx","Versão 2","Mariana Castro","12 ago., 16:08","Vigente"],["Parecer técnico.docx","Versão 1","Bruno Fonseca","11 ago., 09:44","Substituído"],["Minuta do contrato.pdf","Versão 4","Assessoria Jurídica","Hoje, 11:42","Em revisão"]].map((item) => <div key={item[0]}><span className="version-icon"><FileText size={17} /></span><span><strong>{item[0]}</strong><small>{item[1]} · {item[2]} · {item[3]}</small></span><StatusTag>{item[4]}</StatusTag><button onClick={() => notify(`${item[0]} preparado para download.`)}>Baixar</button><button onClick={() => notify(`Histórico de versões de ${item[0]} exibido.`)}>Versões</button></div>)}</div></article>}
     {tab === "Assinaturas" && <div className="signature-layout"><article className="panel signature-card"><span className="signature-icon"><FileSignature size={26} /></span><h2>Assinatura eletrônica</h2><p>Documentos podem receber assinatura simulada, código de validação e registro do signatário. A integração com um provedor oficial será necessária para validade jurídica externa.</p><div className="signature-steps"><span className="done"><Check size={13} /> Documento conferido</span><span className="done"><Check size={13} /> Signatários definidos</span><span><Clock3 size={13} /> Aguardando assinatura</span></div><button className="button primary" onClick={() => notify("Solicitação de assinatura simulada enviada aos signatários.")}><FileSignature size={15} /> Solicitar assinatura</button></article><article className="panel validation-card"><QrCode size={86} /><div><p className="eyebrow">VALIDAÇÃO PÚBLICA</p><h2>8AF3-26B1-9C04</h2><p>O código permite conferir a versão, a integridade e os signatários registrados no sistema.</p><button className="button secondary" onClick={() => notify("Código validado: documento íntegro e versão vigente.")}>Validar documento</button></div></article></div>}
     {modal && <ModalShell eyebrow="PROCESSO ADMINISTRATIVO DIGITAL" title="Autuar novo processo" onClose={() => setModal(false)}><form onSubmit={createProcess}><label className="field full"><span>Assunto *</span><input name="subject" required placeholder="Informe o objeto do processo" /></label><label className="field"><span>Interessado *</span><input name="interested" required defaultValue={department} /></label><label className="field"><span>Responsável</span><input name="owner" placeholder="Nome do servidor responsável" /></label><label className="field"><span>Nível de acesso</span><select name="access" defaultValue="Interno"><option>Público</option><option>Interno</option><option>Restrito — dados pessoais</option><option>Sigiloso</option></select></label><label className="field"><span>Tipo de processo</span><select><option>Administrativo</option><option>Contratação</option><option>Convênio</option><option>Apuração</option><option>Licenciamento</option></select></label><label className="field full"><span>Descrição inicial</span><textarea placeholder="Contextualize a abertura do processo" /></label><div className="modal-actions"><button type="button" className="button secondary" onClick={() => setModal(false)}>Cancelar</button><button className="button primary"><FileText size={15} /> Autuar processo</button></div></form></ModalShell>}
   </section>;
 }
 
 function ProcessDetail({ item, notify }: { item: ProcessItem; notify: Notify }) {
-  return <aside className="panel process-detail"><header><div><p className="eyebrow">{item.protocol}</p><h2>{item.subject}</h2></div><StatusTag>{item.status}</StatusTag></header><dl><div><dt>Interessado</dt><dd>{item.interested}</dd></div><div><dt>Responsável atual</dt><dd>{item.owner}</dd></div><div><dt>Nível de acesso</dt><dd><ShieldCheck size={13} /> {item.access}</dd></div><div><dt>Última movimentação</dt><dd>{item.updated}</dd></div></dl><h3>Linha do tempo</h3><div className="process-timeline"><div className="current"><i /><span><strong>Encaminhado para parecer</strong><small>Hoje, 11:42 · Administração e Finanças</small></span></div><div><i /><span><strong>Documentos complementares juntados</strong><small>Hoje, 09:18 · 2 novos arquivos</small></span></div><div><i /><span><strong>Processo autuado</strong><small>11 ago., 14:05 · Secretaria de Governo</small></span></div></div><footer><button className="button secondary" onClick={() => notify("Histórico completo do processo exibido.")}>Ver autos</button><button className="button primary" onClick={() => notify("Processo preparado para encaminhamento ao próximo setor.")}>Movimentar <ChevronRight size={14} /></button></footer></aside>;
+  const access = useCurrentPermission();
+  return <aside className="panel process-detail"><header><div><p className="eyebrow">{item.protocol}</p><h2>{item.subject}</h2></div><StatusTag>{item.status}</StatusTag></header><dl><div><dt>Interessado</dt><dd>{item.interested}</dd></div><div><dt>Responsável atual</dt><dd>{item.owner}</dd></div><div><dt>Nível de acesso</dt><dd><ShieldCheck size={13} /> {item.access}</dd></div><div><dt>Última movimentação</dt><dd>{item.updated}</dd></div></dl><h3>Linha do tempo</h3><div className="process-timeline"><div className="current"><i /><span><strong>Encaminhado para parecer</strong><small>Hoje, 11:42 · Administração e Finanças</small></span></div><div><i /><span><strong>Documentos complementares juntados</strong><small>Hoje, 09:18 · 2 novos arquivos</small></span></div><div><i /><span><strong>Processo autuado</strong><small>11 ago., 14:05 · Secretaria de Governo</small></span></div></div><footer><button className="button secondary" onClick={() => notify("Histórico completo do processo exibido.")}>Ver autos</button>{access.edit && <button className="button primary" onClick={() => notify("Processo preparado para encaminhamento ao próximo setor.")}>Movimentar <ChevronRight size={14} /></button>}</footer></aside>;
 }
 
 export function MunicipalManagementSection({ department, notify }: { department: string; notify: Notify }) {
+  const access = useCurrentPermission();
   const [tab, setTab] = useState<ManagementTab>("Frota");
   const [query, setQuery] = useState("");
   const [data, setData] = useState(MANAGEMENT_DATA);
@@ -289,7 +294,7 @@ export function MunicipalManagementSection({ department, notify }: { department:
     setData((current) => ({...current,[tab]:[item,...current[tab]]})); setModal(false); notify(`${item.code} incluído no módulo de ${tab.toLowerCase()}.`);
   }
 
-  return <section className="municipal-module-shell"><div className="management-tabs" role="tablist" aria-label="Áreas da gestão municipal">{(Object.keys(MANAGEMENT_DATA) as ManagementTab[]).map((item) => { const Icon = TAB_ICON[item]; return <button key={item} className={tab === item ? "active" : ""} onClick={() => setTab(item)}><span><Icon size={19} /></span><strong>{item}</strong><small>{MANAGEMENT_DATA[item].length} registros</small></button>; })}</div><article className="panel management-panel"><header><div><span className="management-title-icon"><ActiveIcon size={21} /></span><div><p className="eyebrow">CONTROLE MUNICIPAL</p><h2>{tab}</h2><p>{managementDescription(tab)}</p></div></div><button className="button primary" onClick={() => setModal(true)}><Plus size={15} /> Novo registro</button></header><div className="module-toolbar"><label className="module-search"><Search size={15} /><input aria-label={`Buscar em ${tab}`} value={query} onChange={(event) => setQuery(event.target.value)} placeholder={`Buscar em ${tab.toLowerCase()}...`} /></label><select aria-label="Filtrar situação"><option>Todas as situações</option><option>Regular</option><option>Requer atenção</option><option>Vencimento próximo</option></select><button className="button secondary" onClick={() => notify(`Relatório de ${tab.toLowerCase()} preparado para exportação.`)}>Exportar relatório</button></div><div className="management-grid">{items.map((item) => <article key={item.id}><header><span>{item.code}</span><StatusTag>{item.status}</StatusTag></header><h3>{item.title}</h3><p>{item.detail}</p><dl><div><dt>Responsável</dt><dd><UserRound size={13} /> {item.owner}</dd></div><div><dt>Indicador</dt><dd><Gauge size={13} /> {item.metric}</dd></div><div><dt>Prazo ou validade</dt><dd><Clock3 size={13} /> {item.due}</dd></div></dl><button onClick={() => notify(`Ficha completa de ${item.code} aberta com histórico e anexos.`)}>Abrir ficha completa <ChevronRight size={13} /></button></article>)}</div></article>{modal && <ModalShell eyebrow={`MÓDULO DE ${tab.toUpperCase()}`} title={`Novo registro de ${tab.toLowerCase()}`} onClose={() => setModal(false)}><form onSubmit={createRecord}><label className="field"><span>Código ou identificação</span><input name="code" placeholder="Gerado automaticamente se vazio" /></label><label className="field"><span>Responsável</span><input name="owner" defaultValue={department} /></label><label className="field full"><span>Título *</span><input name="title" required placeholder="Identifique o bem, contrato, veículo ou atividade" /></label><label className="field full"><span>Detalhes *</span><textarea name="detail" required placeholder="Localização, fornecedor, características ou observações" /></label><label className="field"><span>Indicador inicial</span><input name="metric" placeholder="Valor, quilometragem, saldo ou progresso" /></label><label className="field"><span>Prazo ou validade</span><input name="due" placeholder="Ex.: 30 set. 2026" /></label><div className="modal-actions"><button type="button" className="button secondary" onClick={() => setModal(false)}>Cancelar</button><button className="button primary"><Check size={15} /> Cadastrar</button></div></form></ModalShell>}</section>;
+  return <section className="municipal-module-shell"><div className="management-tabs" role="tablist" aria-label="Áreas da gestão municipal">{(Object.keys(MANAGEMENT_DATA) as ManagementTab[]).map((item) => { const Icon = TAB_ICON[item]; return <button key={item} className={tab === item ? "active" : ""} onClick={() => setTab(item)}><span><Icon size={19} /></span><strong>{item}</strong><small>{MANAGEMENT_DATA[item].length} registros</small></button>; })}</div><article className="panel management-panel"><header><div><span className="management-title-icon"><ActiveIcon size={21} /></span><div><p className="eyebrow">CONTROLE MUNICIPAL</p><h2>{tab}</h2><p>{managementDescription(tab)}</p></div></div>{access.register && <button className="button primary" onClick={() => setModal(true)}><Plus size={15} /> Novo registro</button>}</header><div className="module-toolbar"><label className="module-search"><Search size={15} /><input aria-label={`Buscar em ${tab}`} value={query} onChange={(event) => setQuery(event.target.value)} placeholder={`Buscar em ${tab.toLowerCase()}...`} /></label><select aria-label="Filtrar situação"><option>Todas as situações</option><option>Regular</option><option>Requer atenção</option><option>Vencimento próximo</option></select><button className="button secondary" onClick={() => notify(`Relatório de ${tab.toLowerCase()} preparado para exportação.`)}>Exportar relatório</button></div><div className="management-grid">{items.map((item) => <article key={item.id}><header><span>{item.code}</span><StatusTag>{item.status}</StatusTag></header><h3>{item.title}</h3><p>{item.detail}</p><dl><div><dt>Responsável</dt><dd><UserRound size={13} /> {item.owner}</dd></div><div><dt>Indicador</dt><dd><Gauge size={13} /> {item.metric}</dd></div><div><dt>Prazo ou validade</dt><dd><Clock3 size={13} /> {item.due}</dd></div></dl><button onClick={() => notify(`Ficha completa de ${item.code} aberta com histórico e anexos.`)}>Abrir ficha completa <ChevronRight size={13} /></button></article>)}</div></article>{modal && access.register && <ModalShell eyebrow={`MÓDULO DE ${tab.toUpperCase()}`} title={`Novo registro de ${tab.toLowerCase()}`} onClose={() => setModal(false)}><form onSubmit={createRecord}><label className="field"><span>Código ou identificação</span><input name="code" placeholder="Gerado automaticamente se vazio" /></label><label className="field"><span>Responsável</span><input name="owner" defaultValue={department} /></label><label className="field full"><span>Título *</span><input name="title" required placeholder="Identifique o bem, contrato, veículo ou atividade" /></label><label className="field full"><span>Detalhes *</span><textarea name="detail" required placeholder="Localização, fornecedor, características ou observações" /></label><label className="field"><span>Indicador inicial</span><input name="metric" placeholder="Valor, quilometragem, saldo ou progresso" /></label><label className="field"><span>Prazo ou validade</span><input name="due" placeholder="Ex.: 30 set. 2026" /></label><div className="modal-actions"><button type="button" className="button secondary" onClick={() => setModal(false)}>Cancelar</button><button className="button primary"><Check size={15} /> Cadastrar</button></div></form></ModalShell>}</section>;
 }
 
 function managementDescription(tab: ManagementTab) {
@@ -320,17 +325,163 @@ export function SecuritySection({ department, notify }: { department: string; no
   return <section className="municipal-module-shell"><div className="security-hero"><span><ShieldCheck size={26} /></span><div><p className="eyebrow">GOVERNANÇA E PROTEÇÃO DE DADOS</p><h2>Segurança, LGPD e permissões</h2><p>Controles aplicados a {department}, com acesso mínimo necessário e rastreabilidade das operações.</p></div><div><strong>Proteção ativa</strong><small>Última revisão: 13 ago. 2026</small></div></div><div className="security-grid"><article className="panel permission-panel"><header><div><h2>Matriz de permissões</h2><p>Quem pode visualizar, editar, aprovar, exportar e administrar registros.</p></div><LockKeyhole size={18} /></header><div className="permission-table"><div><span>Perfil</span><span>Visualizar</span><span>Editar</span><span>Aprovar</span><span>Exportar</span><span>Administrar</span></div>{roles.map((row) => <div key={row[0]}>{row.map((value,index) => <span key={index} className={value === "Não" ? "denied" : index > 0 ? "allowed" : ""}>{index > 0 && value !== "Não" && <Check size={11} />}{value}</span>)}</div>)}</div></article><aside className="panel lgpd-panel"><header><div><h2>Políticas e preferências</h2><p>Configurações do ambiente e dos alertas</p></div><ShieldCheck size={18} /></header>{[["session","Encerrar sessões inativas","Após 30 minutos sem atividade"],["sensitive","Mascarar dados pessoais","CPF, telefone e endereço"],["exportLog","Registrar exportações","Usuário, data, filtro e finalidade"],["retention","Descarte automático","Aplicar tabela de temporalidade"],["notifications","Alertas operacionais","Prazos, aprovações, mensagens e documentos"]].map(([key,title,detail]) => <button key={key} onClick={() => toggle(key as keyof typeof settings)}><span><strong>{title}</strong><small>{detail}</small></span><i className={settings[key as keyof typeof settings] ? "toggle active" : "toggle"}><b /></i></button>)}</aside></div><div className="compliance-grid"><FeaturePanel icon={LockKeyhole} title="Dados pessoais" description="Classifique registros comuns, sensíveis, restritos ou sigilosos e aplique acesso compatível." items={["Finalidade e base de tratamento","Responsável pelo dado","Prazo de retenção","Registro de compartilhamento"]} action="Revisar cadastros" onAction={() => notify("Inventário de dados pessoais aberto para revisão.")} /><FeaturePanel icon={FileClock} title="Retenção e descarte" description="Defina prazos de guarda e acompanhe documentos que exigem eliminação ou recolhimento permanente." items={["Tabela de temporalidade","Bloqueio por litígio","Termo de eliminação","Preservação permanente"]} action="Abrir temporalidade" onAction={() => notify("Tabela de temporalidade aberta.")} /><FeaturePanel icon={ShieldCheck} title="Incidentes de segurança" description="Registre perda, exposição ou acesso indevido e acompanhe as providências adotadas." items={["Classificação do impacto","Dados e titulares afetados","Plano de resposta","Comunicações e evidências"]} action="Registrar incidente" onAction={() => notify("Formulário de incidente aberto com acesso restrito.")} /></div><article className="panel accessibility-panel"><span><Accessibility size={22} /></span><div><h2>Acessibilidade e inclusão digital</h2><p>Navegação por teclado, rótulos acessíveis, contraste adequado, foco visível e conteúdo compatível com leitores de tela.</p></div><StatusTag>Conformidade monitorada</StatusTag></article></section>;
 }
 
+type HelpTutorial = {
+  id: string;
+  category: string;
+  title: string;
+  summary: string;
+  duration: string;
+  steps: Array<{ title: string; text: string; tip?: string }>;
+};
+
+const HELP_TUTORIALS: HelpTutorial[] = [
+  {
+    id: "chamados", category: "Chamados", title: "Criar, encaminhar e concluir um chamado", duration: "6 min",
+    summary: "Do registro inicial ao encerramento, com responsável, prioridade e histórico.",
+    steps: [
+      { title: "Abra Chamados", text: "No menu lateral, selecione Chamados. Use os filtros para verificar se já existe uma solicitação semelhante antes de criar outra." },
+      { title: "Registre as informações essenciais", text: "Clique em Novo chamado, informe título, descrição, prioridade, solicitante e setor responsável. Evite incluir dados pessoais sem necessidade.", tip: "Um título objetivo facilita a busca: serviço + local + situação." },
+      { title: "Atribua e acompanhe", text: "Defina o responsável e altere o status conforme o trabalho avançar. Cada movimentação fica registrada na linha do tempo." },
+      { title: "Conclua com evidência", text: "Descreva a solução, anexe a evidência necessária e marque como Concluído. O solicitante passa a visualizar o resultado no acompanhamento." },
+    ],
+  },
+  {
+    id: "comunicacao", category: "Comunicação", title: "Usar canais internos sem perder o contexto", duration: "5 min",
+    summary: "Mensagens por setor, grupos de trabalho e avisos ligados às atividades.",
+    steps: [
+      { title: "Escolha o canal correto", text: "Acesse Comunicação e abra o canal do setor, um grupo de projeto ou uma conversa direta. Prefira o canal setorial para temas que precisam ficar disponíveis à equipe." },
+      { title: "Escreva uma mensagem acionável", text: "Informe o contexto, a providência esperada e o prazo. Use menções somente para as pessoas que realmente precisam agir." },
+      { title: "Vincule o trabalho", text: "Quando a conversa tratar de um chamado, processo ou documento, cite o protocolo para manter a rastreabilidade." },
+      { title: "Acompanhe as notificações", text: "Mensagens novas geram indicador visual e, se habilitado em Configurações, um aviso sonoro discreto." },
+    ],
+  },
+  {
+    id: "atendimento", category: "Atendimento", title: "Registrar protocolo, Ouvidoria e e-SIC", duration: "8 min",
+    summary: "Triagem, prazo, sigilo e acompanhamento de solicitações do cidadão.",
+    steps: [
+      { title: "Identifique o tipo", text: "Em Atendimento ao Cidadão, escolha solicitação, reclamação, sugestão, elogio, denúncia ou pedido de acesso à informação." },
+      { title: "Proteja os dados", text: "Registre apenas os dados necessários. Em denúncias ou situações sensíveis, ative a restrição de identidade antes de salvar.", tip: "No ambiente de demonstração, use sempre nomes e documentos fictícios." },
+      { title: "Faça a triagem", text: "Confirme o assunto, o setor responsável e o prazo. O protocolo gerado deve ser entregue ao cidadão para acompanhamento." },
+      { title: "Responda e finalize", text: "Registre cada providência, prepare uma resposta clara e encerre somente quando houver retorno conclusivo ou justificativa formal." },
+    ],
+  },
+  {
+    id: "processos", category: "Processos", title: "Autuar e movimentar um processo digital", duration: "9 min",
+    summary: "Autuação, documentos, despachos, níveis de acesso e assinatura simulada.",
+    steps: [
+      { title: "Autue o processo", text: "Abra Processos digitais, clique em Novo processo e informe assunto, interessado, responsável e nível de acesso." },
+      { title: "Junte documentos", text: "Na aba Documentos e versões, adicione os arquivos relacionados. Novas versões preservam o histórico anterior para auditoria." },
+      { title: "Produza o despacho", text: "Use Despachos e pareceres, escolha um modelo, revise os campos automáticos e finalize o documento." },
+      { title: "Movimente ou assine", text: "Encaminhe ao próximo setor com uma providência clara. A assinatura do protótipo é demonstrativa e não substitui um provedor oficial." },
+    ],
+  },
+  {
+    id: "arquivos", category: "Documentos", title: "Organizar arquivos, versões e compartilhamentos", duration: "6 min",
+    summary: "Pastas, validade, acesso controlado e recuperação de versões anteriores.",
+    steps: [
+      { title: "Escolha a pasta", text: "Abra Arquivos e navegue até a pasta do setor ou do processo. Não duplique documentos que já possuem uma versão vigente." },
+      { title: "Classifique o arquivo", text: "Informe nome, categoria, validade e nível de acesso. Use nomes que indiquem o conteúdo e a competência, sem dados excessivos." },
+      { title: "Atualize por versão", text: "Ao corrigir um arquivo, envie uma nova versão. O sistema mantém autoria, data e versão anterior para consulta." },
+      { title: "Compartilhe com finalidade", text: "Selecione destinatários e prazo de acesso. Compartilhe somente o mínimo necessário para a atividade." },
+    ],
+  },
+  {
+    id: "setor", category: "Área do Setor", title: "Operar o painel e as equipes do setor", duration: "8 min",
+    summary: "Prioridades, formulários específicos, mapa, campo, metas e encaminhamentos.",
+    steps: [
+      { title: "Leia a central do dia", text: "Na Área do Setor, consulte indicadores, itens prioritários e o fluxo de trabalho antes de iniciar novos registros." },
+      { title: "Use o formulário específico", text: "Em Cadastros, escolha o modelo adequado ao serviço. Os campos mudam de acordo com a secretaria ou departamento." },
+      { title: "Registre o trabalho de campo", text: "Na aba Campo, selecione equipe, atividade, local, checklist e situação. O protótipo simula retenção temporária durante uma queda de conexão." },
+      { title: "Encaminhe o mínimo necessário", text: "Em Encaminhamentos, selecione o setor de destino, a providência e o escopo dos dados compartilhados." },
+    ],
+  },
+  {
+    id: "permissoes", category: "Configurações", title: "Definir permissões dos funcionários", duration: "7 min",
+    summary: "Perfis por função e direitos para visualizar, registrar ou alterar cada módulo.",
+    steps: [
+      { title: "Acesse como secretário", text: "Abra Configurações. A área aparece apenas para o responsável/secretário do setor no ambiente demonstrativo." },
+      { title: "Selecione o perfil", text: "Escolha Atendimento, Operacional, Equipe de campo ou Consulta. Cada perfil pode reunir vários funcionários." },
+      { title: "Marque as ações", text: "Para cada módulo, habilite Visualizar, Registrar e Alterar. Registrar ou Alterar exige que Visualizar também esteja ativo.", tip: "Comece com o menor acesso necessário e amplie somente quando houver justificativa." },
+      { title: "Atribua os funcionários", text: "Na aba Funcionários e perfis, associe cada servidor ao perfil apropriado. Troque de usuário no topo para testar o resultado." },
+    ],
+  },
+  {
+    id: "relatorios", category: "Relatórios", title: "Filtrar e apresentar indicadores", duration: "5 min",
+    summary: "Como preparar uma visão gerencial coerente para a demonstração.",
+    steps: [
+      { title: "Defina a pergunta", text: "Antes de filtrar, determine o que será demonstrado: volume, prazo, distribuição por setor ou conclusão." },
+      { title: "Aplique período e setor", text: "Use filtros compatíveis entre si e confira se os indicadores representam o mesmo intervalo." },
+      { title: "Explique os dados fictícios", text: "Informe que os números pertencem ao cenário de demonstração e servem para validar fluxos e telas." },
+      { title: "Exporte somente o necessário", text: "Gere a visão adequada ao público e evite incluir colunas ou dados individuais que não ajudam na decisão." },
+    ],
+  },
+];
+
 export function HelpCenterSection({ notify }: { notify: Notify }) {
-  const [query,setQuery] = useState("");
-  const articles = useMemo(() => [
-    ["Chamados e fluxos","Como criar, encaminhar e concluir um chamado","5 min","Chamados"],
-    ["Processos digitais","Autuação, juntada e movimentação de processos","8 min","Processos"],
-    ["Atendimento ao cidadão","Protocolos, ouvidoria, e-SIC e prazos","7 min","Atendimento"],
-    ["Arquivos e versões","Compartilhamento, validade e restauração","4 min","Documentos"],
-    ["Gestão municipal","Frota, patrimônio, estoque, contratos e obras","10 min","Gestão"],
-    ["Segurança e LGPD","Permissões, sigilo e tratamento de dados","6 min","Segurança"],
-  ].filter((item) => item.join(" ").toLowerCase().includes(query.toLowerCase())),[query]);
-  return <section className="municipal-module-shell"><div className="help-hero"><span><HelpCircle size={30} /></span><p className="eyebrow">CENTRAL DE CONHECIMENTO</p><h2>Como podemos ajudar?</h2><p>Encontre orientações sobre os fluxos, permissões e módulos do Prefeitura Conecta.</p><label><Search size={17} /><input aria-label="Buscar na central de ajuda" value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Digite uma dúvida, módulo ou procedimento..." /></label></div><div className="help-layout"><article className="help-articles"><header><div><h2>Guias e procedimentos</h2><p>{articles.length} conteúdos encontrados</p></div></header><div>{articles.map((item,index) => <button key={item[0]} onClick={() => notify(`Guia “${item[1]}” aberto para leitura.`)}><span className={["teal","blue","amber","violet"][index%4]}><BookOpen size={17} /></span><span><small>{item[3]}</small><strong>{item[1]}</strong><em>{item[2]} de leitura</em></span><ChevronRight size={15} /></button>)}</div></article><aside className="help-side"><article className="panel quick-help"><h2>Atalhos rápidos</h2>{["Abrir um chamado","Encaminhar para outro setor","Criar um processo","Compartilhar um arquivo","Gerar um relatório"].map((item) => <button key={item} onClick={() => notify(`Orientação rápida: ${item}.`)}><CheckCircle2 size={14} /> {item}<ChevronRight size={13} /></button>)}</article><article className="panel support-contact"><span><MessageSquareText size={20} /></span><h2>Precisa de suporte?</h2><p>Registre a dificuldade com uma captura da tela e o setor responsável pelo atendimento.</p><button className="button primary" onClick={() => notify("Chamado de suporte preparado para preenchimento.")}>Abrir chamado de suporte</button></article></aside></div></section>;
+  const [query, setQuery] = useState("");
+  const [selectedId, setSelectedId] = useState(HELP_TUTORIALS[0].id);
+  const [completed, setCompleted] = useState<Record<string, number[]>>({});
+  const tutorials = useMemo(() => HELP_TUTORIALS.filter((tutorial) => [tutorial.title, tutorial.summary, tutorial.category, ...tutorial.steps.flatMap((step) => [step.title, step.text])].join(" ").toLowerCase().includes(query.toLowerCase())), [query]);
+  const selected = HELP_TUTORIALS.find((tutorial) => tutorial.id === selectedId) ?? HELP_TUTORIALS[0];
+  const completedSteps = completed[selected.id] ?? [];
+  const progress = Math.round((completedSteps.length / selected.steps.length) * 100);
+
+  function openTutorial(id: string) {
+    setSelectedId(id);
+    notify(`Tutorial aberto. O progresso pode ser marcado passo a passo.`);
+  }
+
+  function toggleStep(index: number) {
+    setCompleted((current) => {
+      const steps = current[selected.id] ?? [];
+      return { ...current, [selected.id]: steps.includes(index) ? steps.filter((item) => item !== index) : [...steps, index] };
+    });
+  }
+
+  function completeTutorial() {
+    setCompleted((current) => ({ ...current, [selected.id]: selected.steps.map((_, index) => index) }));
+    notify(`Tutorial “${selected.title}” concluído no modo demonstração.`);
+  }
+
+  return (
+    <section className="municipal-module-shell help-center">
+      <div className="help-hero">
+        <span><HelpCircle size={30} /></span><p className="eyebrow">CENTRAL DE CONHECIMENTO</p><h2>Aprenda fazendo</h2>
+        <p>Tutoriais completos para apresentar e testar os principais fluxos do Prefeitura Conecta.</p>
+        <label><Search size={17} /><input aria-label="Buscar na central de ajuda" value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Busque por chamado, permissão, protocolo..." /></label>
+      </div>
+      <div className="tutorial-layout">
+        <aside className="panel tutorial-library">
+          <header><div><h2>Tutoriais</h2><p>{tutorials.length} de {HELP_TUTORIALS.length} encontrados</p></div><BookOpen size={18} /></header>
+          <div>
+            {tutorials.map((tutorial, index) => {
+              const done = (completed[tutorial.id]?.length ?? 0) === tutorial.steps.length;
+              return <button key={tutorial.id} className={selected.id === tutorial.id ? "active" : ""} onClick={() => openTutorial(tutorial.id)}><span className={`tutorial-number tone-${index % 4}`}>{done ? <Check size={14} /> : index + 1}</span><span><small>{tutorial.category} · {tutorial.duration}</small><strong>{tutorial.title}</strong></span><ChevronRight size={15} /></button>;
+            })}
+            {tutorials.length === 0 && <div className="tutorial-empty"><Search size={22} /><strong>Nenhum tutorial encontrado</strong><p>Tente buscar por um módulo ou procedimento.</p></div>}
+          </div>
+        </aside>
+        <article className="panel tutorial-reader">
+          <header>
+            <div><p className="eyebrow">{selected.category}</p><h2>{selected.title}</h2><p>{selected.summary}</p></div>
+            <span className="tutorial-duration"><Clock3 size={14} /> {selected.duration}</span>
+          </header>
+          <div className="tutorial-progress"><span><i style={{ width: `${progress}%` }} /></span><strong>{progress}% concluído</strong></div>
+          <ol className="tutorial-steps">
+            {selected.steps.map((step, index) => {
+              const done = completedSteps.includes(index);
+              return <li key={step.title} className={done ? "done" : ""}><button type="button" aria-label={`${done ? "Desmarcar" : "Marcar"} passo ${index + 1}`} aria-pressed={done} onClick={() => toggleStep(index)}>{done ? <Check size={15} /> : index + 1}</button><div><h3>{step.title}</h3><p>{step.text}</p>{step.tip && <aside><ShieldCheck size={14} /><span><strong>Boa prática</strong>{step.tip}</span></aside>}</div></li>;
+            })}
+          </ol>
+          <footer><p><CheckCircle2 size={15} /> Marque os passos enquanto apresenta o fluxo.</p><button className="button primary" onClick={completeTutorial}><Check size={14} /> Marcar como concluído</button></footer>
+        </article>
+      </div>
+      <div className="help-footer-grid">
+        <article className="panel quick-help"><h2>Respostas rápidas</h2>{["O botão sumiu? Verifique a permissão do perfil.", "Notificação sem som? Ative em Configurações.", "Dados do protótipo ficam salvos neste navegador."].map((item) => <button key={item} onClick={() => notify(item)}><CheckCircle2 size={14} /><span>{item}</span><ChevronRight size={13} /></button>)}</article>
+        <article className="panel support-contact"><span><MessageSquareText size={20} /></span><div><h2>Encontrou uma dificuldade?</h2><p>Registre o módulo, o perfil usado e o que esperava acontecer durante o teste.</p></div><button className="button primary" onClick={() => notify("Chamado de suporte de demonstração preparado para preenchimento.")}>Abrir suporte</button></article>
+      </div>
+    </section>
+  );
 }
 
 function MetricCard({ icon: Icon, label, value, detail, tone }: { icon: LucideIcon; label: string; value: string; detail: string; tone: string }) {
