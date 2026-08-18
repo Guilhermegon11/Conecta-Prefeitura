@@ -29,6 +29,7 @@ import {
   List,
   ListTodo,
   LoaderCircle,
+  LockKeyhole,
   Mail,
   MapPin,
   Menu,
@@ -947,6 +948,44 @@ function getHeading(active: NavItem) {
   return headings[active];
 }
 
+const COMMUNICATION_EDITORIAL_DATES = [
+  { date: "2026-08-19", day: "19", month: "AGO", title: "Dia Mundial da Fotografia", suggestion: "Valorizar registros da cidade, equipes e bastidores dos serviços municipais." },
+  { date: "2026-08-22", day: "22", month: "AGO", title: "Dia do Folclore", suggestion: "Conteúdo sobre tradições, memória local, cultura popular e patrimônio imaterial." },
+  { date: "2026-08-25", day: "25", month: "AGO", title: "Dia do Soldado", suggestion: "Mensagem institucional e reconhecimento, quando pertinente à agenda municipal." },
+  { date: "2026-08-27", day: "27", month: "AGO", title: "Dia do Psicólogo", suggestion: "Pauta de valorização profissional e orientação sobre serviços públicos relacionados." },
+  { date: "2026-08-29", day: "29", month: "AGO", title: "Dia Nacional de Combate ao Fumo", suggestion: "Conteúdo educativo em parceria com a Secretaria de Saúde." },
+  { date: "2026-08-31", day: "31", month: "AGO", title: "Dia do Nutricionista", suggestion: "Reconhecimento aos profissionais e ações de alimentação e saúde do município." },
+  { date: "2026-09-05", day: "05", month: "SET", title: "Dia da Amazônia", suggestion: "Pauta ambiental educativa e ações locais de preservação e sustentabilidade." },
+  { date: "2026-09-07", day: "07", month: "SET", title: "Independência do Brasil", suggestion: "Programação cívica, serviços, alterações de funcionamento e cobertura institucional." },
+  { date: "2026-09-21", day: "21", month: "SET", title: "Dia da Árvore", suggestion: "Ações ambientais, arborização urbana e educação ambiental." },
+  { date: "2026-09-25", day: "25", month: "SET", title: "Dia Nacional do Trânsito", suggestion: "Orientações de segurança, mobilidade e ações educativas no município." },
+];
+
+function CommunicationEditorialCalendar({ onNavigate }: { onNavigate: (item: NavItem) => void }) {
+  const [planned, setPlanned] = useState<string[]>(["2026-08-22", "2026-09-07"]);
+  const [filter, setFilter] = useState<"Todos" | "Planejados" | "A planejar">("Todos");
+  const visible = COMMUNICATION_EDITORIAL_DATES.filter((item) => filter === "Todos" || (filter === "Planejados" ? planned.includes(item.date) : !planned.includes(item.date)));
+
+  function togglePlan(date: string) {
+    setPlanned((current) => current.includes(date) ? current.filter((item) => item !== date) : [...current, date]);
+  }
+
+  return <section className="panel editorial-calendar-panel">
+    <header>
+      <div><p className="eyebrow">CALENDÁRIO EDITORIAL</p><h2>Próximas oportunidades de postagem</h2><p>Datas comemorativas e pautas institucionais para antecipar produção, aprovação e publicação.</p></div>
+      <div className="editorial-calendar-actions"><button className="button secondary" onClick={() => onNavigate("Próximos Eventos")}><CalendarDays size={14} /> Ver agenda municipal</button><button className="button primary" onClick={() => onNavigate("Comunicação")}><MessagesSquare size={14} /> Abrir Comunicação</button></div>
+    </header>
+    <div className="editorial-calendar-toolbar"><div><strong>{planned.length}</strong><span>pautas planejadas</span></div><div><strong>{COMMUNICATION_EDITORIAL_DATES.length - planned.length}</strong><span>a planejar</span></div><nav aria-label="Filtrar calendário editorial">{(["Todos","Planejados","A planejar"] as const).map((item) => <button key={item} className={filter === item ? "active" : ""} onClick={() => setFilter(item)}>{item}</button>)}</nav></div>
+    <div className="editorial-calendar-grid">{visible.map((item) => {
+      const isPlanned = planned.includes(item.date);
+      return <article key={item.date} className={isPlanned ? "planned" : ""}>
+        <div className="editorial-date"><strong>{item.day}</strong><span>{item.month}</span></div>
+        <div className="editorial-content"><span className={isPlanned ? "editorial-status planned" : "editorial-status suggestion"}>{isPlanned ? "Planejado" : "Sugestão de pauta"}</span><h3>{item.title}</h3><p>{item.suggestion}</p><button onClick={() => togglePlan(item.date)}>{isPlanned ? <><Check size={13} /> Remover do planejamento</> : <><CalendarPlus size={13} /> Planejar postagem</>}</button></div>
+      </article>;
+    })}</div>
+  </section>;
+}
+
 function Dashboard({ tickets, allTickets, audit, executive, department, userName, onNavigate }: { tickets: Ticket[]; allTickets: Ticket[]; audit: AuditItem[]; executive: boolean; department: string; userName: string; onNavigate: (item: NavItem) => void }) {
   const stats = statuses.map((status, index) => ({
     label: statusMeta[status].short,
@@ -958,6 +997,7 @@ function Dashboard({ tickets, allTickets, audit, executive, department, userName
   return (
     <>
       <OperationalCommandCenter tickets={tickets} allTickets={allTickets} executive={executive} department={department} userName={userName} onNavigate={onNavigate} />
+      {department === "Secretaria de Comunicação e Eventos" && <CommunicationEditorialCalendar onNavigate={onNavigate} />}
       <section className="stats-grid" aria-label="Resumo dos chamados">
         {stats.map((stat) => {
           const StatIcon = statusMeta[stat.status].icon;

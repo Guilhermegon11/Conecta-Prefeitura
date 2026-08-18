@@ -1,6 +1,6 @@
 "use client";
 
-import { FormEvent, useMemo, useState } from "react";
+import { FormEvent, useEffect, useMemo, useState } from "react";
 import {
   Accessibility,
   Archive,
@@ -28,6 +28,10 @@ import {
   MessageSquareText,
   MapPin,
   Plus,
+  Pencil,
+  Copy,
+  Download,
+  Save,
   QrCode,
   Search,
   ShieldCheck,
@@ -301,18 +305,119 @@ export function MunicipalManagementSection({ department, notify }: { department:
   const access = useCurrentPermission();
   const [tab, setTab] = useState<ManagementTab>("Frota");
   const [query, setQuery] = useState("");
+  const [statusFilter, setStatusFilter] = useState("Todas as situações");
   const [data, setData] = useState(MANAGEMENT_DATA);
-  const [modal, setModal] = useState(false);
-  const items = data[tab].filter((item) => [item.code, item.title, item.detail, item.owner, item.status].join(" ").toLowerCase().includes(query.toLowerCase()));
-  const ActiveIcon = TAB_ICON[tab];
+  const [modal, setModal] = useState<{ mode: "create" | "edit"; item?: ManagementItem } | null>(null);
+  const [detailItem, setDetailItem] = useState<ManagementItem | null>(null);
+  const [managementHydrated, setManagementHydrated] = useState(false);
+  const storageKey = "prefeitura-conecta:management:v2";
 
-  function createRecord(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault(); const form = new FormData(event.currentTarget);
-    const item: ManagementItem = { id: makeDemoId(), code: String(form.get("code")) || `${tab.slice(0,3).toUpperCase()}-${Date.now().toString().slice(-4)}`, title: String(form.get("title")), detail: String(form.get("detail")), owner: String(form.get("owner")) || department, status: "Cadastrado", metric: String(form.get("metric")) || "Aguardando primeira atualização", due: String(form.get("due")) || "Sem prazo definido" };
-    setData((current) => ({...current,[tab]:[item,...current[tab]]})); setModal(false); notify(`${item.code} incluído no módulo de ${tab.toLowerCase()}.`);
+  useEffect(() => {
+    try {
+      const saved = localStorage.getItem(storageKey);
+      if (saved) {
+        const parsed = JSON.parse(saved) as Record<ManagementTab, ManagementItem[]>;
+        if (parsed && typeof parsed === "object") setData(parsed);
+      }
+    } catch { /* Mantém a base demonstrativa. */ }
+    setManagementHydrated(true);
+  }, [storageKey]);
+
+  useEffect(() => {
+    if (!managementHydrated) return;
+    try { localStorage.setItem(storageKey, JSON.stringify(data)); } catch { /* Persistência local é opcional. */ }
+  }, [data, managementHydrated, storageKey]);
+
+  const tabItems = data[tab];
+  const items = tabItems.filter((item) => {
+    const matchesQuery = [item.code, item.title, item.detail, item.owner, item.status, item.metric, item.due].join(" ").toLowerCase().includes(query.toLowerCase());
+    const normalized = item.status.toLowerCase();
+    const matchesStatus = statusFilter === "Todas as situações"
+      || (statusFilter === "Regular" && (normalized.includes("regular") || normalized.includes("vigente") || normalized.includes("disponível") || normalized.includes("em uso")))
+      || (statusFilter === "Requer atenção" && (normalized.includes("manutenção") || normalized.includes("baixo") || normalized.includes("vistoria") || normalized.includes("renovação") || normalized.includes("transferência")))
+      || (statusFilter === "Vencimento próximo" && (item.due.toLowerCase().includes("ago") || item.due.toLowerCase().includes("set") || normalized.includes("renovação")));
+    return matchesQuery && matchesStatus;
+  });
+  const ActiveIcon = TAB_ICON[tab];
+  const attentionCount = tabItems.filter((item) => {
+    const value = item.status.toLowerCase();
+    return value.includes("manutenção") || value.includes("baixo") || value.includes("renovação") || value.includes("vistoria") || value.includes("transferência");
+  }).length;
+  const regularCount = tabItems.length - attentionCount;
+
+  function saveRecord(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    const form = new FormData(event.currentTarget);
+    const base = modal?.item;
+    const item: ManagementItem = {
+      id: base?.id ?? makeDemoId(),
+      code: String(form.get("code")) || base?.code || `${tab.slice(0,3).toUpperCase()}-${Date.now().toString().slice(-4)}`,
+      title: String(form.get("title")),
+      detail: String(form.get("detail")),
+      owner: String(form.get("owner")) || department,
+      status: String(form.get("status")) || base?.status || "Cadastrado",
+      metric: String(form.get("metric")) || "Aguardando primeira atualização",
+      due: String(form.get("due")) || "Sem prazo definido",
+    };
+    setData((current) => ({
+      ...current,
+      [tab]: base ? current[tab].map((record) => record.id === base.id ? item : record) : [item, ...current[tab]],
+    }));
+    setDetailItem((current) => current?.id === item.id ? item : current);
+    setModal(null);
+    notify(base ? `${item.code} atualizado com sucesso.` : `${item.code} incluído no módulo de ${tab.toLowerCase()}.`);
   }
 
-  return <section className="municipal-module-shell"><div className="management-tabs" role="tablist" aria-label="Áreas da gestão municipal">{(Object.keys(MANAGEMENT_DATA) as ManagementTab[]).map((item) => { const Icon = TAB_ICON[item]; return <button key={item} className={tab === item ? "active" : ""} onClick={() => setTab(item)}><span><Icon size={19} /></span><strong>{item}</strong><small>{MANAGEMENT_DATA[item].length} registros</small></button>; })}</div><article className="panel management-panel"><header><div><span className="management-title-icon"><ActiveIcon size={21} /></span><div><p className="eyebrow">CONTROLE MUNICIPAL</p><h2>{tab}</h2><p>{managementDescription(tab)}</p></div></div>{access.register && <button className="button primary" onClick={() => setModal(true)}><Plus size={15} /> Novo registro</button>}</header><div className="module-toolbar"><label className="module-search"><Search size={15} /><input aria-label={`Buscar em ${tab}`} value={query} onChange={(event) => setQuery(event.target.value)} placeholder={`Buscar em ${tab.toLowerCase()}...`} /></label><select aria-label="Filtrar situação"><option>Todas as situações</option><option>Regular</option><option>Requer atenção</option><option>Vencimento próximo</option></select><button className="button secondary" onClick={() => notify(`Relatório de ${tab.toLowerCase()} preparado para exportação.`)}>Exportar relatório</button></div><div className="management-grid">{items.map((item) => <article key={item.id}><header><span>{item.code}</span><StatusTag>{item.status}</StatusTag></header><h3>{item.title}</h3><p>{item.detail}</p><dl><div><dt>Responsável</dt><dd><UserRound size={13} /> {item.owner}</dd></div><div><dt>Indicador</dt><dd><Gauge size={13} /> {item.metric}</dd></div><div><dt>Prazo ou validade</dt><dd><Clock3 size={13} /> {item.due}</dd></div></dl><button onClick={() => notify(`Ficha completa de ${item.code} aberta com histórico e anexos.`)}>Abrir ficha completa <ChevronRight size={13} /></button></article>)}</div></article>{modal && access.register && <ModalShell eyebrow={`MÓDULO DE ${tab.toUpperCase()}`} title={`Novo registro de ${tab.toLowerCase()}`} onClose={() => setModal(false)}><form onSubmit={createRecord}><label className="field"><span>Código ou identificação</span><input name="code" placeholder="Gerado automaticamente se vazio" /></label><label className="field"><span>Responsável</span><input name="owner" defaultValue={department} /></label><label className="field full"><span>Título *</span><input name="title" required placeholder="Identifique o bem, contrato, veículo ou atividade" /></label><label className="field full"><span>Detalhes *</span><textarea name="detail" required placeholder="Localização, fornecedor, características ou observações" /></label><label className="field"><span>Indicador inicial</span><input name="metric" placeholder="Valor, quilometragem, saldo ou progresso" /></label><label className="field"><span>Prazo ou validade</span><input name="due" placeholder="Ex.: 30 set. 2026" /></label><div className="modal-actions"><button type="button" className="button secondary" onClick={() => setModal(false)}>Cancelar</button><button className="button primary"><Check size={15} /> Cadastrar</button></div></form></ModalShell>}<div className="management-upgrades"><FieldOperationsPanel notify={notify} /></div></section>;
+  function duplicateRecord(item: ManagementItem) {
+    if (!access.register) { notify("Seu perfil não possui permissão para duplicar registros."); return; }
+    const copy: ManagementItem = { ...item, id: makeDemoId(), code: `${item.code}-COPIA`, status: "Cadastrado" };
+    setData((current) => ({ ...current, [tab]: [copy, ...current[tab]] }));
+    notify(`Cópia de ${item.code} criada para edição.`);
+  }
+
+  function quickStatus(item: ManagementItem, status: string) {
+    if (!access.edit) { notify("Seu perfil está em modo de consulta."); return; }
+    const updated = { ...item, status };
+    setData((current) => ({ ...current, [tab]: current[tab].map((record) => record.id === item.id ? updated : record) }));
+    setDetailItem((current) => current?.id === item.id ? updated : current);
+    notify(`${item.code}: situação atualizada para ${status}.`);
+  }
+
+  function exportManagement() {
+    const escape = (value: string) => `"${value.replace(/"/g, '""')}"`;
+    const rows = [["Código","Título","Detalhes","Responsável","Situação","Indicador","Prazo"], ...items.map((item) => [item.code,item.title,item.detail,item.owner,item.status,item.metric,item.due])];
+    const csv = rows.map((row) => row.map(escape).join(";")).join("\n");
+    const blob = new Blob([`\ufeff${csv}`], { type: "text/csv;charset=utf-8" });
+    const url = URL.createObjectURL(blob);
+    const anchor = document.createElement("a");
+    anchor.href = url; anchor.download = `gestao-${tab.toLowerCase().replace(/\s+/g,"-")}.csv`; anchor.click();
+    URL.revokeObjectURL(url);
+    notify(`Relatório de ${tab.toLowerCase()} exportado em CSV.`);
+  }
+
+  return <section className="municipal-module-shell">
+    <div className="management-tabs" role="tablist" aria-label="Áreas da gestão municipal">{(Object.keys(MANAGEMENT_DATA) as ManagementTab[]).map((item) => { const Icon = TAB_ICON[item]; return <button key={item} className={tab === item ? "active" : ""} onClick={() => { setTab(item); setStatusFilter("Todas as situações"); setQuery(""); }}><span><Icon size={19} /></span><strong>{item}</strong><small>{data[item].length} registros</small></button>; })}</div>
+
+    <div className="management-summary-grid">
+      <article className="panel"><span className="management-summary-icon"><ActiveIcon size={18} /></span><div><small>REGISTROS EM {tab.toUpperCase()}</small><strong>{tabItems.length}</strong><p>Base operacional do módulo</p></div></article>
+      <article className="panel"><span className="management-summary-icon warning"><Clock3 size={18} /></span><div><small>REQUEREM ACOMPANHAMENTO</small><strong>{attentionCount}</strong><p>Revisão, manutenção ou vencimento</p></div></article>
+      <article className="panel"><span className="management-summary-icon success"><CheckCircle2 size={18} /></span><div><small>SITUAÇÃO REGULAR</small><strong>{regularCount}</strong><p>Sem alerta operacional imediato</p></div></article>
+      <article className="panel"><span className="management-summary-icon info"><Gauge size={18} /></span><div><small>VISÃO DO SETOR</small><strong>{department === "Gabinete do Prefeito" ? "Executiva" : "Setorial"}</strong><p>{department}</p></div></article>
+    </div>
+
+    <article className="panel management-panel management-panel-v2">
+      <header><div><span className="management-title-icon"><ActiveIcon size={21} /></span><div><p className="eyebrow">CONTROLE MUNICIPAL</p><h2>{tab}</h2><p>{managementDescription(tab)}</p></div></div>{access.register && <button className="button primary" onClick={() => setModal({ mode: "create" })}><Plus size={15} /> Novo registro</button>}</header>
+      <div className="module-toolbar"><label className="module-search"><Search size={15} /><input aria-label={`Buscar em ${tab}`} value={query} onChange={(event) => setQuery(event.target.value)} placeholder={`Buscar em ${tab.toLowerCase()}...`} /></label><select aria-label="Filtrar situação" value={statusFilter} onChange={(event) => setStatusFilter(event.target.value)}><option>Todas as situações</option><option>Regular</option><option>Requer atenção</option><option>Vencimento próximo</option></select><button className="button secondary" onClick={exportManagement}><Download size={14} /> Exportar CSV</button></div>
+      <div className="management-grid management-grid-v2">{items.map((item) => <article key={item.id}><header><span>{item.code}</span><StatusTag>{item.status}</StatusTag></header><h3>{item.title}</h3><p>{item.detail}</p><dl><div><dt>Responsável</dt><dd><UserRound size={13} /> {item.owner}</dd></div><div><dt>Indicador</dt><dd><Gauge size={13} /> {item.metric}</dd></div><div><dt>Prazo ou validade</dt><dd><Clock3 size={13} /> {item.due}</dd></div></dl><div className="management-card-actions"><button onClick={() => setDetailItem(item)}>Abrir ficha <ChevronRight size={13} /></button>{access.edit && <button onClick={() => setModal({ mode: "edit", item })}><Pencil size={13} /> Editar</button>}{access.register && <button title="Duplicar registro" aria-label={`Duplicar ${item.code}`} onClick={() => duplicateRecord(item)}><Copy size={13} /></button>}</div></article>)}</div>
+      {!items.length && <div className="module-empty"><Search size={28} /><strong>Nenhum registro encontrado</strong><p>Ajuste a busca ou os filtros desta área da Gestão Municipal.</p></div>}
+    </article>
+
+    {modal && (modal.mode === "create" ? access.register : access.edit) && <ModalShell eyebrow={`MÓDULO DE ${tab.toUpperCase()}`} title={modal.mode === "edit" ? `Editar ${modal.item?.code}` : `Novo registro de ${tab.toLowerCase()}`} onClose={() => setModal(null)}><form onSubmit={saveRecord}><label className="field"><span>Código ou identificação</span><input name="code" defaultValue={modal.item?.code ?? ""} placeholder="Gerado automaticamente se vazio" /></label><label className="field"><span>Responsável</span><input name="owner" defaultValue={modal.item?.owner ?? department} /></label><label className="field full"><span>Título *</span><input name="title" required defaultValue={modal.item?.title ?? ""} placeholder="Identifique o bem, contrato, veículo ou atividade" /></label><label className="field full"><span>Detalhes *</span><textarea name="detail" required defaultValue={modal.item?.detail ?? ""} placeholder="Localização, fornecedor, características ou observações" /></label><label className="field"><span>Situação</span><input name="status" defaultValue={modal.item?.status ?? "Cadastrado"} placeholder="Ex.: Regular, Vigente, Em manutenção" /></label><label className="field"><span>Indicador</span><input name="metric" defaultValue={modal.item?.metric ?? ""} placeholder="Valor, quilometragem, saldo ou progresso" /></label><label className="field full"><span>Prazo ou validade</span><input name="due" defaultValue={modal.item?.due ?? ""} placeholder="Ex.: 30 set. 2026" /></label><div className="modal-actions"><button type="button" className="button secondary" onClick={() => setModal(null)}>Cancelar</button><button className="button primary">{modal.mode === "edit" ? <><Save size={15} /> Salvar alterações</> : <><Check size={15} /> Cadastrar</>}</button></div></form></ModalShell>}
+
+    {detailItem && <ModalShell eyebrow={`${tab.toUpperCase()} · ${detailItem.code}`} title={detailItem.title} onClose={() => setDetailItem(null)}><div className="management-detail-modal"><div className="management-detail-status"><StatusTag>{detailItem.status}</StatusTag><span>{detailItem.owner}</span></div><p>{detailItem.detail}</p><dl><div><dt>Indicador atual</dt><dd>{detailItem.metric}</dd></div><div><dt>Prazo / validade</dt><dd>{detailItem.due}</dd></div><div><dt>Setor visualizado</dt><dd>{department}</dd></div></dl><div className="management-timeline"><strong>Movimentações do registro</strong><span><i /><div><b>Registro disponível para acompanhamento</b><small>Histórico demonstrativo preservado nesta ficha.</small></div></span><span><i /><div><b>Situação atual: {detailItem.status}</b><small>Atualize o status conforme a execução do trabalho.</small></div></span></div>{access.edit && <div className="management-quick-actions"><button className="button secondary" onClick={() => quickStatus(detailItem, "Requer atenção")}>Marcar atenção</button><button className="button secondary" onClick={() => quickStatus(detailItem, "Em andamento")}>Em andamento</button><button className="button secondary" onClick={() => quickStatus(detailItem, "Regular")}>Marcar regular</button><button className="button primary" onClick={() => { setModal({ mode: "edit", item: detailItem }); setDetailItem(null); }}><Pencil size={14} /> Editar registro</button></div>}</div></ModalShell>}
+
+    <div className="management-upgrades"><FieldOperationsPanel notify={notify} /></div>
+  </section>;
 }
 
 function managementDescription(tab: ManagementTab) {
@@ -445,9 +550,9 @@ const HELP_TUTORIALS: HelpTutorial[] = [
   },
   {
     id: "visao-executiva", category: "Prefeito e vice", title: "Alternar entre todos os painéis setoriais", duration: "4 min",
-    summary: "Acesso integral do Executivo com um seletor único no topo da plataforma.",
+    summary: "Visão executiva por setor, respeitando permissões específicas e a privacidade da Comunicação.",
     steps: [
-      { title: "Entre no perfil executivo", text: "Em Visualizar como, selecione Prefeito Municipal ou Vice-prefeito. O sistema identifica o acesso integral automaticamente." },
+      { title: "Entre no perfil executivo", text: "Em Visualizar como, selecione Prefeito Municipal ou Vice-prefeito. O sistema identifica a visão executiva automaticamente, mantendo a Comunicação intersetorial privada até autorização explícita do Prefeito." },
       { title: "Escolha o painel setorial", text: "Use o seletor Painel setorial no topo para alternar entre secretarias, departamentos, seções e subprefeitura." },
       { title: "Navegue mantendo o setor", text: "Chamados, indicadores, arquivos, agenda, fluxos, funcionários e configurações passam a usar o setor escolhido sem trocar de conta." },
       { title: "Valide a visão atual", text: "A faixa Visão executiva mostra qual setor está sendo visualizado. Antes de registrar ou alterar algo, confirme esse nome." },
