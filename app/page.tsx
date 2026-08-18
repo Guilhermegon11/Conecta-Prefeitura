@@ -13,6 +13,7 @@ import {
   Check,
   CheckCheck,
   CheckCircle2,
+  ChevronRight,
   Clock3,
   ClipboardList,
   Crown,
@@ -268,6 +269,7 @@ export default function Home() {
   const [eventToDelete, setEventToDelete] = useState<SectorEvent | null>(null);
   const [employeeModal, setEmployeeModal] = useState(false);
   const [toast, setToast] = useState("");
+  const [interactionModal, setInteractionModal] = useState<{ title: string; message: string } | null>(null);
   const [searchOpen, setSearchOpen] = useState(false);
   const [tourStep, setTourStep] = useState<number | null>(null);
   const [soundEnabled, setSoundEnabled] = useState(true);
@@ -422,6 +424,35 @@ export default function Home() {
   function notify(message: string) {
     setToast(message);
     window.setTimeout(() => setToast(""), 2800);
+    const opensSomething = /(abert|exibid|consult|orienta|revis|históric|ficha|inventário|temporalidade|formulário|relatório|preparad|detalh|visualiza|painel|módulo)/i.test(message);
+    const isCompletion = /(salv|registrad|criad|conclu|enviad|atualizad|movido|reproduzid|excluíd|respondid|aceit|recusad)/i.test(message);
+    if (opensSomething && !isCompletion) {
+      const rawTitle = message.split(/[.:]/)[0]?.trim() || "Recurso do sistema";
+      setInteractionModal({ title: rawTitle.length > 54 ? "Recurso do sistema" : rawTitle, message });
+    }
+  }
+
+  function exportCsv(filename: string, rows: Array<Array<string | number | null | undefined>>) {
+    const csv = rows.map((row) => row.map((value) => `"${String(value ?? "").replace(/"/g, '""')}"`).join(";")).join("\n");
+    const blob = new Blob(["\ufeff", csv], { type: "text/csv;charset=utf-8" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = filename;
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    URL.revokeObjectURL(url);
+  }
+
+  function exportContacts() {
+    exportCsv("contatos-secretarias.csv", [["Secretaria", "Responsável", "Telefone", "E-mail", "Endereço"], ...OFFICES.map((office) => [office.name, office.head, office.phone, office.email, office.address])]);
+    notify("Contatos das secretarias exportados em CSV.");
+  }
+
+  function exportCurrentReport() {
+    exportCsv(`relatorio-${activeNav.toLowerCase().replace(/\s+/g, "-")}.csv`, [["Protocolo", "Assunto", "Secretaria", "Prioridade", "Status", "Prazo"], ...privateTickets.map((ticket) => [ticket.protocol, ticket.title, ticket.department, ticket.priority, ticket.status, ticket.dueDate])]);
+    notify(`Relatório de ${activeNav.toLowerCase()} exportado em CSV.`);
   }
 
   function updatePermissionSettings(settings: DepartmentPermissionSettings) {
@@ -587,14 +618,14 @@ export default function Home() {
     void fetch("/api/actions", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ action: "send_message", userId: currentUserId, recipientId, ...message }) }).catch(() => undefined);
   }
 
-  async function sendChatAttachment(file: File, context: { conversationType: ChatTab; conversationId: string; recipientId?: string; body: string }) {
+  async function sendChatAttachment(file: File, context: { conversationType: ChatTab; conversationId: string; recipientId?: string; body: string; ticketId?: string | null }) {
     if (file.size > 10 * 1024 * 1024) { notify("O documento deve ter no máximo 10 MB."); return false; }
     const now = new Date().toISOString();
     const tempDocumentId = makeId();
     const tempMessageId = makeId();
     const localUrl = URL.createObjectURL(file);
     const documentItem: DocumentItem = { id: tempDocumentId, name: file.name, category: "Documento do chat", ownerId: currentUser.id, ownerName: currentUser.fullName, department: activeDepartment, contentType: file.type || "application/octet-stream", size: file.size, createdAt: now };
-    const message: Message = { id: tempMessageId, conversationType: context.conversationType, conversationId: context.conversationId, senderId: currentUser.id, senderName: currentUser.fullName, senderInitials: currentUser.initials, body: context.body.trim(), attachmentId: tempDocumentId, attachmentName: file.name, attachmentSize: file.size, attachmentContentType: file.type || "application/octet-stream", attachmentUrl: localUrl, createdAt: now };
+    const message: Message = { id: tempMessageId, conversationType: context.conversationType, conversationId: context.conversationId, senderId: currentUser.id, senderName: currentUser.fullName, senderInitials: currentUser.initials, body: context.body.trim(), attachmentId: tempDocumentId, attachmentName: file.name, attachmentSize: file.size, attachmentContentType: file.type || "application/octet-stream", attachmentUrl: localUrl, ticketId: context.ticketId ?? null, createdAt: now };
     setDocuments((current) => [documentItem, ...current]);
     setMessages((current) => [...current, message]);
     addMessageNotifications(message, context.recipientId);
@@ -608,6 +639,7 @@ export default function Home() {
     form.append("conversationType", context.conversationType);
     form.append("conversationId", context.conversationId);
     if (context.recipientId) form.append("recipientId", context.recipientId);
+    if (context.ticketId) form.append("ticketId", context.ticketId);
     if (context.body.trim()) form.append("messageBody", context.body.trim());
 
     try {
@@ -759,7 +791,7 @@ export default function Home() {
         <div className="sidebar-profile">
           <div className="avatar avatar-large">{currentUser.initials}</div>
           <div className="profile-copy"><strong>{currentUser.fullName}</strong><span>{executiveAccess ? `${currentUser.role} · acesso executivo` : currentUser.department}</span></div>
-          <button className="icon-button" aria-label="Opções do perfil"><MoreHorizontal size={18} /></button>
+          <button className="icon-button" aria-label="Opções do perfil" onClick={() => setInteractionModal({ title: "Opções do perfil", message: `${currentUser.fullName} · ${currentUser.role} · ${currentUser.department}. Use o seletor “Visualizar como” para alternar perfis ou abra Configurações para revisar permissões e preferências.` })}><MoreHorizontal size={18} /></button>
         </div>
       </aside>
       {sidebarOpen && <button className="sidebar-scrim" aria-label="Fechar menu" onClick={() => setSidebarOpen(false)} />}
@@ -797,7 +829,7 @@ export default function Home() {
               ) : activeNav === "Funcionários" ? (
                 <button type="button" className="button secondary" onClick={() => setEmployeeModal(true)}><UserPlus size={15} /> Convidar funcionário</button>
               ) : activeNav === "Secretarias" ? (
-                <button className="button secondary"><Download size={15} /> Exportar contatos</button>
+                <button className="button secondary" onClick={exportContacts}><Download size={15} /> Exportar contatos</button>
               ) : activeNav === "Notificações" ? (
                 <button className="button secondary" onClick={markAllNotifications}><CheckCheck size={15} /> Marcar todas como lidas</button>
               ) : activeNav === "Pendências" ? (
@@ -805,7 +837,7 @@ export default function Home() {
               ) : activeNav === "Configurações" || activeNav === "Central de Ajuda" || activeNav === "Área do Setor" || activeNav === "Fluxos e Anotações" ? (
                 null
               ) : (
-                <button className="button secondary"><Download size={15} /> Exportar relatório</button>
+                <button className="button secondary" onClick={exportCurrentReport}><Download size={15} /> Exportar relatório</button>
               )}
               {ticketPermission.register && activeNav !== "Configurações" && activeNav !== "Central de Ajuda" && activeNav !== "Área do Setor" && activeNav !== "Fluxos e Anotações" && <button type="button" className="button primary" onClick={() => setTicketModal(true)} aria-haspopup="dialog"><Plus size={16} /> Novo chamado</button>}
             </div>
@@ -818,7 +850,7 @@ export default function Home() {
           {activeNav === "Área do Setor" && <><SectorWorkspaceSection key={activeDepartment} department={activeDepartment} userName={currentUser.fullName} userRole={currentUser.role} departments={allDepartments} notify={notify} /><FormBuilderPanel notify={notify} /><OperationalMapPanel department={activeDepartment} notify={notify} /></>}
           {activeNav === "Fluxos e Anotações" && <SectorNotesSection key={activeDepartment} department={activeDepartment} userName={currentUser.fullName} team={sectorUsers.map((user) => ({ id: user.id, name: user.fullName, role: user.role }))} notify={notify} />}
           {activeNav === "Chamados" && <TicketsSection tickets={filteredTickets} department={activeDepartment} onStatus={updateStatus} onNew={() => setTicketModal(true)} />}
-          {activeNav === "Comunicação" && <CommunicationSection currentUser={currentUser} users={activeUsers} groups={accessibleGroups} messages={privateMessages} tickets={privateTickets} onSend={sendMessage} onSendAttachment={sendChatAttachment} onNewGroup={() => setGroupModal(true)} />}
+          {activeNav === "Comunicação" && <CommunicationSection currentUser={currentUser} users={activeUsers} groups={accessibleGroups} messages={privateMessages} tickets={privateTickets} onSend={sendMessage} onSendAttachment={sendChatAttachment} onNewGroup={() => setGroupModal(true)} onTicketStatus={updateStatus} />}
           {activeNav === "Atendimento ao Cidadão" && <CitizenServiceSection department={activeDepartment} notify={notify} />}
           {activeNav === "Processos Digitais" && <ProcessesSection department={activeDepartment} notify={notify} />}
           {activeNav === "Gestão Municipal" && <MunicipalManagementSection department={activeDepartment} notify={notify} />}
@@ -830,7 +862,7 @@ export default function Home() {
           {activeNav === "Funcionários" && canManageEmployees && <EmployeesSection users={sectorUsers} department={activeDepartment} onInvite={() => setEmployeeModal(true)} onResend={resendEmployeeInvite} />}
           {activeNav === "Secretarias" && <TeamSection offices={OFFICES} />}
           {activeNav === "Segurança e LGPD" && <SecuritySection department={activeDepartment} notify={notify} />}
-          {activeNav === "Auditoria" && <AuditSection audit={privateAudit} department={activeDepartment} />}
+          {activeNav === "Auditoria" && <AuditSection audit={privateAudit} department={activeDepartment} notify={notify} />}
           {activeNav === "Central de Ajuda" && <HelpCenterSection notify={notify} />}
           {activeNav === "Configurações" && canManageEmployees && <SettingsSection key={activeDepartment} department={activeDepartment} managerName={currentUser.fullName} employees={sectorEmployees} settings={departmentPermissionSettings} soundEnabled={soundEnabled} motionEnabled={motionEnabled} onSettingsChange={updatePermissionSettings} onSoundChange={setSoundEnabled} onMotionChange={setMotionEnabled} onTestSound={() => { playNotificationChime(); notify("Som de notificação reproduzido."); }} onResetDemo={resetDemo} notify={notify} />}
         </div>
@@ -844,6 +876,7 @@ export default function Home() {
       {eventToDelete && <EventDeleteModal event={eventToDelete} onClose={() => setEventToDelete(null)} onConfirm={() => deleteEvent(eventToDelete)} />}
       {employeeModal && canManageEmployees && <EmployeeInviteModal department={activeDepartment} onClose={() => setEmployeeModal(false)} onInvite={inviteEmployee} />}
       {tourStep !== null && <GuidedDemo step={tourStep} onStep={setTourStep} onNavigate={(nav) => setActiveNav(nav as NavItem)} onClose={() => setTourStep(null)} />}
+      {interactionModal && <div className="modal-backdrop" role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget) setInteractionModal(null); }}><section className="modal interaction-action-modal" role="dialog" aria-modal="true" aria-labelledby="interaction-action-title"><header><div><p className="eyebrow">FUNÇÃO DO SISTEMA</p><h2 id="interaction-action-title">{interactionModal.title}</h2></div><button type="button" aria-label="Fechar" onClick={() => setInteractionModal(null)}><X size={18} /></button></header><div className="interaction-action-body"><span className="interaction-action-icon"><ArrowUpRight size={22} /></span><div><strong>Recurso aberto</strong><p>{interactionModal.message}</p><small>Esta janela mantém uma resposta visível para funções demonstrativas e evita botões sem retorno.</small></div></div><footer><button className="button secondary" onClick={() => setInteractionModal(null)}>Fechar</button><button className="button primary" onClick={() => { setInteractionModal(null); setActiveNav("Central de Ajuda"); }}>Ver orientações</button></footer></section></div>}
       {toast && <div className="toast" role="status"><span><Check size={14} strokeWidth={2.5} /></span>{toast}</div>}
     </div>
   );
@@ -903,13 +936,13 @@ function Dashboard({ tickets, allTickets, audit, executive, department, userName
             <div><h2>Chamados recentes</h2><p>Últimas solicitações registradas na plataforma</p></div>
             <button className="text-button" onClick={() => onNavigate("Chamados")}>Ver todos <ArrowRight size={14} /></button>
           </div>
-          <TicketTable tickets={tickets} />
+          <TicketTable tickets={tickets} onOpen={() => onNavigate("Chamados")} />
         </article>
         <aside className="side-stack">
           <article className="panel activity-panel">
             <div className="panel-heading compact">
               <div><h2>Atividade recente</h2><p>Atualizações relevantes do seu setor</p></div>
-              <button className="icon-button" aria-label="Mais opções"><MoreHorizontal size={18} /></button>
+              <button className="icon-button" aria-label="Mais opções" onClick={() => onNavigate("Auditoria")}><MoreHorizontal size={18} /></button>
             </div>
             <div className="activity-list">
               {audit.slice(0, 4).map((item, index) => <Activity key={item.id} avatar={item.actorInitials} color={["green", "blue", "violet", "amber"][index % 4]} title={item.actorName} detail={item.detail} time={formatRelative(item.createdAt)} />)}
@@ -928,7 +961,7 @@ function Dashboard({ tickets, allTickets, audit, executive, department, userName
   );
 }
 
-function TicketTable({ tickets }: { tickets: Ticket[] }) {
+function TicketTable({ tickets, onOpen }: { tickets: Ticket[]; onOpen: () => void }) {
   return (
     <div className="ticket-table-wrap">
       <table className="ticket-table">
@@ -939,7 +972,7 @@ function TicketTable({ tickets }: { tickets: Ticket[] }) {
             <td><div className="department-cell"><span className="mini-avatar">{ticket.assigneeInitials ?? "--"}</span>{ticket.department}</div></td>
             <td><StatusPill status={ticket.status} /></td>
             <td><span className={formatDue(ticket.dueDate).startsWith("Hoje") ? "due urgent" : "due"}>{formatDue(ticket.dueDate)}</span></td>
-            <td><button className="table-menu" aria-label={`Opções de ${ticket.protocol}`}><MoreHorizontal size={17} /></button></td>
+            <td><button className="table-menu" aria-label={`Opções de ${ticket.protocol}`} onClick={onOpen}><MoreHorizontal size={17} /></button></td>
           </tr>
         ))}</tbody>
       </table>
@@ -951,6 +984,7 @@ function TicketTable({ tickets }: { tickets: Ticket[] }) {
 function TicketsSection({ tickets, department, onStatus, onNew }: { tickets: Ticket[]; department: string; onStatus: (id: string, status: TicketStatus) => void; onNew: () => void }) {
   const access = useCurrentPermission();
   const [selectedTicket, setSelectedTicket] = useState<Ticket | null>(null);
+  const [viewMode, setViewMode] = useState<"board" | "list">("board");
   return (
     <section className="board-wrap">
       <div className="access-note ticket-privacy-note"><span><ShieldCheck size={20} /></span><div><strong>Fluxo setorial com responsabilidade definida</strong><p>Você está vendo somente as demandas de {department}. Prazos, aprovações, encaminhamentos, responsáveis e anotações internas permanecem registrados no chamado.</p></div></div>
@@ -959,10 +993,10 @@ function TicketsSection({ tickets, department, onStatus, onNew }: { tickets: Tic
         <div className="filter-chip active">Todos <strong>{tickets.length}</strong></div>
         <div className="filter-chip">Alta prioridade <strong>{tickets.filter((t) => t.priority === "Alta").length}</strong></div>
         <div className="board-spacer" />
-        <button className="button secondary"><List size={15} /> Lista</button>
+        <button className="button secondary" onClick={() => setViewMode((current) => current === "board" ? "list" : "board")}><List size={15} /> {viewMode === "board" ? "Lista" : "Quadro"}</button>
         {access.register && <button className="button primary" onClick={onNew}><Plus size={16} /> Criar chamado</button>}
       </div>
-      <div className="kanban-board">
+      {viewMode === "list" ? <div className="panel ticket-list-mode">{tickets.map((ticket) => <button key={ticket.id} onClick={() => setSelectedTicket(ticket)}><span className={`priority-dot ${ticket.priority.toLowerCase().replace("é", "e")}`} /><span><strong>{ticket.title}</strong><small>{ticket.protocol} · {ticket.department}</small></span><StatusPill status={ticket.status} /><span className="due"><Clock3 size={12} /> {formatDue(ticket.dueDate)}</span><ChevronRight size={14} /></button>)}{!tickets.length && <div className="empty-state">Nenhum chamado encontrado.</div>}</div> : <div className="kanban-board">
         {statuses.map((status) => {
           const StatusIcon = statusMeta[status].icon;
           const columnTickets = tickets.filter((ticket) => ticket.status === status);
@@ -972,7 +1006,7 @@ function TicketsSection({ tickets, department, onStatus, onNew }: { tickets: Tic
               <div className="kanban-cards">
                 {columnTickets.map((ticket) => (
                   <article className="kanban-card" key={ticket.id}>
-                    <div className="card-meta"><span className={`priority-label ${ticket.priority.toLowerCase().replace("é", "e")}`}>{ticket.priority}</span><button aria-label={`Opções de ${ticket.protocol}`}><MoreHorizontal size={17} /></button></div>
+                    <div className="card-meta"><span className={`priority-label ${ticket.priority.toLowerCase().replace("é", "e")}`}>{ticket.priority}</span><button aria-label={`Opções de ${ticket.protocol}`} onClick={() => setSelectedTicket(ticket)}><MoreHorizontal size={17} /></button></div>
                     <h3>{ticket.title}</h3><p>{ticket.description}</p><small>{ticket.protocol} · {ticket.requester}{ticket.neighborhood ? ` · ${ticket.neighborhood}` : ""}</small>
                     <div className="ticket-template-line"><span>{ticket.priority === "Urgente" ? "Atendimento imediato" : "Prazo setorial"}</span><span>{ticket.assigneeName ? "Responsável definido" : "Aguardando atribuição"}</span></div>
                     <div className="kanban-footer"><span className="mini-avatar">{ticket.assigneeInitials ?? "--"}</span><span className={formatDue(ticket.dueDate).startsWith("Hoje") ? "due urgent" : "due"}><Clock3 size={12} /> {formatDue(ticket.dueDate)}</span></div>
@@ -985,13 +1019,13 @@ function TicketsSection({ tickets, department, onStatus, onNew }: { tickets: Tic
             </section>
           );
         })}
-      </div>
+      </div>}
       {selectedTicket && <TicketDetailModal ticket={selectedTicket} onClose={() => setSelectedTicket(null)} onStatus={(status) => { onStatus(selectedTicket.id, status); setSelectedTicket((current) => current ? { ...current, status } : current); }} />}
     </section>
   );
 }
 
-function CommunicationSection({ currentUser, users, groups, messages, tickets, onSend, onSendAttachment, onNewGroup }: { currentUser: User; users: User[]; groups: Group[]; messages: Message[]; tickets: Ticket[]; onSend: (message: Message, recipientId?: string) => void; onSendAttachment: (file: File, context: { conversationType: ChatTab; conversationId: string; recipientId?: string; body: string }) => Promise<boolean>; onNewGroup: () => void }) {
+function CommunicationSection({ currentUser, users, groups, messages, tickets, onSend, onSendAttachment, onNewGroup, onTicketStatus }: { currentUser: User; users: User[]; groups: Group[]; messages: Message[]; tickets: Ticket[]; onSend: (message: Message, recipientId?: string) => void; onSendAttachment: (file: File, context: { conversationType: ChatTab; conversationId: string; recipientId?: string; body: string; ticketId?: string | null }) => Promise<boolean>; onNewGroup: () => void; onTicketStatus: (id: string, status: TicketStatus) => void }) {
   const access = useCurrentPermission();
   const [tab, setTab] = useState<ChatTab>("direct");
   const [selected, setSelected] = useState("u-rafael");
@@ -1000,6 +1034,9 @@ function CommunicationSection({ currentUser, users, groups, messages, tickets, o
   const [isUploading, setIsUploading] = useState(false);
   const [detailPanel, setDetailPanel] = useState<"attachments" | "participants" | null>(null);
   const [moreOpen, setMoreOpen] = useState(false);
+  const [ticketPickerOpen, setTicketPickerOpen] = useState(false);
+  const [linkedTicket, setLinkedTicket] = useState<Ticket | null>(null);
+  const [pendingTicketId, setPendingTicketId] = useState<string | null>(null);
   const chatFileInput = useRef<HTMLInputElement>(null);
   const directUsers = users.filter((user) => user.id !== currentUser.id);
   const selectionIsValid = tab === "direct" ? directUsers.some((user) => user.id === selected) : groups.some((group) => group.id === selected);
@@ -1016,24 +1053,25 @@ function CommunicationSection({ currentUser, users, groups, messages, tickets, o
     ? users.filter((user) => selectedGroup?.pendingUserIds?.includes(user.id))
     : [];
 
-  function selectConversation(id: string) { setSelected(id); setDetailPanel(null); setMoreOpen(false); }
-  function changeTab(next: ChatTab) { setTab(next); setSelected(next === "direct" ? directUsers[0]?.id ?? "" : groups[0]?.id ?? ""); setPendingFile(null); setDetailPanel(null); setMoreOpen(false); }
+  function selectConversation(id: string) { setSelected(id); setPendingTicketId(null); setDetailPanel(null); setMoreOpen(false); }
+  function changeTab(next: ChatTab) { setTab(next); setSelected(next === "direct" ? directUsers[0]?.id ?? "" : groups[0]?.id ?? ""); setPendingFile(null); setPendingTicketId(null); setDetailPanel(null); setMoreOpen(false); }
   function togglePanel(panel: "attachments" | "participants") { setDetailPanel((current) => current === panel ? null : panel); setMoreOpen(false); }
   async function submit(event: FormEvent) {
     event.preventDefault();
     const body = draft.trim();
-    if ((!body && !pendingFile) || !conversationThreadId || isUploading) return;
+    if ((!body && !pendingFile && !pendingTicketId) || !conversationThreadId || isUploading) return;
     const recipientId = tab === "direct" ? effectiveSelected : undefined;
     if (pendingFile) {
       setIsUploading(true);
       try {
-        const sent = await onSendAttachment(pendingFile, { conversationType: tab, conversationId: conversationThreadId, recipientId, body });
-        if (sent) { setPendingFile(null); setDraft(""); }
+        const sent = await onSendAttachment(pendingFile, { conversationType: tab, conversationId: conversationThreadId, recipientId, body, ticketId: pendingTicketId });
+        if (sent) { setPendingFile(null); setPendingTicketId(null); setDraft(""); }
       } finally { setIsUploading(false); }
       return;
     }
-    onSend({ id: makeId(), conversationType: tab, conversationId: conversationThreadId, senderId: currentUser.id, senderName: currentUser.fullName, senderInitials: currentUser.initials, body, createdAt: new Date().toISOString() }, recipientId);
+    onSend({ id: makeId(), conversationType: tab, conversationId: conversationThreadId, senderId: currentUser.id, senderName: currentUser.fullName, senderInitials: currentUser.initials, body, ticketId: pendingTicketId, createdAt: new Date().toISOString() }, recipientId);
     setDraft("");
+    setPendingTicketId(null);
   }
 
   return (
@@ -1092,7 +1130,7 @@ function CommunicationSection({ currentUser, users, groups, messages, tickets, o
               <span className="activity-avatar blue">{message.senderInitials}</span>
               <div>
                 <div className="message-meta"><strong>{message.senderName}</strong><time>{formatTime(message.createdAt)}</time></div>{message.body && <p>{message.body}</p>}
-                {message.ticketId && <button className="ticket-attachment"><ClipboardList size={12} /> {tickets.find((ticket) => ticket.id === message.ticketId)?.protocol ?? "Chamado relacionado"}</button>}
+                {message.ticketId && <button className="ticket-attachment" onClick={() => setLinkedTicket(tickets.find((ticket) => ticket.id === message.ticketId) ?? null)}><ClipboardList size={12} /> {tickets.find((ticket) => ticket.id === message.ticketId)?.protocol ?? "Chamado relacionado"}</button>}
                 {message.attachmentName && (message.attachmentUrl || message.attachmentId ? <a className="file-attachment" href={message.attachmentUrl ?? `/api/files?id=${encodeURIComponent(message.attachmentId ?? "")}&userId=${encodeURIComponent(currentUser.id)}`} download={message.attachmentName}><span>{fileBadge(message.attachmentName)}</span><div><strong>{message.attachmentName}</strong><small>{message.attachmentSize ? `${formatSize(message.attachmentSize)} · ` : ""}Documento anexado</small></div><i><Download size={14} /></i></a> : <div className="file-attachment"><span>{fileBadge(message.attachmentName)}</span><div><strong>{message.attachmentName}</strong><small>Documento registrado</small></div><i><FileText size={14} /></i></div>)}
               </div>
             </div>
@@ -1100,11 +1138,14 @@ function CommunicationSection({ currentUser, users, groups, messages, tickets, o
         </div>
         {access.register ? <form className="message-composer" onSubmit={submit}>
           {pendingFile && <div className="pending-attachment"><span><FileText size={16} /></span><div><strong>{pendingFile.name}</strong><small>{formatSize(pendingFile.size)} · pronto para enviar nesta conversa</small></div><button type="button" aria-label="Remover anexo" onClick={() => setPendingFile(null)}><X size={15} /></button></div>}
-          <div className="compose-actions"><button type="button" onClick={() => chatFileInput.current?.click()} title="Anexar documento"><Paperclip size={16} /></button><button type="button" title="Vincular chamado"><ClipboardList size={16} /></button></div>
+          {pendingTicketId && (() => { const linked=tickets.find((ticket)=>ticket.id===pendingTicketId); return linked ? <div className="pending-attachment pending-ticket"><span><ClipboardList size={16} /></span><div><strong>{linked.protocol}</strong><small>{linked.title} · será vinculado à mensagem</small></div><button type="button" aria-label="Remover chamado vinculado" onClick={() => setPendingTicketId(null)}><X size={15} /></button></div> : null; })()}
+          <div className="compose-actions"><button type="button" onClick={() => chatFileInput.current?.click()} title="Anexar documento"><Paperclip size={16} /></button><button type="button" title="Vincular chamado" onClick={() => setTicketPickerOpen(true)}><ClipboardList size={16} /></button></div>
           <textarea aria-label="Mensagem" placeholder={pendingFile ? "Adicione uma mensagem ao documento (opcional)..." : "Escreva uma mensagem..."} value={draft} onChange={(event) => setDraft(event.target.value)} onKeyDown={(event) => { if (event.key === "Enter" && !event.shiftKey) { event.preventDefault(); event.currentTarget.form?.requestSubmit(); } }} />
-          <button className="send-button" aria-label={isUploading ? "Enviando documento" : "Enviar mensagem"} disabled={isUploading || (!draft.trim() && !pendingFile)}>{isUploading ? <LoaderCircle className="spin" size={16} /> : <Send size={16} />}</button>
+          <button className="send-button" aria-label={isUploading ? "Enviando documento" : "Enviar mensagem"} disabled={isUploading || (!draft.trim() && !pendingFile && !pendingTicketId)}>{isUploading ? <LoaderCircle className="spin" size={16} /> : <Send size={16} />}</button>
           <input ref={chatFileInput} className="hidden-input" type="file" accept=".pdf,.doc,.docx,.xls,.xlsx,.csv,.txt,.png,.jpg,.jpeg,.zip" onChange={(event) => { const file = event.target.files?.[0]; if (file) setPendingFile(file); event.target.value = ""; }} />
         </form> : <div className="read-only-composer"><ShieldCheck size={16} /><span><strong>Conversa em modo de consulta</strong><small>O secretário não autorizou o envio de mensagens para este perfil.</small></span></div>}
+        {ticketPickerOpen && <div className="modal-backdrop" role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget) setTicketPickerOpen(false); }}><section className="modal ticket-picker-modal" role="dialog" aria-modal="true" aria-labelledby="ticket-picker-title"><header><div><p className="eyebrow">VINCULAR CHAMADO</p><h2 id="ticket-picker-title">Escolha um chamado</h2></div><button onClick={() => setTicketPickerOpen(false)} aria-label="Fechar"><X size={18} /></button></header><div className="ticket-picker-list">{tickets.map((ticket) => <button key={ticket.id} onClick={() => { setPendingTicketId(ticket.id); setTicketPickerOpen(false); }}><ClipboardList size={15} /><span><strong>{ticket.protocol}</strong><small>{ticket.title}</small></span><StatusPill status={ticket.status} /><ChevronRight size={13} /></button>)}{!tickets.length && <div className="empty-state">Não há chamados disponíveis neste setor.</div>}</div></section></div>}
+        {linkedTicket && <TicketDetailModal ticket={linkedTicket} onClose={() => setLinkedTicket(null)} onStatus={(status) => { onTicketStatus(linkedTicket.id, status); setLinkedTicket((current) => current ? { ...current, status } : current); }} />}
       </div>
     </section>
   );
@@ -1303,7 +1344,7 @@ function TeamSection({ offices }: { offices: Office[] }) {
   );
 }
 
-function AuditSection({ audit, department }: { audit: AuditItem[]; department: string }) {
+function AuditSection({ audit, department, notify }: { audit: AuditItem[]; department: string; notify: (message: string) => void }) {
   const [query, setQuery] = useState("");
   const [category, setCategory] = useState("Todas as atividades");
   const visibleAudit = audit.filter((item) => {
@@ -1316,7 +1357,7 @@ function AuditSection({ audit, department }: { audit: AuditItem[]; department: s
     <section className="audit-layout">
       <aside className="panel audit-summary"><span className="audit-shield"><ShieldCheck size={22} /></span><h2>Registro do setor</h2><p>Somente chamados, mensagens, anexos, arquivos e eventos relacionados a {department} aparecem neste histórico.</p><dl><div><dt>Atividades relevantes</dt><dd>{audit.length}</dd></div><div><dt>Escopo</dt><dd>Setorial</dd></div></dl></aside>
       <article className="panel audit-panel">
-        <div className="module-toolbar"><label className="module-search"><Search size={15} /><input aria-label="Buscar no histórico do setor" placeholder="Buscar atividade, pessoa ou arquivo..." value={query} onChange={(event) => setQuery(event.target.value)} /></label><select aria-label="Filtrar atividade" value={category} onChange={(event) => setCategory(event.target.value)}><option>Todas as atividades</option><option>Chamados</option><option>Mensagens e anexos</option><option>Arquivos do setor</option><option>Eventos</option></select><button className="button secondary"><Download size={15} /> Exportar log</button></div>
+        <div className="module-toolbar"><label className="module-search"><Search size={15} /><input aria-label="Buscar no histórico do setor" placeholder="Buscar atividade, pessoa ou arquivo..." value={query} onChange={(event) => setQuery(event.target.value)} /></label><select aria-label="Filtrar atividade" value={category} onChange={(event) => setCategory(event.target.value)}><option>Todas as atividades</option><option>Chamados</option><option>Mensagens e anexos</option><option>Arquivos do setor</option><option>Eventos</option></select><button className="button secondary" onClick={() => { const csv = [["Data","Usuário","Categoria","Ação","Detalhe"], ...visibleAudit.map((item) => [item.createdAt,item.actorName,auditCategory(item),auditActionLabel(item),item.detail])].map((row) => row.map((value) => `"${String(value).replace(/"/g,'""')}"`).join(";")).join("\n"); const blob = new Blob(["\ufeff",csv],{type:"text/csv;charset=utf-8"}); const url=URL.createObjectURL(blob); const link=document.createElement("a"); link.href=url; link.download="historico-atividades.csv"; link.click(); URL.revokeObjectURL(url); notify("Log de auditoria exportado em CSV."); }}><Download size={15} /> Exportar log</button></div>
         <div className="audit-list">{visibleAudit.map((item, index) => { const itemCategory = auditCategory(item); return <div className="audit-row" key={item.id}><span className={`activity-avatar ${["green", "blue", "violet", "amber"][index % 4]}`}>{item.actorInitials}</span><div><strong>{item.actorName}</strong><p>{item.detail}</p><small>{itemCategory} · {formatDateTime(item.createdAt)}</small></div><span className="audit-action">{auditActionLabel(item)}</span></div>; })}{!visibleAudit.length && <div className="audit-empty"><History size={30} /><strong>Nenhuma atividade relevante encontrada</strong><p>{query || category !== "Todas as atividades" ? "Ajuste a busca ou o filtro selecionado." : `Ainda não há registros operacionais para ${department}.`}</p></div>}</div>
       </article>
     </section>
@@ -1335,7 +1376,7 @@ function TicketDetailModal({ ticket, onClose, onStatus }: { ticket: Ticket; onCl
     { id: "approve", label: "Submeter ao responsável pela aprovação", done: ticket.status === "Concluído" },
     { id: "proof", label: "Anexar comprovante, parecer ou fotografia final", done: ticket.status === "Concluído" },
   ]);
-  return <div className="modal-backdrop" role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget) onClose(); }}><section className="modal ticket-detail-modal" role="dialog" aria-modal="true" aria-labelledby="ticket-detail-title"><header><div><p className="eyebrow">{ticket.protocol} · {ticket.requester}</p><h2 id="ticket-detail-title">{ticket.title}</h2></div><button type="button" onClick={onClose} aria-label="Fechar"><X size={18} /></button></header><div className="ticket-detail-body"><div className="ticket-detail-meta"><StatusPill status={ticket.status} /><span className={`priority-label ${ticket.priority.toLowerCase().replace("é", "e")}`}>{ticket.priority}</span><span><Clock3 size={13} /> SLA: {formatDue(ticket.dueDate)}</span>{!access.edit && <span className="read-only-chip"><ShieldCheck size={11} /> Somente consulta</span>}</div><p className="ticket-detail-description">{ticket.description}</p><div className="ticket-sla-meter"><strong>SLA operacional</strong><span><i style={{ width: `${ticket.status === "Concluído" ? 100 : ticket.priority === "Urgente" ? 82 : ticket.priority === "Alta" ? 66 : 48}%` }} /></span><em>{formatDue(ticket.dueDate)}</em></div><article className="ticket-timeline"><h3>Linha do tempo do chamado</h3><ol><li><time>08:42</time><i /><span><strong>Chamado registrado</strong>Solicitação recebida e protocolo gerado.</span></li><li><time>09:03</time><i /><span><strong>Triagem concluída</strong>Demanda encaminhada para {ticket.department}.</span></li><li><time>09:18</time><i /><span><strong>Responsável definido</strong>{ticket.assigneeName ?? "Equipe do setor"} assumiu o atendimento.</span></li><li><time>11:07</time><i /><span><strong>Execução atualizada</strong>Status atual: {ticket.status}.</span></li></ol></article><div className="ticket-ownership"><div><small>Responsável principal</small><strong><span className="mini-avatar">{ticket.assigneeInitials ?? "--"}</span>{ticket.assigneeName ?? "A definir"}</strong></div><div><small>Colaboradores</small><strong><span className="avatar-stack"><i>AK</i><i>MC</i><i>+2</i></span>4 participantes</strong></div><div><small>Aprovador</small><strong><ShieldCheck size={14} /> Responsável pelo setor</strong></div></div><div className="ticket-detail-grid"><article className="ticket-checklist"><header><div><h3>Checklist de execução</h3><p>{checklist.filter((item) => item.done).length} de {checklist.length} etapas concluídas</p></div><span>{Math.round(checklist.filter((item) => item.done).length / checklist.length * 100)}%</span></header>{checklist.map((item) => <label key={item.id} className={item.done ? "done" : ""}><input type="checkbox" checked={item.done} disabled={!access.edit} onChange={() => setChecklist((current) => current.map((entry) => entry.id === item.id ? { ...entry, done: !entry.done } : entry))} /><span>{item.label}</span></label>)}{access.edit && <button><Plus size={13} /> Adicionar etapa</button>}</article><article className="ticket-movement"><h3>Encaminhar para outro setor</h3><p>O setor de origem e todo o histórico serão preservados.</p><select aria-label="Setor de destino" disabled={!access.edit} value={forwardDepartment} onChange={(event) => setForwardDepartment(event.target.value)}><option value="">Selecione o setor de destino</option>{OFFICES.filter((office) => office.name !== ticket.department).map((office) => <option key={office.id}>{office.name}</option>)}</select><textarea aria-label="Motivo do encaminhamento" disabled={!access.edit} placeholder={access.edit ? "Justificativa do encaminhamento..." : "Alteração bloqueada pelo perfil"} />{access.edit && <button className="button secondary" disabled={!forwardDepartment} onClick={() => { setFeedback(`Encaminhamento preparado para ${forwardDepartment}.`); setForwardDepartment(""); }}>Registrar encaminhamento</button>}{feedback && <small className="ticket-inline-feedback"><Check size={11} /> {feedback}</small>}</article></div><article className="ticket-conversation"><div className="ticket-conversation-tabs"><button className={tab === "mensagens" ? "active" : ""} onClick={() => setTab("mensagens")}>Mensagens do chamado</button><button className={tab === "interno" ? "active" : ""} onClick={() => setTab("interno")}><LockKeyholeIcon /> Anotações internas</button></div><div className="ticket-note-feed">{tab === "mensagens" ? <><p><strong>Solicitante</strong><span>A solicitação foi registrada com endereço e fotografias do local.</span><small>13 ago., 08:42</small></p><p><strong>{ticket.assigneeName ?? "Equipe responsável"}</strong><span>A análise inicial foi realizada e o atendimento segue o prazo indicado.</span><small>13 ago., 11:18</small></p></> : <><p className="internal-note"><strong>Nota restrita ao setor</strong><span>Verificar disponibilidade da equipe antes de confirmar a data ao solicitante.</span><small>Somente integrantes autorizados podem visualizar</small></p></>} </div>{access.edit && <div className="ticket-note-compose"><input aria-label={tab === "interno" ? "Adicionar anotação interna" : "Escrever mensagem do chamado"} value={note} onChange={(event) => setNote(event.target.value)} placeholder={tab === "interno" ? "Adicionar anotação interna..." : "Escrever atualização para os participantes..."} /><button disabled={!note.trim()} onClick={() => { setFeedback(tab === "interno" ? "Anotação interna registrada." : "Mensagem registrada no chamado."); setNote(""); }}><Send size={14} /></button></div>}</article><footer className="ticket-detail-footer">{access.edit && <label>Etapa atual<select value={ticket.status} onChange={(event) => onStatus(event.target.value as TicketStatus)}>{statuses.map((status) => <option key={status}>{status}</option>)}</select></label>}<button className="button secondary" onClick={onClose}>Fechar</button>{access.edit && <button className="button primary" onClick={() => { onStatus("Concluído"); setFeedback("Chamado concluído e pesquisa de satisfação liberada."); }}><CheckCircle2 size={15} /> Concluir atendimento</button>}</footer></div></section></div>;
+  return <div className="modal-backdrop" role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget) onClose(); }}><section className="modal ticket-detail-modal" role="dialog" aria-modal="true" aria-labelledby="ticket-detail-title"><header><div><p className="eyebrow">{ticket.protocol} · {ticket.requester}</p><h2 id="ticket-detail-title">{ticket.title}</h2></div><button type="button" onClick={onClose} aria-label="Fechar"><X size={18} /></button></header><div className="ticket-detail-body"><div className="ticket-detail-meta"><StatusPill status={ticket.status} /><span className={`priority-label ${ticket.priority.toLowerCase().replace("é", "e")}`}>{ticket.priority}</span><span><Clock3 size={13} /> SLA: {formatDue(ticket.dueDate)}</span>{!access.edit && <span className="read-only-chip"><ShieldCheck size={11} /> Somente consulta</span>}</div><p className="ticket-detail-description">{ticket.description}</p><div className="ticket-sla-meter"><strong>SLA operacional</strong><span><i style={{ width: `${ticket.status === "Concluído" ? 100 : ticket.priority === "Urgente" ? 82 : ticket.priority === "Alta" ? 66 : 48}%` }} /></span><em>{formatDue(ticket.dueDate)}</em></div><article className="ticket-timeline"><h3>Linha do tempo do chamado</h3><ol><li><time>08:42</time><i /><span><strong>Chamado registrado</strong>Solicitação recebida e protocolo gerado.</span></li><li><time>09:03</time><i /><span><strong>Triagem concluída</strong>Demanda encaminhada para {ticket.department}.</span></li><li><time>09:18</time><i /><span><strong>Responsável definido</strong>{ticket.assigneeName ?? "Equipe do setor"} assumiu o atendimento.</span></li><li><time>11:07</time><i /><span><strong>Execução atualizada</strong>Status atual: {ticket.status}.</span></li></ol></article><div className="ticket-ownership"><div><small>Responsável principal</small><strong><span className="mini-avatar">{ticket.assigneeInitials ?? "--"}</span>{ticket.assigneeName ?? "A definir"}</strong></div><div><small>Colaboradores</small><strong><span className="avatar-stack"><i>AK</i><i>MC</i><i>+2</i></span>4 participantes</strong></div><div><small>Aprovador</small><strong><ShieldCheck size={14} /> Responsável pelo setor</strong></div></div><div className="ticket-detail-grid"><article className="ticket-checklist"><header><div><h3>Checklist de execução</h3><p>{checklist.filter((item) => item.done).length} de {checklist.length} etapas concluídas</p></div><span>{Math.round(checklist.filter((item) => item.done).length / checklist.length * 100)}%</span></header>{checklist.map((item) => <label key={item.id} className={item.done ? "done" : ""}><input type="checkbox" checked={item.done} disabled={!access.edit} onChange={() => setChecklist((current) => current.map((entry) => entry.id === item.id ? { ...entry, done: !entry.done } : entry))} /><span>{item.label}</span></label>)}{access.edit && <button onClick={() => { setChecklist((current) => [...current, { id: `custom-${current.length + 1}`, label: `Nova etapa ${current.length + 1}`, done: false }]); setFeedback("Nova etapa adicionada ao checklist."); }}><Plus size={13} /> Adicionar etapa</button>}</article><article className="ticket-movement"><h3>Encaminhar para outro setor</h3><p>O setor de origem e todo o histórico serão preservados.</p><select aria-label="Setor de destino" disabled={!access.edit} value={forwardDepartment} onChange={(event) => setForwardDepartment(event.target.value)}><option value="">Selecione o setor de destino</option>{OFFICES.filter((office) => office.name !== ticket.department).map((office) => <option key={office.id}>{office.name}</option>)}</select><textarea aria-label="Motivo do encaminhamento" disabled={!access.edit} placeholder={access.edit ? "Justificativa do encaminhamento..." : "Alteração bloqueada pelo perfil"} />{access.edit && <button className="button secondary" disabled={!forwardDepartment} onClick={() => { setFeedback(`Encaminhamento preparado para ${forwardDepartment}.`); setForwardDepartment(""); }}>Registrar encaminhamento</button>}{feedback && <small className="ticket-inline-feedback"><Check size={11} /> {feedback}</small>}</article></div><article className="ticket-conversation"><div className="ticket-conversation-tabs"><button className={tab === "mensagens" ? "active" : ""} onClick={() => setTab("mensagens")}>Mensagens do chamado</button><button className={tab === "interno" ? "active" : ""} onClick={() => setTab("interno")}><LockKeyholeIcon /> Anotações internas</button></div><div className="ticket-note-feed">{tab === "mensagens" ? <><p><strong>Solicitante</strong><span>A solicitação foi registrada com endereço e fotografias do local.</span><small>13 ago., 08:42</small></p><p><strong>{ticket.assigneeName ?? "Equipe responsável"}</strong><span>A análise inicial foi realizada e o atendimento segue o prazo indicado.</span><small>13 ago., 11:18</small></p></> : <><p className="internal-note"><strong>Nota restrita ao setor</strong><span>Verificar disponibilidade da equipe antes de confirmar a data ao solicitante.</span><small>Somente integrantes autorizados podem visualizar</small></p></>} </div>{access.edit && <div className="ticket-note-compose"><input aria-label={tab === "interno" ? "Adicionar anotação interna" : "Escrever mensagem do chamado"} value={note} onChange={(event) => setNote(event.target.value)} placeholder={tab === "interno" ? "Adicionar anotação interna..." : "Escrever atualização para os participantes..."} /><button disabled={!note.trim()} onClick={() => { setFeedback(tab === "interno" ? "Anotação interna registrada." : "Mensagem registrada no chamado."); setNote(""); }}><Send size={14} /></button></div>}</article><footer className="ticket-detail-footer">{access.edit && <label>Etapa atual<select value={ticket.status} onChange={(event) => onStatus(event.target.value as TicketStatus)}>{statuses.map((status) => <option key={status}>{status}</option>)}</select></label>}<button className="button secondary" onClick={onClose}>Fechar</button>{access.edit && <button className="button primary" onClick={() => { onStatus("Concluído"); setFeedback("Chamado concluído e pesquisa de satisfação liberada."); }}><CheckCircle2 size={15} /> Concluir atendimento</button>}</footer></div></section></div>;
 }
 
 function LockKeyholeIcon() { return <ShieldCheck size={13} />; }

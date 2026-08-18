@@ -1902,3 +1902,37 @@ img, video, canvas, iframe { max-width: 100%; }
   .map-commitment-marker strong { font-size:10px; }
   .map-commitment-marker small { display:none; }
 }
+
+/* Auditoria de interações — evita controles sem resposta visível */
+.interaction-action-modal { width:min(520px,calc(100vw - 28px)); }
+.interaction-action-body { display:grid;grid-template-columns:auto 1fr;gap:14px;align-items:flex-start;padding:20px; }
+.interaction-action-icon { display:grid;width:42px;height:42px;place-items:center;border-radius:12px;color:#15786c;background:#e7f5f1; }
+.interaction-action-body strong { display:block;color:#334b52;font-size:14px; }
+.interaction-action-body p { margin:6px 0;color:#66787d;font-size:12px;line-height:1.55; }
+.interaction-action-body small { color:#96a1a4;font-size:10.5px;line-height:1.45; }
+.interaction-action-modal > footer { display:flex;justify-content:flex-end;gap:8px;padding:14px 20px;border-top:1px solid #edf1ef; }
+
+.ticket-list-mode { overflow:hidden; }
+.ticket-list-mode > button { display:grid;width:100%;grid-template-columns:auto minmax(0,1fr) auto auto auto;align-items:center;gap:12px;padding:13px 15px;border:0;border-bottom:1px solid #edf1ef;background:#fff;text-align:left; }
+.ticket-list-mode > button:last-child { border-bottom:0; }
+.ticket-list-mode > button:hover { background:#f8fbfa; }
+.ticket-list-mode > button > span:nth-child(2) strong,.ticket-list-mode > button > span:nth-child(2) small { display:block; }
+.ticket-list-mode > button > span:nth-child(2) strong { color:#3c5158;font-size:12.5px; }
+.ticket-list-mode > button > span:nth-child(2) small { margin-top:3px;color:#8e9a9e;font-size:10.5px; }
+.ticket-list-mode > button > svg { color:#8e9b9e; }
+
+.ticket-picker-modal { width:min(640px,calc(100vw - 28px)); }
+.ticket-picker-list { max-height:430px;overflow:auto;padding:8px 18px 18px; }
+.ticket-picker-list > button { display:grid;width:100%;grid-template-columns:auto minmax(0,1fr) auto auto;align-items:center;gap:10px;padding:12px 10px;border:0;border-bottom:1px solid #edf1ef;background:#fff;text-align:left; }
+.ticket-picker-list > button:hover { background:#f8fbfa; }
+.ticket-picker-list > button > svg:first-child { color:var(--teal); }
+.ticket-picker-list strong,.ticket-picker-list small { display:block; }
+.ticket-picker-list strong { color:#3b5057;font-size:12px; }
+.ticket-picker-list small { margin-top:3px;color:#8b989c;font-size:10.5px; }
+.pending-ticket { border-color:#cfe4df!important;background:#f2faf8!important; }
+
+@media(max-width:720px){
+  .ticket-list-mode > button { grid-template-columns:auto minmax(0,1fr) auto; }
+  .ticket-list-mode > button .municipal-status,.ticket-list-mode > button .due { grid-column:2;justify-self:start; }
+  .interaction-action-body { grid-template-columns:1fr; }
+}
