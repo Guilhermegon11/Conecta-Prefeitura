@@ -59,3 +59,10 @@ font-family: "Helvena", "Helvetica Neue", Helvetica, Arial, sans-serif;
 ```
 
 Nenhum arquivo binário de fonte foi incorporado ao projeto. Para renderização efetiva em Helvena em todos os dispositivos, use uma licença/arquivo oficial da família no ambiente de produção e configure o carregamento correspondente.
+
+## Correção Vercel — 18/08/2026
+
+- Corrigido o erro de type check em `app/api/actions/route.ts` no qual `ActionPayload` não era estruturalmente compatível com `PayloadLike`.
+- `ActionPayload` agora declara explicitamente `userId?: unknown`, preservando o índice dinâmico usado pelas ações.
+- Checagem TypeScript isolada de `app/api/actions/route.ts`, `app/server-authorization.ts` e `db/runtime.ts`: **aprovada** após a correção.
+- O build completo continua dependente da instalação das dependências do `package-lock.json`; o ambiente local de empacotamento não consegue resolver `registry.npmjs.org`, enquanto a Vercel possui sua própria etapa de instalação.

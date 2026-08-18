@@ -3,6 +3,7 @@ import { AuthorizationError, resolveActorId } from "../../server-authorization";
 
 type ActionPayload = {
   action?: "create_ticket" | "update_ticket" | "send_message" | "create_group" | "respond_invitation" | "mark_notification" | "mark_all_notifications" | "create_event" | "invite_employee" | "resend_employee_invite";
+  userId?: unknown;
   [key: string]: unknown;
 };
 
