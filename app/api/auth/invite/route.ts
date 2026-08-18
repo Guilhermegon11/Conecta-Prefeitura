@@ -1,6 +1,8 @@
+import { hasValidSession } from "../../../auth-session";
 import { supabaseAdminConfig, supabaseAdminHeaders } from "../../../supabase-admin";
 export const runtime="nodejs"; export const dynamic="force-dynamic";
 export async function POST(request:Request){
+ if(!hasValidSession(request)) return Response.json({error:"Sessão expirada."},{status:401});
  try{
   const body=await request.json() as {email?:unknown;fullName?:unknown;department?:unknown;role?:unknown;redirectTo?:unknown};
   const email=typeof body.email==="string"?body.email.trim().toLowerCase():""; const fullName=typeof body.fullName==="string"?body.fullName.trim():""; const department=typeof body.department==="string"?body.department.trim():""; const role=typeof body.role==="string"?body.role.trim():"Funcionário";

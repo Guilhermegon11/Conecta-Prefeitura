@@ -30,6 +30,7 @@ import {
   ListTodo,
   LoaderCircle,
   LockKeyhole,
+  LogOut,
   Mail,
   MapPin,
   Menu,
@@ -82,7 +83,8 @@ import {
   type PermissionModule,
 } from "./access-control";
 import { PermissionProvider, useCurrentPermission } from "./permission-context";
-import { loadPersistentValue, savePersistentValue, usePersistentState } from "./persistence";
+import { loadCachedPersistentValue, loadPersistentValue, savePersistentValue, usePersistentState } from "./persistence";
+import { LoginLoadingScreen, TestLoginScreen } from "./test-login";
 
 type TicketStatus = "Recebido" | "Em análise" | "Aguardando aprovação" | "Em execução" | "Aguardando resposta" | "Concluído" | "Cancelado";
 type Priority = "Urgente" | "Alta" | "Média" | "Baixa";
@@ -270,6 +272,8 @@ const EXECUTIVE_COMMUNICATION_KEY = "settings:executive-communication:v1";
 
 export default function Home() {
   const [activeNav, setActiveNav] = useState<NavItem>("Visão geral");
+  const [authState, setAuthState] = useState<"checking" | "login" | "authenticated">("checking");
+  const [clockNow, setClockNow] = useState(() => new Date());
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [currentUserId, setCurrentUserId] = useState("u-ana");
   const [viewedDepartment, setViewedDepartment] = useState("Secretaria de Governo");
@@ -364,6 +368,21 @@ export default function Home() {
 
   useEffect(() => {
     let cancelled = false;
+    void fetch("/api/auth/session", { cache: "no-store" }).then(async (response) => {
+      const payload = await response.json().catch(() => null) as { authenticated?: boolean } | null;
+      if (!cancelled) setAuthState(payload?.authenticated ? "authenticated" : "login");
+    }).catch(() => { if (!cancelled) setAuthState("login"); });
+    return () => { cancelled = true; };
+  }, []);
+
+  useEffect(() => {
+    const timer = window.setInterval(() => setClockNow(new Date()), 1000);
+    return () => window.clearInterval(timer);
+  }, []);
+
+  useEffect(() => {
+    if (authState !== "authenticated") return;
+    let cancelled = false;
     setPersistenceStatus("carregando");
     void Promise.all([
       loadPersistentValue<{ soundEnabled?: boolean; motionEnabled?: boolean }>(EXPERIENCE_SETTINGS_KEY),
@@ -394,41 +413,55 @@ export default function Home() {
       setAppReady(true);
     }).catch(() => {
       if (cancelled) return;
+      const cached = loadCachedPersistentValue<{
+        ticketData?: Ticket[]; users?: User[]; groups?: Group[]; messages?: Message[]; documents?: DocumentItem[];
+        events?: SectorEvent[]; audit?: AuditItem[]; notifications?: NotificationItem[]; invitations?: GroupInvitation[];
+      }>(APP_STATE_KEY);
+      if (cached) {
+        if (Array.isArray(cached.ticketData)) setTicketData(backfillTicketLocations(cached.ticketData));
+        if (Array.isArray(cached.users)) setUsers(cached.users);
+        if (Array.isArray(cached.groups)) setGroups(cached.groups);
+        if (Array.isArray(cached.messages)) setMessages(cached.messages);
+        if (Array.isArray(cached.documents)) setDocuments(cached.documents);
+        if (Array.isArray(cached.events)) setEvents(cached.events);
+        if (Array.isArray(cached.audit)) setAudit(cached.audit);
+        if (Array.isArray(cached.notifications)) setNotifications(cached.notifications);
+        if (Array.isArray(cached.invitations)) setInvitations(cached.invitations);
+      }
       setPersistenceStatus("offline");
       setAppReady(true);
     });
     return () => { cancelled = true; };
-  }, []);
+  }, [authState]);
 
   useEffect(() => {
-    if (!appReady) return;
+    if (authState !== "authenticated" || !appReady) return;
     const timer = window.setTimeout(() => {
       setPersistenceStatus("salvando");
       void savePersistentValue(EXPERIENCE_SETTINGS_KEY, { soundEnabled, motionEnabled }).then(() => setPersistenceStatus("salvo")).catch(() => setPersistenceStatus("offline"));
     }, 350);
     return () => window.clearTimeout(timer);
-  }, [appReady, motionEnabled, soundEnabled]);
+  }, [appReady, authState, motionEnabled, soundEnabled]);
 
   useEffect(() => {
-    if (!appReady) return;
+    if (authState !== "authenticated" || !appReady) return;
     const timer = window.setTimeout(() => { void savePersistentValue(EXECUTIVE_COMMUNICATION_KEY, { enabled: executiveCommunicationAccess }).catch(() => setPersistenceStatus("offline")); }, 350);
     return () => window.clearTimeout(timer);
-  }, [appReady, executiveCommunicationAccess]);
+  }, [appReady, authState, executiveCommunicationAccess]);
 
   useEffect(() => {
-    if (!appReady) return;
+    if (authState !== "authenticated" || !appReady) return;
     const timer = window.setTimeout(() => { void savePersistentValue(PERMISSION_SETTINGS_KEY, permissionConfigs).catch(() => setPersistenceStatus("offline")); }, 450);
     return () => window.clearTimeout(timer);
-  }, [appReady, permissionConfigs]);
+  }, [appReady, authState, permissionConfigs]);
 
   useEffect(() => {
-    if (!appReady) return;
-    const timer = window.setTimeout(() => {
-      setPersistenceStatus("salvando");
-      void savePersistentValue(APP_STATE_KEY, { ticketData, users, groups, messages, documents, events, audit, notifications, invitations }).then(() => setPersistenceStatus("salvo")).catch(() => setPersistenceStatus("offline"));
-    }, 650);
-    return () => window.clearTimeout(timer);
-  }, [audit, appReady, documents, events, groups, invitations, messages, notifications, ticketData, users]);
+    if (authState !== "authenticated" || !appReady) return;
+    setPersistenceStatus("salvando");
+    void savePersistentValue(APP_STATE_KEY, { ticketData, users, groups, messages, documents, events, audit, notifications, invitations })
+      .then(() => setPersistenceStatus("salvo"))
+      .catch(() => setPersistenceStatus("offline"));
+  }, [audit, appReady, authState, documents, events, groups, invitations, messages, notifications, ticketData, users]);
 
   useEffect(() => {
     if (currentPermission.view) return;
@@ -493,6 +526,10 @@ export default function Home() {
     const nextUser = users.find((user) => user.id === userId);
     setCurrentUserId(userId);
     if (nextUser) setViewedDepartment(nextUser.department);
+  }
+
+  async function logout() {
+    try { await fetch("/api/auth/logout", { method: "POST" }); } finally { window.location.reload(); }
   }
 
   async function createTicket(form: FormData) {
@@ -741,8 +778,11 @@ export default function Home() {
     } catch (error) { notify(error instanceof Error ? error.message : "Não foi possível reenviar o convite."); }
   }
 
+  if (authState === "checking") return <LoginLoadingScreen />;
+  if (authState === "login") return <TestLoginScreen onAuthenticated={() => { setAppReady(false); setAuthState("authenticated"); }} />;
+
   const heading = getHeading(activeNav);
-  const headingTitle = activeNav === "Visão geral" ? `Bom dia, ${currentUser.fullName.split(" ")[0]}.` : activeNav === "Área do Setor" ? activeDepartment : heading.title;
+  const headingTitle = activeNav === "Visão geral" ? `${greetingFor(clockNow)}, ${currentUser.fullName.split(" ")[0]}.` : activeNav === "Área do Setor" ? activeDepartment : heading.title;
 
   return (
     <div className={`app-shell ${motionEnabled ? "motion-enabled" : "motion-reduced"}`}>
@@ -796,6 +836,7 @@ export default function Home() {
           <div className="top-actions">
             <span className={`persistence-status ${persistenceStatus}`} title="Persistência central do sistema"><i />{persistenceStatus === "carregando" ? "Conectando" : persistenceStatus === "salvando" ? "Salvando" : persistenceStatus === "offline" ? "Aguardando conexão" : "Salvo"}</span>
             <button className="icon-button notification-button" aria-label={`Notificações${unreadCount ? `: ${unreadCount} novas` : ""}`} onClick={() => setActiveNav("Notificações")}><Bell size={18} />{unreadCount > 0 && <span />}</button>
+            <button className="icon-button logout-button" aria-label="Sair do sistema" title="Sair" onClick={() => void logout()}><LogOut size={18} /></button>
             <label className="account-switch"><div className="avatar">{currentUser.initials}</div><span><small>VISUALIZAR COMO</small><select aria-label="Visualizar como usuário" value={currentUserId} onChange={(event) => switchUser(event.target.value)}>{activeUsers.map((user) => <option key={user.id} value={user.id}>{user.fullName} — {user.department}</option>)}</select></span></label>
           </div>
         </header>
@@ -803,7 +844,7 @@ export default function Home() {
         <PermissionProvider permission={currentPermission}>
         <div className={`content-wrap ${activeNav === "Comunicação" ? "chat-content" : ""} ${currentPermission.register ? "can-register" : "read-only-register"} ${currentPermission.edit ? "can-edit" : "read-only-edit"}`}>
           <section className="page-heading">
-            <div><p className="eyebrow">{activeNav === "Visão geral" ? formatHeadingDate(new Date()) : heading.eyebrow}</p><h1>{headingTitle}</h1><p>{heading.subtitle}</p></div>
+            <div><p className="eyebrow">{activeNav === "Visão geral" ? `${formatHeadingDate(clockNow)} · ${formatHeadingClock(clockNow)}` : heading.eyebrow}</p><h1>{headingTitle}</h1><p>{heading.subtitle}</p></div>
             <div className="heading-actions">
               {activeNav === "Comunicação" ? (
                 currentPermission.register && <button className="button secondary" onClick={() => setGroupModal(true)}><Plus size={15} /> Novo grupo</button>
@@ -1574,6 +1615,13 @@ function auditActionLabel(item: AuditItem) {
   return labels[item.action] ?? item.action.replaceAll("_", " ");
 }
 function formatHeadingDate(value: Date) { return new Intl.DateTimeFormat("pt-BR", { weekday: "long", day: "2-digit", month: "long", timeZone: "America/Sao_Paulo" }).format(value).toLocaleUpperCase("pt-BR"); }
+function formatHeadingClock(value: Date) { return new Intl.DateTimeFormat("pt-BR", { hour: "2-digit", minute: "2-digit", timeZone: "America/Sao_Paulo" }).format(value); }
+function greetingFor(value: Date) {
+  const hour = Number(new Intl.DateTimeFormat("pt-BR", { hour: "2-digit", hourCycle: "h23", timeZone: "America/Sao_Paulo" }).format(value));
+  if (hour >= 5 && hour < 12) return "Bom dia";
+  if (hour >= 12 && hour < 18) return "Boa tarde";
+  return "Boa noite";
+}
 function formatDate(value: string) { return new Intl.DateTimeFormat("pt-BR", { day: "2-digit", month: "short", year: "numeric", timeZone: "America/Sao_Paulo" }).format(new Date(value)).replace(" de ", " "); }
 function formatTime(value: string) { return new Intl.DateTimeFormat("pt-BR", { hour: "2-digit", minute: "2-digit", timeZone: "America/Sao_Paulo" }).format(new Date(value)); }
 function formatDateTime(value: string) { return `${formatDate(value)}, ${formatTime(value)}`; }

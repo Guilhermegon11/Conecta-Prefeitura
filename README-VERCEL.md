@@ -47,3 +47,23 @@ Para validar o build no mesmo padrão usado pela Vercel:
 npm install
 npm run build:vercel
 ```
+
+## Login de teste e verificação em duas etapas por SMS
+
+A versão atual inclui uma tela de login de teste. Por padrão:
+
+- usuário: `admin`
+- senha: `admin`
+
+Em produção, defina `TEST_ADMIN_USERNAME`, `TEST_ADMIN_PASSWORD` e principalmente `AUTH_SESSION_SECRET` nas variáveis da Vercel.
+
+O fluxo também está preparado para 2FA real por SMS usando **Twilio Verify**. Quando as quatro variáveis abaixo estão preenchidas, toda autenticação por usuário/senha inicia automaticamente um novo desafio SMS; o sistema só abre após a validação do código recebido:
+
+- `TWILIO_ACCOUNT_SID`
+- `TWILIO_AUTH_TOKEN`
+- `TWILIO_VERIFY_SERVICE_SID`
+- `TEST_ADMIN_PHONE_E164` (formato E.164, por exemplo `+5538999999999`)
+
+Ao clicar em **Sair**, a sessão é removida. No login seguinte, um novo código SMS é solicitado. Se as variáveis da Twilio não estiverem configuradas, o login de teste funciona sem o segundo fator para permitir validação visual do projeto.
+
+Para uma implantação definitiva com vários servidores e funcionários, o recomendado é substituir o login de teste por usuários reais do Supabase Auth e habilitar MFA por telefone para cada conta, mantendo a mesma lógica de exigir o segundo fator após a senha.

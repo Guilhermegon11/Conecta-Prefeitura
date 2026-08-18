@@ -1,3 +1,4 @@
+import { hasValidSession } from "../../auth-session";
 import { downloadJsonObject, downloadPrivateObject, uploadJsonObject, uploadPrivateObject } from "../../supabase-admin";
 
 const MAX_FILE_SIZE = 10 * 1024 * 1024;
@@ -9,6 +10,7 @@ const metadataPath=(id:string)=>`file-meta/${id}.json`;
 const safeFilename=(name:string)=>name.replace(/[^a-zA-Z0-9._-]/g,"-").replace(/-+/g,"-")||"arquivo";
 
 export async function GET(request: Request) {
+  if (!hasValidSession(request)) return Response.json({error:"Sessão expirada."},{status:401});
   try {
     const id=new URL(request.url).searchParams.get("id")?.trim();
     if(!id) return Response.json({error:"Documento obrigatório"},{status:400});
@@ -23,6 +25,7 @@ export async function GET(request: Request) {
 }
 
 export async function POST(request: Request) {
+  if (!hasValidSession(request)) return Response.json({error:"Sessão expirada."},{status:401});
   try {
     const form=await request.formData(); const file=form.get("file");
     if(!(file instanceof File)) return Response.json({error:"Arquivo obrigatório"},{status:400});
