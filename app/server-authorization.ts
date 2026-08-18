@@ -1,15 +1,18 @@
 import { getRuntimeBindings } from "../db/runtime";
 
-type PayloadLike = { userId?: unknown };
-
 const DEMO_USER_ID = "u-ana";
 
 function productionAuthEnabled() {
   return process.env.PREFEITURA_PRODUCTION_AUTH === "true";
 }
 
-export async function resolveActorId(request: Request, payload?: PayloadLike) {
-  if (!productionAuthEnabled()) return String(payload?.userId ?? DEMO_USER_ID);
+function payloadUserId(payload: unknown): unknown {
+  if (typeof payload !== "object" || payload === null || !("userId" in payload)) return undefined;
+  return (payload as { userId?: unknown }).userId;
+}
+
+export async function resolveActorId(request: Request, payload?: unknown) {
+  if (!productionAuthEnabled()) return String(payloadUserId(payload) ?? DEMO_USER_ID);
 
   const email = request.headers.get("oai-authenticated-user-email")?.trim().toLowerCase();
   if (!email) throw new AuthorizationError("Sessão autenticada obrigatória", 401);

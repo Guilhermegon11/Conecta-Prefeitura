@@ -66,3 +66,18 @@ Nenhum arquivo binário de fonte foi incorporado ao projeto. Para renderização
 - `ActionPayload` agora declara explicitamente `userId?: unknown`, preservando o índice dinâmico usado pelas ações.
 - Checagem TypeScript isolada de `app/api/actions/route.ts`, `app/server-authorization.ts` e `db/runtime.ts`: **aprovada** após a correção.
 - O build completo continua dependente da instalação das dependências do `package-lock.json`; o ambiente local de empacotamento não consegue resolver `registry.npmjs.org`, enquanto a Vercel possui sua própria etapa de instalação.
+
+## Vercel type-check fix V2 — 2026-08-18
+
+Foi aplicada uma correção mais robusta para o erro:
+
+`Type 'ActionPayload' has no properties in common with type 'PayloadLike'.`
+
+Alterações:
+
+- `resolveActorId(request, payload)` agora recebe `payload?: unknown`, removendo o acoplamento estrutural com `PayloadLike`.
+- A leitura de `userId` é feita por uma função defensiva `payloadUserId()` com narrowing de runtime.
+- `app/api/actions/route.ts` chama explicitamente `resolveActorId(request, { userId: payload.userId })`.
+- O tipo `PayloadLike` foi removido do código.
+
+Sinal de que o deploy está usando esta versão: o log/erro, caso cite a chamada, deve mostrar `{ userId: payload.userId }`, não `payload` como segundo argumento.

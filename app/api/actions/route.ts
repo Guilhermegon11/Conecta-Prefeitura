@@ -14,7 +14,7 @@ export async function POST(request: Request) {
     const payload = (await request.json()) as ActionPayload;
     if (!payload.action) return Response.json({ error: "Ação obrigatória" }, { status: 400 });
     // Em produção, o ator é derivado da sessão no servidor; o userId do cliente é ignorado.
-    payload.userId = await resolveActorId(request, payload);
+    payload.userId = await resolveActorId(request, { userId: payload.userId });
 
     switch (payload.action) {
       case "create_ticket": return createTicket(payload);
