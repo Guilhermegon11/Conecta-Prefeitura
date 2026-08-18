@@ -1,6 +1,6 @@
 "use client";
 
-import { FormEvent, useEffect, useMemo, useState } from "react";
+import { FormEvent, useMemo, useState } from "react";
 import {
   AlertTriangle,
   ArrowRight,
@@ -20,6 +20,7 @@ import {
   X,
 } from "lucide-react";
 import { useCurrentPermission } from "./permission-context";
+import { persistenceKey, usePersistentState } from "./persistence";
 
 type FlowPriority = "Urgente" | "Alta" | "Média" | "Baixa";
 type FlowView = "fluxos" | "anotacoes";
@@ -165,19 +166,19 @@ function seedRecords(profile: SectorFlowProfile, team: SectorFlowTeamMember[], u
   const times = ["2026-08-13T14:40:00.000Z", "2026-08-13T12:20:00.000Z", "2026-08-12T17:10:00.000Z"];
   return [
     {
-      id: "flow-demo-1", title: profile.templates[0], summary: `Registro prioritário de ${profile.templates[0].toLocaleLowerCase("pt-BR")} para avaliação da equipe.`,
+      id: "flow-seed-1", title: profile.templates[0], summary: `Registro prioritário de ${profile.templates[0].toLocaleLowerCase("pt-BR")} para avaliação da equipe.`,
       template: profile.templates[0], stage: profile.stages[1], priority: "Alta", owner: owners[0], restricted: profile.tone === "social" || profile.tone === "control", updatedAt: times[0],
-      notes: [{ id: "note-demo-1", text: "Contexto conferido e próximos responsáveis identificados.", author: owners[0], createdAt: times[0] }],
+      notes: [{ id: "note-seed-1", text: "Contexto conferido e próximos responsáveis identificados.", author: owners[0], createdAt: times[0] }],
     },
     {
-      id: "flow-demo-2", title: profile.templates[1], summary: "Pontos principais registrados para acompanhamento e retorno no próximo alinhamento.",
+      id: "flow-seed-2", title: profile.templates[1], summary: "Pontos principais registrados para acompanhamento e retorno no próximo alinhamento.",
       template: profile.templates[1], stage: profile.stages[0], priority: "Média", owner: owners[1] ?? owners[0], restricted: false, updatedAt: times[1],
-      notes: [{ id: "note-demo-2", text: "Aguardando complementação das informações da área responsável.", author: userName, createdAt: times[1] }],
+      notes: [{ id: "note-seed-2", text: "Aguardando complementação das informações da área responsável.", author: userName, createdAt: times[1] }],
     },
     {
-      id: "flow-demo-3", title: profile.templates[2], summary: "Providência iniciada, com evidências e retorno final ainda pendentes.",
+      id: "flow-seed-3", title: profile.templates[2], summary: "Providência iniciada, com evidências e retorno final ainda pendentes.",
       template: profile.templates[2], stage: profile.stages[2], priority: "Baixa", owner: owners[2] ?? owners[0], restricted: false, updatedAt: times[2],
-      notes: [{ id: "note-demo-3", text: "Execução confirmada pela equipe; falta anexar o registro de conclusão.", author: owners[0], createdAt: times[2] }],
+      notes: [{ id: "note-seed-3", text: "Execução confirmada pela equipe; falta anexar o registro de conclusão.", author: owners[0], createdAt: times[2] }],
     },
   ];
 }
@@ -193,34 +194,15 @@ function priorityClass(priority: FlowPriority) {
 export function SectorNotesSection({ department, userName, team, notify }: SectorNotesProps) {
   const access = useCurrentPermission();
   const profile = useMemo(() => sectorFlowProfile(department), [department]);
-  const storageKey = useMemo(() => `prefeitura-conecta:sector-flow:v1:${encodeURIComponent(department)}`, [department]);
-  const [records, setRecords] = useState<FlowRecord[]>(() => seedRecords(profile, team, userName));
-  const [ready, setReady] = useState(false);
+  const storageKey = useMemo(() => persistenceKey("sector-flow", department, "v2"), [department]);
+  const initialRecords = useMemo(() => seedRecords(profile, team, userName), [profile, team, userName]);
+  const [records, setRecords, saveStatus] = usePersistentState<FlowRecord[]>(storageKey, initialRecords);
   const [view, setView] = useState<FlowView>("fluxos");
   const [query, setQuery] = useState("");
   const [priority, setPriority] = useState<FlowPriority | "Todas">("Todas");
   const [createOpen, setCreateOpen] = useState(false);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [newNote, setNewNote] = useState("");
-
-  useEffect(() => {
-    const timer = window.setTimeout(() => {
-      try {
-        const saved = JSON.parse(localStorage.getItem(storageKey) ?? "null") as FlowRecord[] | null;
-        if (saved?.length) setRecords(saved);
-      } catch {
-        // Mantém os registros demonstrativos se o armazenamento local estiver inválido.
-      } finally {
-        setReady(true);
-      }
-    }, 0);
-    return () => window.clearTimeout(timer);
-  }, [storageKey]);
-
-  useEffect(() => {
-    if (!ready) return;
-    localStorage.setItem(storageKey, JSON.stringify(records));
-  }, [ready, records, storageKey]);
 
   const term = normalize(query.trim());
   const visibleRecords = records.filter((record) => {
@@ -253,7 +235,7 @@ export function SectorNotesSection({ department, userName, team, notify }: Secto
     setRecords((current) => [record, ...current]);
     setCreateOpen(false);
     setSelectedId(record.id);
-    notify("Registro criado no fluxo e salvo para esta demonstração.");
+    notify("Registro criado no fluxo e salvo.");
   }
 
   function moveRecord(record: FlowRecord) {
@@ -301,6 +283,7 @@ export function SectorNotesSection({ department, userName, team, notify }: Secto
       </article>
 
       <div className="sector-notes-policy"><ShieldCheck size={16} /><span><strong>Escopo: {department}</strong><small>{profile.policy}</small></span>{!access.edit && <i>Alterações conforme permissão</i>}</div>
+      <small className={`module-sync-banner ${saveStatus}`}>{saveStatus === "salvando" ? "Salvando alterações…" : saveStatus === "offline" ? "Aguardando conexão" : "Fluxos sincronizados"}</small>
 
       <article className="panel sector-notes-workbench">
         <header className="sector-notes-toolbar">
@@ -354,7 +337,7 @@ export function SectorNotesSection({ department, userName, team, notify }: Secto
         <label className="field"><span>Prioridade</span><select name="priority" defaultValue="Média"><option>Urgente</option><option>Alta</option><option>Média</option><option>Baixa</option></select></label>
         <label className="field"><span>Responsável</span><select name="owner" defaultValue={team[0]?.name ?? userName}>{team.length ? team.map((member) => <option key={member.id} value={member.name}>{member.name} · {member.role}</option>) : <option>{userName}</option>}</select></label>
         <label className="flow-restricted-field"><input type="checkbox" name="restricted" /><span><LockKeyhole size={15} /><strong>Registro restrito</strong><small>Destacar como conteúdo sensível para perfis autorizados.</small></span></label>
-        <p className="ticket-modal-privacy"><ShieldCheck size={14} /> O registro e suas anotações ficam associados a {department} e são salvos localmente nesta demonstração.</p>
+        <p className="ticket-modal-privacy"><ShieldCheck size={14} /> O registro e suas anotações ficam associados a {department} e são sincronizados no armazenamento central.</p>
         <div className="modal-actions"><button type="button" className="button secondary" onClick={() => setCreateOpen(false)}>Cancelar</button><button className="button primary"><Plus size={15} /> Criar registro</button></div>
       </form></section></div>}
 

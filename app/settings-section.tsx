@@ -21,7 +21,6 @@ import {
   UsersRound,
   Volume2,
   VolumeX,
-  X,
 } from "lucide-react";
 import {
   clonePermissionSettings,
@@ -50,7 +49,6 @@ export function SettingsSection({
   onMotionChange,
   onCrossSectorCommunicationChange,
   onTestSound,
-  onResetDemo,
   notify,
 }: {
   department: string;
@@ -66,14 +64,12 @@ export function SettingsSection({
   onMotionChange: (enabled: boolean) => void;
   onCrossSectorCommunicationChange: (enabled: boolean) => void;
   onTestSound: () => void;
-  onResetDemo: () => void;
   notify: (message: string) => void;
 }) {
   const [tab, setTab] = useState<SettingsTab>("permissions");
   const [selectedProfile, setSelectedProfile] = useState<StaffProfileId>("atendimento");
   const [draft, setDraft] = useState(() => clonePermissionSettings(settings));
   const [dirty, setDirty] = useState(false);
-  const [confirmReset, setConfirmReset] = useState(false);
 
   const activeProfile = draft.profiles[selectedProfile];
   const profileStats = useMemo(() => {
@@ -128,17 +124,17 @@ export function SettingsSection({
         <div>
           <p className="eyebrow">{isMayor ? "CONTROLE DO PREFEITO" : "CONTROLE DO SECRETÁRIO"}</p>
           <h2>{isMayor ? "Configurações executivas" : "Configurações do setor"}</h2>
-          <p>{isMayor ? "Gerencie permissões do setor e as regras de privacidade da visão executiva." : "Defina o que cada perfil pode visualizar, registrar e alterar. As mudanças são aplicadas imediatamente no ambiente de demonstração."}</p>
+          <p>{isMayor ? "Gerencie permissões do setor e as regras de privacidade da visão executiva." : "Defina o que cada perfil pode visualizar, registrar e alterar. As mudanças são aplicadas imediatamente e sincronizadas na plataforma."}</p>
           <small><ShieldCheck size={13} /> {department} · administrado por {managerName}</small>
         </div>
-        <div className="settings-hero-status"><span><i /> Configuração protegida</span><small>{settings.updatedAt ? "Alterada nesta demonstração" : "Modelo recomendado ativo"}</small></div>
+        <div className="settings-hero-status"><span><i /> Configuração protegida</span><small>{settings.updatedAt ? "Alterada e salva" : "Modelo recomendado ativo"}</small></div>
       </article>
 
       <nav className="settings-tabs" aria-label="Seções das configurações">
         <button className={tab === "permissions" ? "active" : ""} onClick={() => setTab("permissions")}><KeyRound size={16} /><span>Perfis e permissões</span></button>
         <button className={tab === "employees" ? "active" : ""} onClick={() => setTab("employees")}><UserCog size={16} /><span>Funcionários</span><i>{employees.length}</i></button>
         {isMayor && <button className={tab === "privacy" ? "active" : ""} onClick={() => setTab("privacy")}><LockKeyhole size={16} /><span>Privacidade executiva</span></button>}
-        <button className={tab === "experience" ? "active" : ""} onClick={() => setTab("experience")}><SlidersHorizontal size={16} /><span>Experiência e demonstração</span></button>
+        <button className={tab === "experience" ? "active" : ""} onClick={() => setTab("experience")}><SlidersHorizontal size={16} /><span>Preferências</span></button>
       </nav>
 
       {tab === "permissions" && <div className="permission-layout">
@@ -176,11 +172,11 @@ export function SettingsSection({
               </div>;
             })}
           </div>
-          <footer><button className="button secondary" onClick={resetProfile}><RefreshCcw size={14} /> Restaurar perfil</button><span>{dirty ? "Existem alterações ainda não salvas" : "Configuração sincronizada nesta demonstração"}</span><button className="button primary" onClick={save} disabled={!dirty}><Save size={14} /> Salvar permissões</button></footer>
+          <footer><button className="button secondary" onClick={resetProfile}><RefreshCcw size={14} /> Restaurar perfil</button><span>{dirty ? "Existem alterações ainda não salvas" : "Configuração sincronizada"}</span><button className="button primary" onClick={save} disabled={!dirty}><Save size={14} /> Salvar permissões</button></footer>
         </article>
       </div>}
 
-      {tab === "permissions" && <PermissionScopePanel notify={notify} />}
+      {tab === "permissions" && <PermissionScopePanel department={department} notify={notify} />}
 
       {tab === "employees" && <div className="employee-permission-layout">
         <article className="panel employee-assignment-panel">
@@ -217,7 +213,7 @@ export function SettingsSection({
       {tab === "experience" && <div className="settings-experience-grid">
         <article className="panel preference-card">
           <header><span><BellRing size={19} /></span><div><h3>Notificações sonoras</h3><p>Toque discreto ao chegar um novo aviso para o perfil atual.</p></div></header>
-          <button className="preference-toggle-row" onClick={() => onSoundChange(!soundEnabled)}><span>{soundEnabled ? <Volume2 size={18} /> : <VolumeX size={18} />}<span><strong>{soundEnabled ? "Som ativado" : "Som desativado"}</strong><small>A preferência fica salva neste dispositivo.</small></span></span><i className={soundEnabled ? "toggle active" : "toggle"}><b /></i></button>
+          <button className="preference-toggle-row" onClick={() => onSoundChange(!soundEnabled)}><span>{soundEnabled ? <Volume2 size={18} /> : <VolumeX size={18} />}<span><strong>{soundEnabled ? "Som ativado" : "Som desativado"}</strong><small>A preferência fica sincronizada na plataforma.</small></span></span><i className={soundEnabled ? "toggle active" : "toggle"}><b /></i></button>
           <button className="button secondary" onClick={onTestSound}><Play size={14} /> Testar som</button>
         </article>
 
@@ -226,19 +222,8 @@ export function SettingsSection({
           <button className="preference-toggle-row" onClick={() => onMotionChange(!motionEnabled)}><span><Sparkles size={18} /><span><strong>{motionEnabled ? "Animações ativadas" : "Movimento reduzido"}</strong><small>Acessibilidade respeitada em todo o sistema.</small></span></span><i className={motionEnabled ? "toggle active" : "toggle"}><b /></i></button>
         </article>
 
-        <article className="panel preference-card demo-maintenance-card">
-          <header><span><RefreshCcw size={19} /></span><div><h3>Dados da demonstração</h3><p>Restaure preferências, permissões e registros temporários antes de uma nova apresentação.</p></div></header>
-          <button className="button secondary danger-outline" onClick={() => setConfirmReset(true)}><RefreshCcw size={14} /> Reiniciar demonstração</button>
-        </article>
       </div>}
 
-      {confirmReset && <div className="modal-backdrop" role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget) setConfirmReset(false); }}>
-        <section className="modal reset-demo-modal" role="dialog" aria-modal="true" aria-labelledby="reset-demo-title">
-          <header><div><p className="eyebrow">AMBIENTE DE DEMONSTRAÇÃO</p><h2 id="reset-demo-title">Restaurar o cenário inicial?</h2></div><button onClick={() => setConfirmReset(false)} aria-label="Fechar"><X size={18} /></button></header>
-          <div><span><RefreshCcw size={25} /></span><p>Permissões personalizadas, preferências e registros locais serão removidos. Os dados originais do cenário voltarão na próxima atualização da página.</p></div>
-          <footer><button className="button secondary" onClick={() => setConfirmReset(false)}>Cancelar</button><button className="button primary" onClick={() => { setConfirmReset(false); onResetDemo(); }}>Restaurar demonstração</button></footer>
-        </section>
-      </div>}
     </section>
   );
 }

@@ -1,24 +1,49 @@
-# Prefeitura Conecta — publicação na Vercel
+# Prefeitura Conecta — deploy na Vercel com Supabase
 
-## Como publicar
+## Publicação
 
-1. Descompacte o arquivo do projeto.
-2. Envie a pasta para um repositório Git ou use `vercel deploy` dentro dela.
-3. Na Vercel, escolha o preset **Next.js**.
-4. O arquivo `vercel.json` já seleciona o comando de compilação correto.
+1. Envie este projeto para o repositório Git conectado à Vercel.
+2. Na Vercel, mantenha o preset **Next.js**.
+3. O `vercel.json` já executa `npm install` e `npm run build:vercel`.
+4. Confirme que a integração do Supabase está conectada ao mesmo projeto da Vercel.
 
-## Modo de demonstração
+## Variáveis esperadas
 
-A interface, os chamados, os chats, a criação de grupos, os convites, as notificações e as pendências funcionam de forma demonstrativa mesmo quando os serviços de dados não estão configurados.
+O backend reconhece automaticamente as variáveis fornecidas pela integração do Supabase:
 
-Para uma operação municipal em produção na Vercel, conecte um banco compatível com a plataforma e um serviço de armazenamento de arquivos. A versão publicada pelo ChatGPT Sites já utiliza armazenamento persistente próprio.
+- `SUPABASE_URL` ou `NEXT_PUBLIC_SUPABASE_URL`
+- `SUPABASE_SECRET_KEY` ou `SUPABASE_SERVICE_ROLE_KEY`
+- `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` (disponível pela integração para futuras operações autenticadas no cliente)
 
-## Mapa de chamados por rua
+A chave administrativa é usada somente em rotas executadas no servidor. Ela não é enviada para componentes do navegador.
 
-A aba **Área do Setor > Mapa** agora recebe os chamados reais do setor e exibe somente os chamados que possuem `address` preenchido.
+## Persistência
 
-- Se a variável `NEXT_PUBLIC_GOOGLE_MAPS_API_KEY` estiver configurada na Vercel, o sistema usa Google Maps JavaScript API e geocodifica a rua do chamado, criando marcadores nativos do mapa.
-- Sem essa variável, o sistema usa OpenStreetMap/Leaflet como fallback e geocodifica a rua para latitude/longitude. Os marcadores continuam geográficos e acompanham pan e zoom.
-- Chamados sem rua/endereço não são inventados nem posicionados aproximadamente; eles ficam fora do mapa até receberem um endereço.
+O sistema usa o Supabase como armazenamento central persistente. Na primeira gravação, o backend prepara automaticamente um bucket privado chamado `prefeitura-conecta-data` quando ele ainda não existir.
 
-Para novos chamados, o campo **Rua / endereço** é obrigatório.
+São persistidos, entre outros dados:
+
+- chamados, usuários, mensagens, grupos, documentos, eventos e notificações;
+- Processos Digitais e suas movimentações;
+- Gestão Municipal;
+- Área do Setor, incluindo registros, prioridades, metas, atividades de campo e encaminhamentos;
+- configurações, permissões e preferências;
+- protocolos de atendimento;
+- formulários, automações e regras operacionais.
+
+Arquivos anexados também são armazenados no bucket privado do Supabase.
+
+## Convites de usuários
+
+A criação de funcionário pode enviar convite real pelo Supabase Auth. O envio depende da configuração de e-mail do projeto Supabase e dos limites do provedor configurado.
+
+## Diagnóstico
+
+Se o topo do sistema exibir **Aguardando conexão**, verifique primeiro se a integração do Supabase está ativa e se as variáveis de ambiente acima existem no deployment da Vercel.
+
+Para validar o build no mesmo padrão usado pela Vercel:
+
+```bash
+npm install
+npm run build:vercel
+```

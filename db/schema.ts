@@ -61,7 +61,7 @@ export const auditLogs = sqliteTable("audit_logs", {
   createdAt: text("created_at").notNull(),
 }, (table) => [index("audit_created_at_idx").on(table.createdAt)]);
 
-// Estruturas da evolução operacional. Mantidas separadas dos dados de demonstração
+// Estruturas da evolução operacional.
 // para permitir ativação gradual em produção sem quebrar o cenário atual.
 export const processes = sqliteTable("processes", {
   id: text("id").primaryKey(),

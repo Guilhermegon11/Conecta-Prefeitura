@@ -44,6 +44,7 @@ import type { LucideIcon } from "lucide-react";
 import { AddressRegistrationField } from "./municipal-location";
 import { useCurrentPermission } from "./permission-context";
 import { FieldOperationsPanel, WorkflowAutomationHub } from "./enhanced-features";
+import { persistenceKey, usePersistentState } from "./persistence";
 
 type Notify = (message: string) => void;
 type CitizenTab = "Protocolos" | "Ouvidoria e e-SIC" | "Carta de serviços" | "Satisfação";
@@ -91,6 +92,7 @@ type ProcessDocument = {
   createdAt: string;
   status: string;
   size?: number;
+  attachmentId?: string;
 };
 
 type ProcessDispatch = {
@@ -154,6 +156,36 @@ const SERVICES: ServiceItem[] = [
   { title: "Matrícula e transferência escolar", department: "Educação", deadline: "Até 5 dias úteis", documents: "Certidão, comprovante e histórico", channel: "Escola ou protocolo digital" },
   { title: "Alvará para evento temporário", department: "Administração e Finanças", deadline: "Até 15 dias úteis", documents: "Requerimento, croqui e documentos", channel: "Protocolo digital" },
 ];
+
+function normalizeDepartmentName(value: string) {
+  return value.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().replace(/[^a-z0-9]+/g, " ").trim();
+}
+
+const DEPARTMENT_ALIASES: Record<string, string[]> = {
+  "secretaria de administracao e financas": ["administracao e financas", "secretaria de administracao e financas"],
+  "secretaria municipal de desenvolvimento economico agricultura e meio ambiente": ["meio ambiente", "desenvolvimento economico", "agricultura e meio ambiente", "secretaria municipal de desenvolvimento economico agricultura e meio ambiente"],
+  "secretaria de infraestrutura e transporte": ["infraestrutura e transporte", "secretaria de infraestrutura e transporte"],
+  "secretaria de saude": ["saude", "secretaria de saude"],
+  "secretaria de educacao": ["educacao", "secretaria de educacao"],
+  "secretaria de desenvolvimento social": ["desenvolvimento social", "secretaria de desenvolvimento social"],
+  "secretaria de comunicacao e eventos": ["comunicacao e eventos", "secretaria de comunicacao e eventos"],
+  "secretaria de cultura e turismo": ["cultura e turismo", "secretaria de cultura e turismo"],
+  "secretaria de governo": ["governo", "secretaria de governo"],
+  "controle interno": ["controle interno"],
+  "gabinete do prefeito": ["gabinete do prefeito", "gabinete"],
+};
+
+function protocolBelongsToDepartment(protocolDepartment: string, activeDepartment: string) {
+  const active = normalizeDepartmentName(activeDepartment);
+  const protocol = normalizeDepartmentName(protocolDepartment);
+  if (active === protocol) return true;
+  const aliases = DEPARTMENT_ALIASES[active] ?? [active];
+  return aliases.includes(protocol);
+}
+
+function serviceBelongsToDepartment(serviceDepartment: string, activeDepartment: string) {
+  return protocolBelongsToDepartment(serviceDepartment, activeDepartment);
+}
 
 const INITIAL_PROTOCOLS: CitizenProtocol[] = [
   { id: "pc-1", protocol: "PROT-2026-00481", subject: "Lâmpada apagada na Rua das Palmeiras", requester: "Mariana A. Silva", channel: "Portal do cidadão", kind: "Solicitação", status: "Em atendimento", department: "Secretaria de Infraestrutura e Transporte", due: "18 ago. 2026" },
@@ -245,8 +277,8 @@ const TAB_ICON: Record<ManagementTab, LucideIcon> = {
   "Obras e campo": HardHat,
 };
 
-function makeDemoId() {
-  return globalThis.crypto?.randomUUID?.() ?? `demo-${Date.now()}`;
+function makeLocalId() {
+  return globalThis.crypto?.randomUUID?.() ?? `local-${Date.now()}`;
 }
 
 function StatusTag({ children }: { children: string }) {
@@ -272,12 +304,24 @@ export function CitizenServiceSection({ department, notify }: { department: stri
   const access = useCurrentPermission();
   const [tab, setTab] = useState<CitizenTab>("Protocolos");
   const [query, setQuery] = useState("");
-  const [protocols, setProtocols] = useState(INITIAL_PROTOCOLS);
+  const [statusFilter, setStatusFilter] = useState("Todos os status");
+  const initialProtocolsForDepartment = useMemo(() => INITIAL_PROTOCOLS.filter((item) => protocolBelongsToDepartment(item.department, department)), [department]);
+  const [protocols, setProtocols, protocolSaveStatus] = usePersistentState<CitizenProtocol[]>(persistenceKey("citizen-protocols", department, "v1"), initialProtocolsForDepartment);
   const [modal, setModal] = useState(false);
   const [selectedService, setSelectedService] = useState<ServiceItem | null>(null);
   const [serviceNeighborhood, setServiceNeighborhood] = useState("");
   const [serviceAddress, setServiceAddress] = useState("");
-  const visible = protocols.filter((item) => [item.protocol, item.subject, item.requester, item.kind, item.department].join(" ").toLowerCase().includes(query.toLowerCase()));
+
+  const sectorProtocols = useMemo(() => protocols.filter((item) => protocolBelongsToDepartment(item.department, department)), [protocols, department]);
+  const visible = useMemo(() => sectorProtocols.filter((item) => {
+    const matchesQuery = [item.protocol, item.subject, item.requester, item.kind, item.department].join(" ").toLowerCase().includes(query.toLowerCase());
+    const matchesStatus = statusFilter === "Todos os status" || item.status === statusFilter;
+    return matchesQuery && matchesStatus;
+  }), [sectorProtocols, query, statusFilter]);
+  const ombudsmanItems = useMemo(() => sectorProtocols.filter((item) => item.channel === "Ouvidoria" || ["Reclamação", "Sugestão", "Elogio", "Denúncia"].includes(item.kind)), [sectorProtocols]);
+  const esicItems = useMemo(() => sectorProtocols.filter((item) => item.kind === "Acesso à informação" || item.channel === "e-SIC"), [sectorProtocols]);
+  const sectorServices = useMemo(() => SERVICES.filter((service) => serviceBelongsToDepartment(service.department, department)), [department]);
+
 
   function createProtocol(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -285,10 +329,10 @@ export function CitizenServiceSection({ department, notify }: { department: stri
     const kind = String(form.get("kind"));
     const prefix = kind === "Acesso à informação" ? "ESIC" : kind === "Denúncia" ? "DEN" : kind === "Reclamação" ? "OUV" : "PROT";
     const item: CitizenProtocol = {
-      id: makeDemoId(), protocol: `${prefix}-2026-${String(protocols.length + 482).padStart(5, "0")}`,
+      id: makeLocalId(), protocol: `${prefix}-2026-${String(protocols.length + 482).padStart(5, "0")}`,
       subject: String(form.get("subject")), requester: String(form.get("requester")) || "Cidadão não identificado",
       channel: "Atendimento interno", kind, status: kind === "Denúncia" ? "Triagem sigilosa" : "Recebido",
-      department: String(form.get("department")) || department, due: "Prazo calculado após triagem", confidential: Boolean(form.get("confidential")),
+      department, due: "Prazo calculado após triagem", confidential: Boolean(form.get("confidential")),
     };
     setProtocols((current) => [item, ...current]);
     setModal(false);
@@ -300,9 +344,9 @@ export function CitizenServiceSection({ department, notify }: { department: stri
     if (!selectedService) return;
     const form = new FormData(event.currentTarget);
     const item: CitizenProtocol = {
-      id: makeDemoId(), protocol: `SERV-2026-${String(protocols.length + 482).padStart(5, "0")}`,
+      id: makeLocalId(), protocol: `SERV-2026-${String(protocols.length + 482).padStart(5, "0")}`,
       subject: selectedService.title, requester: String(form.get("requester")) || "Solicitante não identificado",
-      channel: "Carta de serviços digital", kind: "Serviço", status: "Recebido", department: selectedService.department,
+      channel: "Carta de serviços digital", kind: "Serviço", status: "Recebido", department,
       due: selectedService.deadline, neighborhood: serviceNeighborhood, address: serviceAddress,
     };
     setProtocols((current) => [item, ...current]);
@@ -315,34 +359,42 @@ export function CitizenServiceSection({ department, notify }: { department: stri
 
   return (
     <section className="municipal-module-shell">
+      <small className={`module-sync-banner ${protocolSaveStatus}`}>{protocolSaveStatus === "salvando" ? "Salvando alterações…" : protocolSaveStatus === "offline" ? "Aguardando conexão com o servidor" : "Dados sincronizados"}</small>
       <div className="module-tabs wide-tabs" role="tablist" aria-label="Módulos de atendimento ao cidadão">
         {(["Protocolos", "Ouvidoria e e-SIC", "Carta de serviços", "Satisfação"] as CitizenTab[]).map((item) => <button key={item} className={tab === item ? "active" : ""} onClick={() => setTab(item)}>{item}</button>)}
       </div>
 
       {tab === "Protocolos" && <>
         <div className="municipal-kpis">
-          <MetricCard icon={FileBadge} label="Protocolos ativos" value="38" detail="12 recebidos nesta semana" tone="teal" />
-          <MetricCard icon={Clock3} label="Dentro do prazo" value="92%" detail="3 protocolos exigem atenção" tone="blue" />
-          <MetricCard icon={MessageSquareText} label="Tempo médio" value="2,8 dias" detail="-14% em relação a julho" tone="amber" />
-          <MetricCard icon={CheckCircle2} label="Concluídos no mês" value="126" detail="Avaliação média 4,7/5" tone="green" />
+          <MetricCard icon={FileBadge} label="Protocolos do setor" value={String(sectorProtocols.length)} detail={`Somente ${department}`} tone="teal" />
+          <MetricCard icon={Clock3} label="Em atendimento" value={String(sectorProtocols.filter((item) => ["Recebido", "Em atendimento", "Em análise", "Aguardando resposta", "Triagem sigilosa"].includes(item.status)).length)} detail="Registros ainda em andamento" tone="blue" />
+          <MetricCard icon={MessageSquareText} label="Ouvidorias" value={String(ombudsmanItems.length)} detail="Manifestações vinculadas ao setor" tone="amber" />
+          <MetricCard icon={CheckCircle2} label="Concluídos" value={String(sectorProtocols.filter((item) => item.status === "Concluído").length)} detail="Registros finalizados deste setor" tone="green" />
         </div>
         <article className="panel municipal-table-panel">
-          <div className="module-toolbar"><label className="module-search"><Search size={15} /><input aria-label="Buscar protocolo" value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Buscar protocolo, cidadão ou assunto..." /></label><select aria-label="Filtrar protocolos"><option>Todos os status</option><option>Recebidos</option><option>Em atendimento</option><option>Aguardando resposta</option><option>Concluídos</option></select>{access.register && <button className="button primary" onClick={() => setModal(true)}><Plus size={15} /> Novo protocolo</button>}</div>
-          <div className="municipal-data-table citizen-table"><div className="municipal-table-row municipal-table-head"><span>Protocolo e assunto</span><span>Solicitante</span><span>Tipo</span><span>Setor responsável</span><span>Prazo</span><span>Status</span></div>{visible.map((item) => <button className="municipal-table-row" key={item.id} onClick={() => notify(`Ficha ${item.protocol} aberta: acompanhamento público disponível com dados internos protegidos.`)}><span><strong>{item.subject}</strong><small>{item.protocol} · {item.channel}</small></span><span>{item.requester}</span><span>{item.confidential && <LockKeyhole size={12} />} {item.kind}</span><span>{item.department}</span><span>{item.due}</span><StatusTag>{item.status}</StatusTag></button>)}</div>
+          <div className="module-toolbar"><label className="module-search"><Search size={15} /><input aria-label="Buscar protocolo" value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Buscar protocolo, cidadão ou assunto..." /></label><select aria-label="Filtrar protocolos" value={statusFilter} onChange={(event) => setStatusFilter(event.target.value)}><option>Todos os status</option><option>Recebido</option><option>Em atendimento</option><option>Em análise</option><option>Aguardando resposta</option><option>Triagem sigilosa</option><option>Concluído</option></select><span className="citizen-sector-scope"><ShieldCheck size={13} />{department}</span>{access.register && <button className="button primary" onClick={() => setModal(true)}><Plus size={15} /> Novo protocolo</button>}</div>
+          <div className="municipal-data-table citizen-table"><div className="municipal-table-row municipal-table-head"><span>Protocolo e assunto</span><span>Solicitante</span><span>Tipo</span><span>Setor responsável</span><span>Prazo</span><span>Status</span></div>{visible.map((item) => <button className="municipal-table-row" key={item.id} onClick={() => notify(`Ficha ${item.protocol} aberta: acompanhamento restrito ao setor ${department}.`)}><span><strong>{item.subject}</strong><small>{item.protocol} · {item.channel}</small></span><span>{item.requester}</span><span>{item.confidential && <LockKeyhole size={12} />} {item.kind}</span><span>{item.department}</span><span>{item.due}</span><StatusTag>{item.status}</StatusTag></button>)}{visible.length === 0 && <div className="citizen-sector-empty"><MessageSquareText size={22} /><strong>Nenhum protocolo deste setor</strong><p>Não há registros de Atendimento ao Cidadão vinculados a {department} com os filtros atuais.</p></div>}</div>
         </article>
       </>}
 
-      {tab === "Ouvidoria e e-SIC" && <div className="citizen-feature-grid">
-        <FeaturePanel icon={MessageSquareText} title="Ouvidoria municipal" description="Receba solicitações, reclamações, sugestões, elogios e denúncias, com classificação e encaminhamento controlados." items={["Identificação sigilosa ou manifestação anônima", "Prazos e resposta conclusiva", "Encaminhamento entre unidades", "Relatórios por assunto e canal"]} action={access.register ? "Registrar manifestação" : "Consultar orientações"} onAction={() => access.register ? setModal(true) : notify("Seu perfil possui acesso de consulta à Ouvidoria.")} />
-        <FeaturePanel icon={FileClock} title="Acesso à informação — e-SIC" description="Organize pedidos de informação, prorrogações, recursos e respostas fornecidas ao cidadão." items={["Contagem automática do prazo", "Registro de prorrogação e justificativa", "Recursos em primeira e segunda instância", "Versão pública dos documentos entregues"]} action={access.register ? "Novo pedido e-SIC" : "Consultar orientações"} onAction={() => access.register ? setModal(true) : notify("Seu perfil possui acesso de consulta ao e-SIC.")} />
-        <FeaturePanel icon={LockKeyhole} title="Proteção da identidade" description="Dados pessoais e denúncias ficam restritos aos perfis autorizados, com registro de cada acesso." items={["Classificação de sigilo", "Mascaramento de dados", "Trilha de auditoria", "Termo de responsabilidade"]} action="Ver regras de acesso" onAction={() => notify("Regras de sigilo exibidas conforme o perfil atual.")} />
-      </div>}
+      {tab === "Ouvidoria e e-SIC" && <>
+        <div className="citizen-sector-heading"><div><p className="eyebrow">RECORTE SETORIAL</p><h2>Ouvidoria de {department}</h2><p>Esta tela exibe exclusivamente manifestações e pedidos de informação vinculados ao setor ativo.</p></div><span><ShieldCheck size={14} />Visibilidade restrita ao setor</span></div>
+        <div className="citizen-feature-grid">
+          <FeaturePanel icon={MessageSquareText} title="Ouvidoria municipal" description="Receba solicitações, reclamações, sugestões, elogios e denúncias, com classificação e encaminhamento controlados." items={["Identificação sigilosa ou manifestação anônima", "Prazos e resposta conclusiva", "Encaminhamento entre unidades", "Relatórios por assunto e canal"]} action={access.register ? "Registrar manifestação" : "Consultar orientações"} onAction={() => access.register ? setModal(true) : notify("Seu perfil possui acesso de consulta à Ouvidoria deste setor.")} />
+          <FeaturePanel icon={FileClock} title="Acesso à informação — e-SIC" description="Organize pedidos de informação, prorrogações, recursos e respostas fornecidas ao cidadão." items={["Contagem automática do prazo", "Registro de prorrogação e justificativa", "Recursos em primeira e segunda instância", "Versão pública dos documentos entregues"]} action={access.register ? "Novo pedido e-SIC" : "Consultar orientações"} onAction={() => access.register ? setModal(true) : notify("Seu perfil possui acesso de consulta ao e-SIC deste setor.")} />
+          <FeaturePanel icon={LockKeyhole} title="Proteção da identidade" description="Dados pessoais e denúncias ficam restritos aos perfis autorizados, com registro de cada acesso." items={["Classificação de sigilo", "Mascaramento de dados", "Trilha de auditoria", "Termo de responsabilidade"]} action="Ver regras de acesso" onAction={() => notify("Regras de sigilo exibidas conforme o perfil atual.")} />
+        </div>
+        <div className="citizen-sector-lists">
+          <article className="panel citizen-sector-list"><header><div><p className="eyebrow">MANIFESTAÇÕES</p><h3>Ouvidorias do setor</h3></div><strong>{ombudsmanItems.length}</strong></header>{ombudsmanItems.length ? ombudsmanItems.map((item) => <button key={item.id} onClick={() => notify(`Ouvidoria ${item.protocol} aberta no setor ${department}.`)}><span><strong>{item.subject}</strong><small>{item.protocol} · {item.requester}</small></span><StatusTag>{item.status}</StatusTag></button>) : <div className="citizen-sector-empty compact"><MessageSquareText size={20} /><strong>Nenhuma manifestação</strong><p>Este setor ainda não possui registros de Ouvidoria.</p></div>}</article>
+          <article className="panel citizen-sector-list"><header><div><p className="eyebrow">ACESSO À INFORMAÇÃO</p><h3>Pedidos e-SIC do setor</h3></div><strong>{esicItems.length}</strong></header>{esicItems.length ? esicItems.map((item) => <button key={item.id} onClick={() => notify(`Pedido ${item.protocol} aberto no setor ${department}.`)}><span><strong>{item.subject}</strong><small>{item.protocol} · {item.requester}</small></span><StatusTag>{item.status}</StatusTag></button>) : <div className="citizen-sector-empty compact"><FileClock size={20} /><strong>Nenhum pedido e-SIC</strong><p>Este setor ainda não possui pedidos de acesso à informação.</p></div>}</article>
+        </div>
+      </>}
 
-      {tab === "Carta de serviços" && <article className="panel service-catalog-panel"><div className="catalog-heading"><div><p className="eyebrow">SERVIÇOS AO CIDADÃO</p><h2>Carta de serviços municipal</h2><p>Informações claras sobre requisitos, canais e prazo esperado para cada atendimento.</p></div><label className="module-search"><Search size={15} /><input aria-label="Buscar serviço" placeholder="Buscar serviço..." /></label></div><div className="service-grid">{SERVICES.map((service) => <article key={service.title}><span><Landmark size={18} /></span><h3>{service.title}</h3><p>{service.department}</p><dl><div><dt>Prazo</dt><dd>{service.deadline}</dd></div><div><dt>Documentos</dt><dd>{service.documents}</dd></div><div><dt>Atendimento</dt><dd>{service.channel}</dd></div></dl><button onClick={() => access.register ? (setSelectedService(service), setServiceNeighborhood(""), setServiceAddress("")) : notify("Seu perfil pode consultar a Carta de Serviços, mas não registrar solicitações.")}>{access.register ? "Solicitar serviço" : "Ver orientações"} <ChevronRight size={13} /></button></article>)}</div></article>}
+      {tab === "Carta de serviços" && <article className="panel service-catalog-panel"><div className="catalog-heading"><div><p className="eyebrow">SERVIÇOS AO CIDADÃO</p><h2>Carta de serviços municipal</h2><p>Informações claras sobre requisitos, canais e prazo esperado para cada atendimento.</p></div><label className="module-search"><Search size={15} /><input aria-label="Buscar serviço" placeholder="Buscar serviço..." /></label></div><div className="service-grid">{sectorServices.map((service) => <article key={service.title}><span><Landmark size={18} /></span><h3>{service.title}</h3><p>{department}</p><dl><div><dt>Prazo</dt><dd>{service.deadline}</dd></div><div><dt>Documentos</dt><dd>{service.documents}</dd></div><div><dt>Atendimento</dt><dd>{service.channel}</dd></div></dl><button onClick={() => access.register ? (setSelectedService(service), setServiceNeighborhood(""), setServiceAddress("")) : notify("Seu perfil pode consultar a Carta de Serviços, mas não registrar solicitações.")}>{access.register ? "Solicitar serviço" : "Ver orientações"} <ChevronRight size={13} /></button></article>)}{sectorServices.length === 0 && <div className="citizen-sector-empty service-empty"><Landmark size={22} /><strong>Nenhum serviço cadastrado para este setor</strong><p>A Carta de Serviços está filtrada pelo setor ativo: {department}.</p></div>}</div></article>}
 
       {tab === "Satisfação" && <div className="satisfaction-layout"><article className="panel satisfaction-score"><span><Star size={24} /></span><strong>4,7</strong><p>média de 184 avaliações em agosto</p><div>{[1,2,3,4,5].map((star) => <Star key={star} size={16} fill="currentColor" />)}</div></article><article className="panel satisfaction-breakdown"><h2>Qualidade percebida</h2>{[["Resultado do atendimento",92],["Clareza das informações",89],["Tempo de resposta",84],["Cordialidade",96]].map(([label,value]) => <div className="rating-row" key={String(label)}><span>{label}</span><div><i style={{width:`${value}%`}} /></div><strong>{value}%</strong></div>)}</article><article className="panel satisfaction-comments"><h2>Comentários recentes</h2><blockquote>“Recebi o número do protocolo e consegui acompanhar cada atualização.”<cite>Atendimento de iluminação · 12 ago.</cite></blockquote><blockquote>“A lista de documentos evitou uma segunda ida ao setor.”<cite>Matrícula escolar · 11 ago.</cite></blockquote></article></div>}
 
-      {modal && <ModalShell eyebrow="ATENDIMENTO AO CIDADÃO" title="Registrar novo protocolo" onClose={() => setModal(false)}><form onSubmit={createProtocol}><label className="field"><span>Tipo de manifestação *</span><select name="kind" required defaultValue="Solicitação"><option>Solicitação</option><option>Reclamação</option><option>Sugestão</option><option>Elogio</option><option>Denúncia</option><option>Acesso à informação</option></select></label><label className="field"><span>Setor responsável</span><input name="department" defaultValue={department} /></label><label className="field full"><span>Assunto *</span><input name="subject" required placeholder="Descreva o assunto principal" /></label><label className="field full"><span>Nome do solicitante</span><input name="requester" placeholder="Deixe em branco se não houver identificação" /></label><label className="field full"><span>Descrição detalhada *</span><textarea name="description" required placeholder="Registre a manifestação e as informações necessárias para a triagem" /></label><label className="municipal-check full"><input type="checkbox" name="confidential" /> <span>Restringir dados pessoais e identidade aos responsáveis autorizados</span></label><div className="modal-actions"><button type="button" className="button secondary" onClick={() => setModal(false)}>Cancelar</button><button className="button primary"><FileBadge size={15} /> Gerar protocolo</button></div></form></ModalShell>}
+      {modal && <ModalShell eyebrow="ATENDIMENTO AO CIDADÃO" title="Registrar novo protocolo" onClose={() => setModal(false)}><form onSubmit={createProtocol}><label className="field"><span>Tipo de manifestação *</span><select name="kind" required defaultValue="Solicitação"><option>Solicitação</option><option>Reclamação</option><option>Sugestão</option><option>Elogio</option><option>Denúncia</option><option>Acesso à informação</option></select></label><label className="field"><span>Setor responsável</span><input name="department" value={department} readOnly /></label><label className="field full"><span>Assunto *</span><input name="subject" required placeholder="Descreva o assunto principal" /></label><label className="field full"><span>Nome do solicitante</span><input name="requester" placeholder="Deixe em branco se não houver identificação" /></label><label className="field full"><span>Descrição detalhada *</span><textarea name="description" required placeholder="Registre a manifestação e as informações necessárias para a triagem" /></label><label className="municipal-check full"><input type="checkbox" name="confidential" /> <span>Restringir dados pessoais e identidade aos responsáveis autorizados</span></label><div className="modal-actions"><button type="button" className="button secondary" onClick={() => setModal(false)}>Cancelar</button><button className="button primary"><FileBadge size={15} /> Gerar protocolo</button></div></form></ModalShell>}
       {selectedService && <ModalShell eyebrow="CARTA DE SERVIÇOS" title={selectedService.title} onClose={() => setSelectedService(null)}><form onSubmit={createServiceRequest}><div className="service-request-summary full"><Landmark size={18} /><div><strong>{selectedService.department}</strong><span>{selectedService.deadline} · {selectedService.documents}</span></div></div><label className="field full"><span>Nome do solicitante</span><input name="requester" placeholder="Nome da pessoa, empresa ou entidade" /></label><AddressRegistrationField neighborhood={serviceNeighborhood} address={serviceAddress} onNeighborhoodChange={setServiceNeighborhood} onAddressChange={setServiceAddress} /><label className="field full"><span>Descrição do serviço</span><textarea name="description" placeholder="Descreva a necessidade e acrescente referências para a equipe responsável." /></label><p className="ticket-modal-privacy"><ShieldCheck size={14} /> O bairro e o endereço serão vinculados ao protocolo para orientar a triagem e o atendimento em campo.</p><div className="modal-actions"><button type="button" className="button secondary" onClick={() => setSelectedService(null)}>Cancelar</button><button className="button primary"><MapPin size={15} /> Registrar solicitação</button></div></form></ModalShell>}
     </section>
   );
@@ -350,10 +402,9 @@ export function CitizenServiceSection({ department, notify }: { department: stri
 
 export function ProcessesSection({ department, currentUser, users, departments, notify }: { department: string; currentUser: ProcessUser; users: ProcessUser[]; departments: string[]; notify: Notify }) {
   const access = useCurrentPermission();
-  const storageKey = "prefeitura-conecta:processes:v4";
   const documentInput = useRef<HTMLInputElement>(null);
   const [tab, setTab] = useState<ProcessTab>("Processos");
-  const [processes, setProcesses] = useState<ProcessItem[]>(INITIAL_PROCESSES);
+  const [processes, setProcesses, processSaveStatus, processesReady] = usePersistentState<ProcessItem[]>("processes:global:v1", INITIAL_PROCESSES);
   const [selectedId, setSelectedId] = useState(INITIAL_PROCESSES[0].id);
   const [query, setQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState("Todos");
@@ -363,37 +414,17 @@ export function ProcessesSection({ department, currentUser, users, departments, 
   const [moveModal, setMoveModal] = useState(false);
   const [signatureModal, setSignatureModal] = useState(false);
   const [versioningDocumentId, setVersioningDocumentId] = useState<string | null>(null);
-  const [documentUrls, setDocumentUrls] = useState<Record<string,string>>({});
   const [dispatchKind, setDispatchKind] = useState("Despacho de encaminhamento");
   const [dispatchText, setDispatchText] = useState("");
   const [validationCode, setValidationCode] = useState("");
-  const [hydrated, setHydrated] = useState(false);
 
   useEffect(() => {
-    setHydrated(false);
-    try {
-      const saved = localStorage.getItem(storageKey);
-      if (saved) {
-        const parsed = JSON.parse(saved) as ProcessItem[];
-        if (Array.isArray(parsed) && parsed.length) {
-          setProcesses(parsed);
-          const firstRelated = parsed.find((item) => item.originDepartment === department || item.currentDepartment === department) ?? parsed[0];
-          setSelectedId(firstRelated.id);
-          setHydrated(true);
-          return;
-        }
-      }
-    } catch { /* Mantém os dados demonstrativos. */ }
-    setProcesses(INITIAL_PROCESSES);
-    const firstRelated = INITIAL_PROCESSES.find((item) => item.originDepartment === department || item.currentDepartment === department) ?? INITIAL_PROCESSES[0];
-    setSelectedId(firstRelated.id);
-    setHydrated(true);
-  }, [storageKey]);
-
-  useEffect(() => {
-    if (!hydrated) return;
-    try { localStorage.setItem(storageKey, JSON.stringify(processes)); } catch { /* Persistência local opcional. */ }
-  }, [hydrated, processes, storageKey]);
+    if (!processesReady || !processes.length) return;
+    const current = processes.find((item) => item.id === selectedId && (item.originDepartment === department || item.currentDepartment === department));
+    if (current) return;
+    const firstRelated = processes.find((item) => item.originDepartment === department || item.currentDepartment === department) ?? processes[0];
+    if (firstRelated) setSelectedId(firstRelated.id);
+  }, [department, processes, processesReady, selectedId]);
 
   const scopedProcesses = useMemo(() => processes.filter((item) => item.originDepartment === department || item.currentDepartment === department), [processes, department]);
   const selected = processes.find((item) => item.id === selectedId) ?? scopedProcesses[0] ?? processes[0];
@@ -434,7 +465,7 @@ export function ProcessesSection({ department, currentUser, users, departments, 
     const workflowName = String(form.get("workflowName") || "Fluxo administrativo");
     const now = new Date().toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" });
     const item: ProcessItem = {
-      id: base?.id ?? makeDemoId(),
+      id: base?.id ?? makeLocalId(),
       protocol: base?.protocol ?? `PA-2026-${String(processes.length + 129).padStart(5,"0")}`,
       subject: String(form.get("subject") ?? "").trim(),
       interested: String(form.get("interested") ?? "").trim(),
@@ -451,7 +482,7 @@ export function ProcessesSection({ department, currentUser, users, departments, 
       workflowName,
       workflowSteps: PROCESS_WORKFLOWS[workflowName] ?? PROCESS_WORKFLOWS["Fluxo administrativo"],
       currentStep: base?.currentStep ?? 0,
-      movements: base?.movements ?? [{ id: makeDemoId(), action: "Processo autuado", fromDepartment: department, toDepartment: department, actor: currentUser.fullName, note: "Abertura do processo administrativo digital.", createdAt: `Hoje, ${now}` }],
+      movements: base?.movements ?? [{ id: makeLocalId(), action: "Processo autuado", fromDepartment: department, toDepartment: department, actor: currentUser.fullName, note: "Abertura do processo administrativo digital.", createdAt: `Hoje, ${now}` }],
       documents: base?.documents ?? [],
       dispatches: base?.dispatches ?? [],
       signatures: base?.signatures ?? [],
@@ -467,13 +498,13 @@ export function ProcessesSection({ department, currentUser, users, departments, 
     if (!selected || !access.register) return;
     const duplicate: ProcessItem = {
       ...selected,
-      id: makeDemoId(),
+      id: makeLocalId(),
       protocol: `PA-2026-${String(processes.length + 129).padStart(5,"0")}`,
       subject: `${selected.subject} — cópia`,
       status: "Autuação",
       currentStep: 0,
       updated: "Agora",
-      movements: [{ id: makeDemoId(), action: "Processo duplicado", fromDepartment: department, toDepartment: department, actor: currentUser.fullName, note: `Criado a partir de ${selected.protocol}.`, createdAt: "Agora" }],
+      movements: [{ id: makeLocalId(), action: "Processo duplicado", fromDepartment: department, toDepartment: department, actor: currentUser.fullName, note: `Criado a partir de ${selected.protocol}.`, createdAt: "Agora" }],
       dispatches: [], signatures: [],
     };
     setProcesses((current) => [duplicate, ...current]);
@@ -498,7 +529,7 @@ export function ProcessesSection({ department, currentUser, users, departments, 
       status: action === "Diligência" ? "Aguardando diligência" : "Em tramitação",
       currentStep: Math.min(item.currentStep + 1, item.workflowSteps.length - 1),
       updated: `Hoje, ${now}`,
-      movements: [{ id: makeDemoId(), action, fromDepartment: item.currentDepartment, toDepartment: targetDepartment, actor: currentUser.fullName, note, createdAt: `Hoje, ${now}` }, ...item.movements],
+      movements: [{ id: makeLocalId(), action, fromDepartment: item.currentDepartment, toDepartment: targetDepartment, actor: currentUser.fullName, note, createdAt: `Hoje, ${now}` }, ...item.movements],
     }));
     setMoveModal(false);
     notify(`${selected.protocol} encaminhado para ${targetDepartment}.`);
@@ -512,7 +543,7 @@ export function ProcessesSection({ department, currentUser, users, departments, 
       status: concluding ? "Concluído" : "Em tramitação",
       currentStep: concluding ? item.workflowSteps.length - 1 : Math.max(0, item.workflowSteps.length - 2),
       updated: "Agora",
-      movements: [{ id: makeDemoId(), action: concluding ? "Processo concluído" : "Processo reaberto", fromDepartment: item.currentDepartment, toDepartment: item.currentDepartment, actor: currentUser.fullName, note: concluding ? "Encerramento administrativo registrado." : "Processo reaberto para nova providência.", createdAt: "Agora" }, ...item.movements],
+      movements: [{ id: makeLocalId(), action: concluding ? "Processo concluído" : "Processo reaberto", fromDepartment: item.currentDepartment, toDepartment: item.currentDepartment, actor: currentUser.fullName, note: concluding ? "Encerramento administrativo registrado." : "Processo reaberto para nova providência.", createdAt: "Agora" }, ...item.movements],
     }));
     notify(concluding ? "Processo concluído." : "Processo reaberto.");
   }
@@ -532,7 +563,7 @@ export function ProcessesSection({ department, currentUser, users, departments, 
 
   function saveDispatch(status: "Rascunho" | "Finalizado") {
     if (!selected || !dispatchText.trim()) return;
-    const dispatch: ProcessDispatch = { id: makeDemoId(), kind: dispatchKind, content: dispatchText.trim(), author: currentUser.fullName, status, createdAt: "Agora" };
+    const dispatch: ProcessDispatch = { id: makeLocalId(), kind: dispatchKind, content: dispatchText.trim(), author: currentUser.fullName, status, createdAt: "Agora" };
     updateSelected((item) => ({
       ...item,
       status: status === "Finalizado" ? "Despacho registrado" : item.status,
@@ -540,7 +571,7 @@ export function ProcessesSection({ department, currentUser, users, departments, 
       dispatches: status === "Rascunho"
         ? [dispatch, ...item.dispatches.filter((entry) => entry.status !== "Rascunho")]
         : [dispatch, ...item.dispatches.filter((entry) => entry.status !== "Rascunho")],
-      movements: status === "Finalizado" ? [{ id: makeDemoId(), action: dispatchKind, fromDepartment: item.currentDepartment, toDepartment: item.currentDepartment, actor: currentUser.fullName, note: "Documento finalizado e juntado aos autos.", createdAt: "Agora" }, ...item.movements] : item.movements,
+      movements: status === "Finalizado" ? [{ id: makeLocalId(), action: dispatchKind, fromDepartment: item.currentDepartment, toDepartment: item.currentDepartment, actor: currentUser.fullName, note: "Documento finalizado e juntado aos autos.", createdAt: "Agora" }, ...item.movements] : item.movements,
     }));
     notify(status === "Rascunho" ? "Minuta salva." : "Despacho finalizado e registrado na linha do tempo.");
   }
@@ -550,39 +581,58 @@ export function ProcessesSection({ department, currentUser, users, departments, 
     documentInput.current?.click();
   }
 
-  function uploadDocument(file: File) {
+  async function uploadDocument(file: File) {
     if (!selected) return;
+    if (file.size > 10 * 1024 * 1024) { notify("O documento deve ter no máximo 10 MB."); return; }
     const previous = versioningDocumentId ? selected.documents.find((doc) => doc.id === versioningDocumentId) : undefined;
-    const id = makeDemoId();
-    const document: ProcessDocument = {
-      id,
-      name: file.name || previous?.name || "Documento",
-      version: previous ? previous.version + 1 : 1,
-      author: currentUser.fullName,
-      createdAt: "Agora",
-      status: "Vigente",
-      size: file.size,
-    };
-    const url = URL.createObjectURL(file);
-    setDocumentUrls((current) => ({ ...current, [id]: url }));
-    updateSelected((item) => ({
-      ...item,
-      updated: "Agora",
-      documents: [document, ...item.documents.map((doc) => previous && doc.id === previous.id ? { ...doc, status: "Substituído" } : doc)],
-      movements: [{ id: makeDemoId(), action: previous ? "Nova versão de documento" : "Documento juntado", fromDepartment: item.currentDepartment, toDepartment: item.currentDepartment, actor: currentUser.fullName, note: `${document.name} · versão ${document.version}.`, createdAt: "Agora" }, ...item.movements],
-    }));
-    setVersioningDocumentId(null);
-    notify(`${document.name} adicionado ao processo.`);
+    const form = new FormData();
+    form.append("file", file);
+    form.append("category", `Processo ${selected.protocol}`);
+    form.append("userId", currentUser.id);
+    form.append("ownerName", currentUser.fullName);
+    form.append("department", selected.currentDepartment || department);
+    try {
+      const response = await fetch("/api/files", { method: "POST", body: form });
+      const payload = await response.json().catch(() => null) as { id?: string; error?: string } | null;
+      if (!response.ok || !payload?.id) throw new Error(payload?.error || "Não foi possível salvar o documento.");
+      const id = makeLocalId();
+      const document: ProcessDocument = {
+        id,
+        attachmentId: payload.id,
+        name: file.name || previous?.name || "Documento",
+        version: previous ? previous.version + 1 : 1,
+        author: currentUser.fullName,
+        createdAt: new Date().toLocaleString("pt-BR"),
+        status: "Vigente",
+        size: file.size,
+      };
+      updateSelected((item) => ({
+        ...item,
+        updated: "Agora",
+        documents: [document, ...item.documents.map((doc) => previous && doc.id === previous.id ? { ...doc, status: "Substituído" } : doc)],
+        movements: [{ id: makeLocalId(), action: previous ? "Nova versão de documento" : "Documento juntado", fromDepartment: item.currentDepartment, toDepartment: item.currentDepartment, actor: currentUser.fullName, note: `${document.name} · versão ${document.version}.`, createdAt: "Agora" }, ...item.movements],
+      }));
+      setVersioningDocumentId(null);
+      notify(`${document.name} salvo e adicionado ao processo.`);
+    } catch (error) {
+      notify(error instanceof Error ? error.message : "Não foi possível salvar o documento.");
+    }
   }
 
   function downloadDocument(document: ProcessDocument) {
-    const existingUrl = documentUrls[document.id];
-    const url = existingUrl ?? URL.createObjectURL(new Blob([`Registro demonstrativo do documento\nProcesso: ${selected?.protocol ?? ""}\nDocumento: ${document.name}\nVersão: ${document.version}\nAutor: ${document.author}\nData: ${document.createdAt}`], { type: "text/plain;charset=utf-8" }));
+    if (document.attachmentId) {
+      const anchor = window.document.createElement("a");
+      anchor.href = `/api/files?id=${encodeURIComponent(document.attachmentId)}`;
+      anchor.download = document.name;
+      anchor.click();
+      return;
+    }
+    const url = URL.createObjectURL(new Blob([`Registro do documento\nProcesso: ${selected?.protocol ?? ""}\nDocumento: ${document.name}\nVersão: ${document.version}\nAutor: ${document.author}\nData: ${document.createdAt}`], { type: "text/plain;charset=utf-8" }));
     const anchor = window.document.createElement("a");
     anchor.href = url;
-    anchor.download = existingUrl ? document.name : `${document.name}.registro.txt`;
+    anchor.download = `${document.name}.registro.txt`;
     anchor.click();
-    if (!existingUrl) URL.revokeObjectURL(url);
+    URL.revokeObjectURL(url);
   }
 
   function requestSignature(event: FormEvent<HTMLFormElement>) {
@@ -592,7 +642,7 @@ export function ProcessesSection({ department, currentUser, users, departments, 
     const documentName = String(form.get("documentName") ?? "");
     const signer = String(form.get("signer") ?? "");
     if (!documentName || !signer) return;
-    const signature: ProcessSignature = { id: makeDemoId(), documentName, signer, status: "Pendente", code: crypto.randomUUID().slice(0, 12).toUpperCase(), createdAt: "Agora" };
+    const signature: ProcessSignature = { id: makeLocalId(), documentName, signer, status: "Pendente", code: crypto.randomUUID().slice(0, 12).toUpperCase(), createdAt: "Agora" };
     updateSelected((item) => ({ ...item, status: "Aguardando assinatura", updated: "Agora", signatures: [signature, ...item.signatures] }));
     setSignatureModal(false);
     notify(`Assinatura solicitada a ${signer}.`);
@@ -603,7 +653,7 @@ export function ProcessesSection({ department, currentUser, users, departments, 
       ...item,
       updated: "Agora",
       signatures: item.signatures.map((signature) => signature.id === signatureId ? { ...signature, status: "Assinado", createdAt: "Agora" } : signature),
-      movements: [{ id: makeDemoId(), action: "Documento assinado", fromDepartment: item.currentDepartment, toDepartment: item.currentDepartment, actor: currentUser.fullName, note: "Assinatura eletrônica simulada registrada.", createdAt: "Agora" }, ...item.movements],
+      movements: [{ id: makeLocalId(), action: "Documento assinado", fromDepartment: item.currentDepartment, toDepartment: item.currentDepartment, actor: currentUser.fullName, note: "Assinatura eletrônica registrada no processo.", createdAt: "Agora" }, ...item.movements],
     }));
     notify("Assinatura registrada.");
   }
@@ -617,6 +667,7 @@ export function ProcessesSection({ department, currentUser, users, departments, 
   const selectedOverdue = Boolean(selected?.dueDate && selected.status !== "Concluído" && selected.dueDate < today);
 
   return <section className="municipal-module-shell process-digital-v2">
+    <small className={`module-sync-banner ${processSaveStatus}`}>{processSaveStatus === "carregando" ? "Carregando processos…" : processSaveStatus === "salvando" ? "Salvando alterações…" : processSaveStatus === "offline" ? "Aguardando conexão com o servidor" : "Processos sincronizados"}</small>
     <div className="process-command-center panel">
       <div><p className="eyebrow">CENTRAL DE PROCESSOS</p><h2>Tramitação digital do setor</h2><p>Encontre o processo, confira a próxima ação e registre a movimentação sem sair da mesma tela.</p></div>
       <div className="process-command-actions">{access.register && <button className="button primary" onClick={() => setProcessModal({ mode: "create" })}><Plus size={15} /> Novo processo</button>}<button className="button secondary" onClick={() => setQueueFilter("Minha fila")}><UserRound size={15} /> Minha fila</button></div>
@@ -681,27 +732,9 @@ export function MunicipalManagementSection({ department, notify }: { department:
   const [tab, setTab] = useState<ManagementTab>("Frota");
   const [query, setQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState("Todas as situações");
-  const [data, setData] = useState(MANAGEMENT_DATA);
+  const [data, setData, managementSaveStatus] = usePersistentState<Record<ManagementTab, ManagementItem[]>>(persistenceKey("management", department, "v1"), MANAGEMENT_DATA);
   const [modal, setModal] = useState<{ mode: "create" | "edit"; item?: ManagementItem } | null>(null);
   const [detailItem, setDetailItem] = useState<ManagementItem | null>(null);
-  const [managementHydrated, setManagementHydrated] = useState(false);
-  const storageKey = "prefeitura-conecta:management:v2";
-
-  useEffect(() => {
-    try {
-      const saved = localStorage.getItem(storageKey);
-      if (saved) {
-        const parsed = JSON.parse(saved) as Record<ManagementTab, ManagementItem[]>;
-        if (parsed && typeof parsed === "object") setData(parsed);
-      }
-    } catch { /* Mantém a base demonstrativa. */ }
-    setManagementHydrated(true);
-  }, [storageKey]);
-
-  useEffect(() => {
-    if (!managementHydrated) return;
-    try { localStorage.setItem(storageKey, JSON.stringify(data)); } catch { /* Persistência local é opcional. */ }
-  }, [data, managementHydrated, storageKey]);
 
   const tabItems = data[tab];
   const items = tabItems.filter((item) => {
@@ -725,7 +758,7 @@ export function MunicipalManagementSection({ department, notify }: { department:
     const form = new FormData(event.currentTarget);
     const base = modal?.item;
     const item: ManagementItem = {
-      id: base?.id ?? makeDemoId(),
+      id: base?.id ?? makeLocalId(),
       code: String(form.get("code")) || base?.code || `${tab.slice(0,3).toUpperCase()}-${Date.now().toString().slice(-4)}`,
       title: String(form.get("title")),
       detail: String(form.get("detail")),
@@ -745,7 +778,7 @@ export function MunicipalManagementSection({ department, notify }: { department:
 
   function duplicateRecord(item: ManagementItem) {
     if (!access.register) { notify("Seu perfil não possui permissão para duplicar registros."); return; }
-    const copy: ManagementItem = { ...item, id: makeDemoId(), code: `${item.code}-COPIA`, status: "Cadastrado" };
+    const copy: ManagementItem = { ...item, id: makeLocalId(), code: `${item.code}-COPIA`, status: "Cadastrado" };
     setData((current) => ({ ...current, [tab]: [copy, ...current[tab]] }));
     notify(`Cópia de ${item.code} criada para edição.`);
   }
@@ -771,6 +804,7 @@ export function MunicipalManagementSection({ department, notify }: { department:
   }
 
   return <section className="municipal-module-shell">
+    <small className={`module-sync-banner ${managementSaveStatus}`}>{managementSaveStatus === "salvando" ? "Salvando alterações…" : managementSaveStatus === "offline" ? "Aguardando conexão com o servidor" : "Gestão sincronizada"}</small>
     <div className="management-tabs" role="tablist" aria-label="Áreas da gestão municipal">{(Object.keys(MANAGEMENT_DATA) as ManagementTab[]).map((item) => { const Icon = TAB_ICON[item]; return <button key={item} className={tab === item ? "active" : ""} onClick={() => { setTab(item); setStatusFilter("Todas as situações"); setQuery(""); }}><span><Icon size={19} /></span><strong>{item}</strong><small>{data[item].length} registros</small></button>; })}</div>
 
     <div className="management-summary-grid">
@@ -789,9 +823,9 @@ export function MunicipalManagementSection({ department, notify }: { department:
 
     {modal && (modal.mode === "create" ? access.register : access.edit) && <ModalShell eyebrow={`MÓDULO DE ${tab.toUpperCase()}`} title={modal.mode === "edit" ? `Editar ${modal.item?.code}` : `Novo registro de ${tab.toLowerCase()}`} onClose={() => setModal(null)}><form onSubmit={saveRecord}><label className="field"><span>Código ou identificação</span><input name="code" defaultValue={modal.item?.code ?? ""} placeholder="Gerado automaticamente se vazio" /></label><label className="field"><span>Responsável</span><input name="owner" defaultValue={modal.item?.owner ?? department} /></label><label className="field full"><span>Título *</span><input name="title" required defaultValue={modal.item?.title ?? ""} placeholder="Identifique o bem, contrato, veículo ou atividade" /></label><label className="field full"><span>Detalhes *</span><textarea name="detail" required defaultValue={modal.item?.detail ?? ""} placeholder="Localização, fornecedor, características ou observações" /></label><label className="field"><span>Situação</span><input name="status" defaultValue={modal.item?.status ?? "Cadastrado"} placeholder="Ex.: Regular, Vigente, Em manutenção" /></label><label className="field"><span>Indicador</span><input name="metric" defaultValue={modal.item?.metric ?? ""} placeholder="Valor, quilometragem, saldo ou progresso" /></label><label className="field full"><span>Prazo ou validade</span><input name="due" defaultValue={modal.item?.due ?? ""} placeholder="Ex.: 30 set. 2026" /></label><div className="modal-actions"><button type="button" className="button secondary" onClick={() => setModal(null)}>Cancelar</button><button className="button primary">{modal.mode === "edit" ? <><Save size={15} /> Salvar alterações</> : <><Check size={15} /> Cadastrar</>}</button></div></form></ModalShell>}
 
-    {detailItem && <ModalShell eyebrow={`${tab.toUpperCase()} · ${detailItem.code}`} title={detailItem.title} onClose={() => setDetailItem(null)}><div className="management-detail-modal"><div className="management-detail-status"><StatusTag>{detailItem.status}</StatusTag><span>{detailItem.owner}</span></div><p>{detailItem.detail}</p><dl><div><dt>Indicador atual</dt><dd>{detailItem.metric}</dd></div><div><dt>Prazo / validade</dt><dd>{detailItem.due}</dd></div><div><dt>Setor visualizado</dt><dd>{department}</dd></div></dl><div className="management-timeline"><strong>Movimentações do registro</strong><span><i /><div><b>Registro disponível para acompanhamento</b><small>Histórico demonstrativo preservado nesta ficha.</small></div></span><span><i /><div><b>Situação atual: {detailItem.status}</b><small>Atualize o status conforme a execução do trabalho.</small></div></span></div>{access.edit && <div className="management-quick-actions"><button className="button secondary" onClick={() => quickStatus(detailItem, "Requer atenção")}>Marcar atenção</button><button className="button secondary" onClick={() => quickStatus(detailItem, "Em andamento")}>Em andamento</button><button className="button secondary" onClick={() => quickStatus(detailItem, "Regular")}>Marcar regular</button><button className="button primary" onClick={() => { setModal({ mode: "edit", item: detailItem }); setDetailItem(null); }}><Pencil size={14} /> Editar registro</button></div>}</div></ModalShell>}
+    {detailItem && <ModalShell eyebrow={`${tab.toUpperCase()} · ${detailItem.code}`} title={detailItem.title} onClose={() => setDetailItem(null)}><div className="management-detail-modal"><div className="management-detail-status"><StatusTag>{detailItem.status}</StatusTag><span>{detailItem.owner}</span></div><p>{detailItem.detail}</p><dl><div><dt>Indicador atual</dt><dd>{detailItem.metric}</dd></div><div><dt>Prazo / validade</dt><dd>{detailItem.due}</dd></div><div><dt>Setor visualizado</dt><dd>{department}</dd></div></dl><div className="management-timeline"><strong>Movimentações do registro</strong><span><i /><div><b>Registro disponível para acompanhamento</b><small>Histórico preservado nesta ficha.</small></div></span><span><i /><div><b>Situação atual: {detailItem.status}</b><small>Atualize o status conforme a execução do trabalho.</small></div></span></div>{access.edit && <div className="management-quick-actions"><button className="button secondary" onClick={() => quickStatus(detailItem, "Requer atenção")}>Marcar atenção</button><button className="button secondary" onClick={() => quickStatus(detailItem, "Em andamento")}>Em andamento</button><button className="button secondary" onClick={() => quickStatus(detailItem, "Regular")}>Marcar regular</button><button className="button primary" onClick={() => { setModal({ mode: "edit", item: detailItem }); setDetailItem(null); }}><Pencil size={14} /> Editar registro</button></div>}</div></ModalShell>}
 
-    <div className="management-upgrades"><FieldOperationsPanel notify={notify} /></div>
+    <div className="management-upgrades"><FieldOperationsPanel department={department} notify={notify} /></div>
   </section>;
 }
 
@@ -811,8 +845,8 @@ export function IndicatorsSection({ department, notify }: { department: string; 
 }
 
 export function SecuritySection({ department, notify }: { department: string; notify: Notify }) {
-  const [settings, setSettings] = useState({ session:true,sensitive:true,exportLog:true,retention:false,notifications:true });
-  const toggle = (key: keyof typeof settings) => { setSettings((current) => ({...current,[key]:!current[key]})); notify("Política atualizada para este protótipo."); };
+  const [settings, setSettings, securitySaveStatus] = usePersistentState(persistenceKey("security-settings", department, "v1"), { session:true,sensitive:true,exportLog:true,retention:false,notifications:true });
+  const toggle = (key: keyof typeof settings) => { setSettings((current) => ({...current,[key]:!current[key]})); notify("Política atualizada e salva."); };
   const roles = [
     ["Administrador geral","Total","Total","Total","Total","Total"],
     ["Responsável pelo setor","Setor","Criar e editar","Aprovar","Setor","Setor"],
@@ -820,7 +854,7 @@ export function SecuritySection({ department, notify }: { department: string; no
     ["Fiscal ou auditor","Autorizado","Somente leitura","Não","Autorizado","Sim"],
     ["Visualizador","Setor","Somente leitura","Não","Não","Não"],
   ];
-  return <section className="municipal-module-shell"><div className="security-hero"><span><ShieldCheck size={26} /></span><div><p className="eyebrow">GOVERNANÇA E PROTEÇÃO DE DADOS</p><h2>Segurança, LGPD e permissões</h2><p>Controles aplicados a {department}, com acesso mínimo necessário e rastreabilidade das operações.</p></div><div><strong>Proteção ativa</strong><small>Última revisão: 13 ago. 2026</small></div></div><div className="security-grid"><article className="panel permission-panel"><header><div><h2>Matriz de permissões</h2><p>Quem pode visualizar, editar, aprovar, exportar e administrar registros.</p></div><LockKeyhole size={18} /></header><div className="permission-table"><div><span>Perfil</span><span>Visualizar</span><span>Editar</span><span>Aprovar</span><span>Exportar</span><span>Administrar</span></div>{roles.map((row) => <div key={row[0]}>{row.map((value,index) => <span key={index} className={value === "Não" ? "denied" : index > 0 ? "allowed" : ""}>{index > 0 && value !== "Não" && <Check size={11} />}{value}</span>)}</div>)}</div></article><aside className="panel lgpd-panel"><header><div><h2>Políticas e preferências</h2><p>Configurações do ambiente e dos alertas</p></div><ShieldCheck size={18} /></header>{[["session","Encerrar sessões inativas","Após 30 minutos sem atividade"],["sensitive","Mascarar dados pessoais","CPF, telefone e endereço"],["exportLog","Registrar exportações","Usuário, data, filtro e finalidade"],["retention","Descarte automático","Aplicar tabela de temporalidade"],["notifications","Alertas operacionais","Prazos, aprovações, mensagens e documentos"]].map(([key,title,detail]) => <button key={key} onClick={() => toggle(key as keyof typeof settings)}><span><strong>{title}</strong><small>{detail}</small></span><i className={settings[key as keyof typeof settings] ? "toggle active" : "toggle"}><b /></i></button>)}</aside></div><div className="compliance-grid"><FeaturePanel icon={LockKeyhole} title="Dados pessoais" description="Classifique registros comuns, sensíveis, restritos ou sigilosos e aplique acesso compatível." items={["Finalidade e base de tratamento","Responsável pelo dado","Prazo de retenção","Registro de compartilhamento"]} action="Revisar cadastros" onAction={() => notify("Inventário de dados pessoais aberto para revisão.")} /><FeaturePanel icon={FileClock} title="Retenção e descarte" description="Defina prazos de guarda e acompanhe documentos que exigem eliminação ou recolhimento permanente." items={["Tabela de temporalidade","Bloqueio por litígio","Termo de eliminação","Preservação permanente"]} action="Abrir temporalidade" onAction={() => notify("Tabela de temporalidade aberta.")} /><FeaturePanel icon={ShieldCheck} title="Incidentes de segurança" description="Registre perda, exposição ou acesso indevido e acompanhe as providências adotadas." items={["Classificação do impacto","Dados e titulares afetados","Plano de resposta","Comunicações e evidências"]} action="Registrar incidente" onAction={() => notify("Formulário de incidente aberto com acesso restrito.")} /></div><article className="panel accessibility-panel"><span><Accessibility size={22} /></span><div><h2>Acessibilidade e inclusão digital</h2><p>Navegação por teclado, rótulos acessíveis, contraste adequado, foco visível e conteúdo compatível com leitores de tela.</p></div><StatusTag>Conformidade monitorada</StatusTag></article></section>;
+  return <section className="municipal-module-shell"><small className={`module-sync-banner ${securitySaveStatus}`}>{securitySaveStatus === "salvando" ? "Salvando políticas…" : securitySaveStatus === "offline" ? "Aguardando conexão" : "Políticas sincronizadas"}</small><div className="security-hero"><span><ShieldCheck size={26} /></span><div><p className="eyebrow">GOVERNANÇA E PROTEÇÃO DE DADOS</p><h2>Segurança, LGPD e permissões</h2><p>Controles aplicados a {department}, com acesso mínimo necessário e rastreabilidade das operações.</p></div><div><strong>Proteção ativa</strong><small>Última revisão: 13 ago. 2026</small></div></div><div className="security-grid"><article className="panel permission-panel"><header><div><h2>Matriz de permissões</h2><p>Quem pode visualizar, editar, aprovar, exportar e administrar registros.</p></div><LockKeyhole size={18} /></header><div className="permission-table"><div><span>Perfil</span><span>Visualizar</span><span>Editar</span><span>Aprovar</span><span>Exportar</span><span>Administrar</span></div>{roles.map((row) => <div key={row[0]}>{row.map((value,index) => <span key={index} className={value === "Não" ? "denied" : index > 0 ? "allowed" : ""}>{index > 0 && value !== "Não" && <Check size={11} />}{value}</span>)}</div>)}</div></article><aside className="panel lgpd-panel"><header><div><h2>Políticas e preferências</h2><p>Configurações do ambiente e dos alertas</p></div><ShieldCheck size={18} /></header>{[["session","Encerrar sessões inativas","Após 30 minutos sem atividade"],["sensitive","Mascarar dados pessoais","CPF, telefone e endereço"],["exportLog","Registrar exportações","Usuário, data, filtro e finalidade"],["retention","Descarte automático","Aplicar tabela de temporalidade"],["notifications","Alertas operacionais","Prazos, aprovações, mensagens e documentos"]].map(([key,title,detail]) => <button key={key} onClick={() => toggle(key as keyof typeof settings)}><span><strong>{title}</strong><small>{detail}</small></span><i className={settings[key as keyof typeof settings] ? "toggle active" : "toggle"}><b /></i></button>)}</aside></div><div className="compliance-grid"><FeaturePanel icon={LockKeyhole} title="Dados pessoais" description="Classifique registros comuns, sensíveis, restritos ou sigilosos e aplique acesso compatível." items={["Finalidade e base de tratamento","Responsável pelo dado","Prazo de retenção","Registro de compartilhamento"]} action="Revisar cadastros" onAction={() => notify("Inventário de dados pessoais aberto para revisão.")} /><FeaturePanel icon={FileClock} title="Retenção e descarte" description="Defina prazos de guarda e acompanhe documentos que exigem eliminação ou recolhimento permanente." items={["Tabela de temporalidade","Bloqueio por litígio","Termo de eliminação","Preservação permanente"]} action="Abrir temporalidade" onAction={() => notify("Tabela de temporalidade aberta.")} /><FeaturePanel icon={ShieldCheck} title="Incidentes de segurança" description="Registre perda, exposição ou acesso indevido e acompanhe as providências adotadas." items={["Classificação do impacto","Dados e titulares afetados","Plano de resposta","Comunicações e evidências"]} action="Registrar incidente" onAction={() => notify("Formulário de incidente aberto com acesso restrito.")} /></div><article className="panel accessibility-panel"><span><Accessibility size={22} /></span><div><h2>Acessibilidade e inclusão digital</h2><p>Navegação por teclado, rótulos acessíveis, contraste adequado, foco visível e conteúdo compatível com leitores de tela.</p></div><StatusTag>Conformidade monitorada</StatusTag></article></section>;
 }
 
 type HelpTutorial = {
@@ -858,19 +892,19 @@ const HELP_TUTORIALS: HelpTutorial[] = [
     summary: "Triagem, prazo, sigilo e acompanhamento de solicitações do cidadão.",
     steps: [
       { title: "Identifique o tipo", text: "Em Atendimento ao Cidadão, escolha solicitação, reclamação, sugestão, elogio, denúncia ou pedido de acesso à informação." },
-      { title: "Proteja os dados", text: "Registre apenas os dados necessários. Em denúncias ou situações sensíveis, ative a restrição de identidade antes de salvar.", tip: "No ambiente de demonstração, use sempre nomes e documentos fictícios." },
+      { title: "Proteja os dados", text: "Registre apenas os dados necessários. Em denúncias ou situações sensíveis, ative a restrição de identidade antes de salvar.", tip: "Registre somente os dados necessários e respeite o nível de acesso definido para o atendimento." },
       { title: "Faça a triagem", text: "Confirme o assunto, o setor responsável e o prazo. O protocolo gerado deve ser entregue ao cidadão para acompanhamento." },
       { title: "Responda e finalize", text: "Registre cada providência, prepare uma resposta clara e encerre somente quando houver retorno conclusivo ou justificativa formal." },
     ],
   },
   {
     id: "processos", category: "Processos", title: "Autuar e movimentar um processo digital", duration: "9 min",
-    summary: "Autuação, documentos, despachos, níveis de acesso e assinatura simulada.",
+    summary: "Autuação, documentos, despachos, níveis de acesso e assinaturas.",
     steps: [
       { title: "Autue o processo", text: "Abra Processos digitais, clique em Novo processo e informe assunto, interessado, responsável e nível de acesso." },
       { title: "Junte documentos", text: "Na aba Documentos e versões, adicione os arquivos relacionados. Novas versões preservam o histórico anterior para auditoria." },
       { title: "Produza o despacho", text: "Use Despachos e pareceres, escolha um modelo, revise os campos automáticos e finalize o documento." },
-      { title: "Movimente ou assine", text: "Encaminhe ao próximo setor com uma providência clara. A assinatura do protótipo é demonstrativa e não substitui um provedor oficial." },
+      { title: "Movimente ou assine", text: "Encaminhe ao próximo setor com uma providência clara. Registre a assinatura e valide o código associado ao documento antes de concluir a movimentação." },
     ],
   },
   {
@@ -889,7 +923,7 @@ const HELP_TUTORIALS: HelpTutorial[] = [
     steps: [
       { title: "Leia a central do dia", text: "Na Área do Setor, consulte indicadores, itens prioritários e o fluxo de trabalho antes de iniciar novos registros." },
       { title: "Use o formulário específico", text: "Em Cadastros, escolha o modelo adequado ao serviço. Os campos mudam de acordo com a secretaria ou departamento." },
-      { title: "Registre o trabalho de campo", text: "Na aba Campo, selecione equipe, atividade, local, checklist e situação. O protótipo simula retenção temporária durante uma queda de conexão." },
+      { title: "Registre o trabalho de campo", text: "Na aba Campo, selecione equipe, atividade, local, checklist e situação. As alterações são sincronizadas com a plataforma; se houver indisponibilidade, aguarde a retomada da conexão antes de encerrar a atividade." },
       { title: "Encaminhe o mínimo necessário", text: "Em Encaminhamentos, selecione o setor de destino, a providência e o escopo dos dados compartilhados." },
     ],
   },
@@ -897,7 +931,7 @@ const HELP_TUTORIALS: HelpTutorial[] = [
     id: "permissoes", category: "Configurações", title: "Definir permissões dos funcionários", duration: "7 min",
     summary: "Perfis por função e direitos para visualizar, registrar ou alterar cada módulo.",
     steps: [
-      { title: "Acesse como secretário", text: "Abra Configurações. A área aparece apenas para o responsável/secretário do setor no ambiente demonstrativo." },
+      { title: "Acesse como secretário", text: "Abra Configurações. A área aparece apenas para o responsável/secretário autorizado do setor." },
       { title: "Selecione o perfil", text: "Escolha Atendimento, Operacional, Equipe de campo ou Consulta. Cada perfil pode reunir vários funcionários." },
       { title: "Marque as ações", text: "Para cada módulo, habilite Visualizar, Registrar e Alterar. Registrar ou Alterar exige que Visualizar também esteja ativo.", tip: "Comece com o menor acesso necessário e amplie somente quando houver justificativa." },
       { title: "Atribua os funcionários", text: "Na aba Funcionários e perfis, associe cada servidor ao perfil apropriado. Troque de usuário no topo para testar o resultado." },
@@ -910,7 +944,7 @@ const HELP_TUTORIALS: HelpTutorial[] = [
       { title: "Abra a agenda do setor", text: "Acesse Próximos Eventos. A lista mostra apenas compromissos publicados para o setor que está sendo visualizado." },
       { title: "Escolha os setores destinatários", text: "Clique em Novo evento, informe data, local e pauta e marque todos os setores que devem receber o compromisso.", tip: "Use Selecionar todos apenas para agendas realmente institucionais." },
       { title: "Edite quando houver autorização", text: "Perfis com a ação Alterar habilitada visualizam os botões Editar e Excluir. As mudanças são refletidas nas agendas selecionadas." },
-      { title: "Comunique alterações", text: "Ao publicar, alterar ou excluir, os integrantes dos setores destinatários recebem um aviso no cenário demonstrativo." },
+      { title: "Comunique alterações", text: "Ao publicar, alterar ou excluir, os integrantes dos setores destinatários recebem um aviso no sistema." },
     ],
   },
   {
@@ -935,11 +969,11 @@ const HELP_TUTORIALS: HelpTutorial[] = [
   },
   {
     id: "relatorios", category: "Relatórios", title: "Filtrar e apresentar indicadores", duration: "5 min",
-    summary: "Como preparar uma visão gerencial coerente para a demonstração.",
+    summary: "Como preparar uma visão gerencial coerente para acompanhamento.",
     steps: [
-      { title: "Defina a pergunta", text: "Antes de filtrar, determine o que será demonstrado: volume, prazo, distribuição por setor ou conclusão." },
+      { title: "Defina a pergunta", text: "Antes de filtrar, determine o que será analisado: volume, prazo, distribuição por setor ou conclusão." },
       { title: "Aplique período e setor", text: "Use filtros compatíveis entre si e confira se os indicadores representam o mesmo intervalo." },
-      { title: "Explique os dados fictícios", text: "Informe que os números pertencem ao cenário de demonstração e servem para validar fluxos e telas." },
+      { title: "Confirme a origem dos dados", text: "Confirme o período, o setor e a origem dos indicadores antes de apresentar os resultados." },
       { title: "Exporte somente o necessário", text: "Gere a visão adequada ao público e evite incluir colunas ou dados individuais que não ajudam na decisão." },
     ],
   },
@@ -948,7 +982,7 @@ const HELP_TUTORIALS: HelpTutorial[] = [
 export function HelpCenterSection({ notify }: { notify: Notify }) {
   const [query, setQuery] = useState("");
   const [selectedId, setSelectedId] = useState(HELP_TUTORIALS[0].id);
-  const [completed, setCompleted] = useState<Record<string, number[]>>({});
+  const [completed, setCompleted, tutorialSaveStatus] = usePersistentState<Record<string, number[]>>("help:tutorial-progress:v1", {});
   const tutorials = useMemo(() => HELP_TUTORIALS.filter((tutorial) => [tutorial.title, tutorial.summary, tutorial.category, ...tutorial.steps.flatMap((step) => [step.title, step.text])].join(" ").toLowerCase().includes(query.toLowerCase())), [query]);
   const selected = HELP_TUTORIALS.find((tutorial) => tutorial.id === selectedId) ?? HELP_TUTORIALS[0];
   const completedSteps = completed[selected.id] ?? [];
@@ -968,14 +1002,15 @@ export function HelpCenterSection({ notify }: { notify: Notify }) {
 
   function completeTutorial() {
     setCompleted((current) => ({ ...current, [selected.id]: selected.steps.map((_, index) => index) }));
-    notify(`Tutorial “${selected.title}” concluído no modo demonstração.`);
+    notify(`Tutorial “${selected.title}” concluído.`);
   }
 
   return (
     <section className="municipal-module-shell help-center">
+      <small className={`module-sync-banner ${tutorialSaveStatus}`}>{tutorialSaveStatus === "salvando" ? "Salvando progresso…" : tutorialSaveStatus === "offline" ? "Aguardando conexão" : "Progresso sincronizado"}</small>
       <div className="help-hero">
         <span><HelpCircle size={30} /></span><p className="eyebrow">CENTRAL DE CONHECIMENTO</p><h2>Aprenda fazendo</h2>
-        <p>Tutoriais completos para apresentar e testar os principais fluxos do Prefeitura Conecta.</p>
+        <p>Tutoriais completos para operar os principais fluxos do Prefeitura Conecta.</p>
         <label><Search size={17} /><input aria-label="Buscar na central de ajuda" value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Busque por chamado, permissão, protocolo..." /></label>
       </div>
       <div className="tutorial-layout">
@@ -1005,8 +1040,8 @@ export function HelpCenterSection({ notify }: { notify: Notify }) {
         </article>
       </div>
       <div className="help-footer-grid">
-        <article className="panel quick-help"><h2>Respostas rápidas</h2>{["O botão sumiu? Verifique a permissão do perfil.", "Notificação sem som? Ative em Configurações.", "Dados do protótipo ficam salvos neste navegador."].map((item) => <button key={item} onClick={() => notify(item)}><CheckCircle2 size={14} /><span>{item}</span><ChevronRight size={13} /></button>)}</article>
-        <article className="panel support-contact"><span><MessageSquareText size={20} /></span><div><h2>Encontrou uma dificuldade?</h2><p>Registre o módulo, o perfil usado e o que esperava acontecer durante o teste.</p></div><button className="button primary" onClick={() => notify("Chamado de suporte de demonstração preparado para preenchimento.")}>Abrir suporte</button></article>
+        <article className="panel quick-help"><h2>Respostas rápidas</h2>{["O botão sumiu? Verifique a permissão do perfil.", "Notificação sem som? Ative em Configurações.", "Alterações são sincronizadas no armazenamento central do sistema."].map((item) => <button key={item} onClick={() => notify(item)}><CheckCircle2 size={14} /><span>{item}</span><ChevronRight size={13} /></button>)}</article>
+        <article className="panel support-contact"><span><MessageSquareText size={20} /></span><div><h2>Encontrou uma dificuldade?</h2><p>Registre o módulo, o perfil usado e o que esperava acontecer durante o uso.</p></div><button className="button primary" onClick={() => notify("Chamado de suporte preparado para preenchimento.")}>Abrir suporte</button></article>
       </div>
     </section>
   );
