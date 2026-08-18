@@ -893,7 +893,7 @@ export default function Home() {
               ? <ExecutiveCommunicationViewer department={activeDepartment} users={activeUsers} groups={accessibleGroups} messages={communicationMessages} />
               : <CommunicationSection currentUser={currentUser} users={activeUsers} groups={accessibleGroups} messages={communicationMessages} tickets={privateTickets} onSend={sendMessage} onSendAttachment={sendChatAttachment} onNewGroup={() => setGroupModal(true)} onTicketStatus={updateStatus} />)}
           {activeNav === "Atendimento ao Cidadão" && <CitizenServiceSection department={activeDepartment} notify={notify} />}
-          {activeNav === "Processos Digitais" && <ProcessesSection department={activeDepartment} notify={notify} />}
+          {activeNav === "Processos Digitais" && <ProcessesSection key={`${activeDepartment}-${currentUser.id}`} department={activeDepartment} currentUser={{ id: currentUser.id, fullName: currentUser.fullName, department: currentUser.department, role: currentUser.role }} users={activeUsers.map((user) => ({ id: user.id, fullName: user.fullName, department: user.department, role: user.role }))} departments={allDepartments} notify={notify} />}
           {activeNav === "Gestão Municipal" && <MunicipalManagementSection department={activeDepartment} notify={notify} />}
           {activeNav === "Indicadores" && <IndicatorsSection department={activeDepartment} notify={notify} />}
           {activeNav === "Notificações" && <><NotificationsSection notifications={currentNotifications} onRead={markNotification} onOpenPending={() => setActiveNav("Pendências")} /><SmartNotificationRules notify={notify} /></>}

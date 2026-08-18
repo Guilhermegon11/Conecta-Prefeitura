@@ -1,6 +1,6 @@
 "use client";
 
-import { FormEvent, useEffect, useMemo, useState } from "react";
+import { FormEvent, useEffect, useMemo, useRef, useState } from "react";
 import {
   Accessibility,
   Archive,
@@ -73,6 +73,44 @@ type ServiceItem = {
   channel: string;
 };
 
+type ProcessMovement = {
+  id: string;
+  action: string;
+  fromDepartment: string;
+  toDepartment: string;
+  actor: string;
+  note: string;
+  createdAt: string;
+};
+
+type ProcessDocument = {
+  id: string;
+  name: string;
+  version: number;
+  author: string;
+  createdAt: string;
+  status: string;
+  size?: number;
+};
+
+type ProcessDispatch = {
+  id: string;
+  kind: string;
+  content: string;
+  author: string;
+  status: "Rascunho" | "Finalizado";
+  createdAt: string;
+};
+
+type ProcessSignature = {
+  id: string;
+  documentName: string;
+  signer: string;
+  status: "Pendente" | "Assinado";
+  code: string;
+  createdAt: string;
+};
+
 type ProcessItem = {
   id: string;
   protocol: string;
@@ -82,7 +120,22 @@ type ProcessItem = {
   status: string;
   access: string;
   updated: string;
+  originDepartment: string;
+  currentDepartment: string;
+  priority: "Baixa" | "Normal" | "Alta" | "Urgente";
+  dueDate: string;
+  processType: string;
+  description: string;
+  workflowName: string;
+  workflowSteps: string[];
+  currentStep: number;
+  movements: ProcessMovement[];
+  documents: ProcessDocument[];
+  dispatches: ProcessDispatch[];
+  signatures: ProcessSignature[];
 };
+
+type ProcessUser = { id: string; fullName: string; department: string; role: string };
 
 type ManagementItem = {
   id: string;
@@ -109,11 +162,51 @@ const INITIAL_PROTOCOLS: CitizenProtocol[] = [
   { id: "pc-4", protocol: "DEN-2026-00021", subject: "Relato sigiloso sobre descarte irregular", requester: "Identidade protegida", channel: "Ouvidoria", kind: "Denúncia", status: "Triagem sigilosa", department: "Controle Interno", due: "20 ago. 2026", confidential: true },
 ];
 
+const PROCESS_WORKFLOWS: Record<string,string[]> = {
+  "Fluxo administrativo": ["Autuação", "Triagem", "Análise do setor", "Despacho", "Validação", "Concluído"],
+  "Contratação pública": ["Autuação", "Termo de referência", "Pesquisa de preços", "Análise jurídica", "Empenho", "Assinatura", "Concluído"],
+  "Convênio e parceria": ["Autuação", "Análise técnica", "Documentação", "Parecer jurídico", "Assinatura", "Publicação", "Concluído"],
+  "Apuração interna": ["Autuação", "Instrução", "Manifestação", "Análise", "Decisão", "Concluído"],
+};
+
 const INITIAL_PROCESSES: ProcessItem[] = [
-  { id: "pr-1", protocol: "PA-2026-00128", subject: "Contratação emergencial de manutenção elétrica", interested: "Secretaria de Governo", owner: "Jaime de Souza", status: "Parecer jurídico", access: "Interno", updated: "Hoje, 11:42" },
-  { id: "pr-2", protocol: "PA-2026-00119", subject: "Termo de cooperação para feira do produtor", interested: "Associação dos Produtores", owner: "Lucas Fontinelli", status: "Aguardando assinatura", access: "Público", updated: "Hoje, 09:18" },
-  { id: "pr-3", protocol: "PA-2026-00098", subject: "Aquisição de kits escolares", interested: "Secretaria de Educação", owner: "Leila Cibeli", status: "Análise financeira", access: "Interno", updated: "12 ago., 16:25" },
-  { id: "pr-4", protocol: "PA-2026-00074", subject: "Renovação do convênio de atendimento regional", interested: "Secretaria de Saúde", owner: "Natália Pedrosa", status: "Concluído", access: "Público", updated: "10 ago., 14:10" },
+  {
+    id: "pr-1", protocol: "PA-2026-00128", subject: "Contratação emergencial de manutenção elétrica", interested: "Secretaria de Governo", owner: "Jaime de Souza", status: "Parecer jurídico", access: "Interno", updated: "Hoje, 11:42",
+    originDepartment: "Secretaria de Governo", currentDepartment: "Secretaria de Administração e Finanças", priority: "Urgente", dueDate: "2026-08-20", processType: "Contratação", description: "Contratação emergencial para manutenção elétrica de prédios e equipamentos municipais.", workflowName: "Contratação pública", workflowSteps: PROCESS_WORKFLOWS["Contratação pública"], currentStep: 3,
+    movements: [
+      { id: "mov-1", action: "Encaminhado para parecer jurídico", fromDepartment: "Secretaria de Administração e Finanças", toDepartment: "Jurídico", actor: "Jaime de Souza", note: "Analisar minuta e requisitos legais.", createdAt: "Hoje, 11:42" },
+      { id: "mov-2", action: "Documentos complementares juntados", fromDepartment: "Secretaria de Governo", toDepartment: "Secretaria de Administração e Finanças", actor: "Mariana Castro", note: "Pesquisa de preços e justificativa anexadas.", createdAt: "Hoje, 09:18" },
+      { id: "mov-3", action: "Processo autuado", fromDepartment: "Secretaria de Governo", toDepartment: "Secretaria de Governo", actor: "Ana Paula", note: "Abertura do processo administrativo.", createdAt: "11 ago., 14:05" },
+    ],
+    documents: [
+      { id: "doc-p1-1", name: "Termo de referência.pdf", version: 3, author: "Jaime de Souza", createdAt: "Hoje, 10:21", status: "Vigente" },
+      { id: "doc-p1-2", name: "Pesquisa de preços.xlsx", version: 2, author: "Mariana Castro", createdAt: "12 ago., 16:08", status: "Vigente" },
+    ],
+    dispatches: [{ id: "des-p1-1", kind: "Despacho de encaminhamento", content: "Encaminhe-se o presente processo ao setor jurídico para análise e manifestação.", author: "Jaime de Souza", status: "Finalizado", createdAt: "Hoje, 11:42" }],
+    signatures: [{ id: "sig-p1-1", documentName: "Termo de referência.pdf", signer: "Jaime de Souza", status: "Assinado", code: "8AF3-26B1-9C04", createdAt: "Hoje, 10:30" }],
+  },
+  {
+    id: "pr-2", protocol: "PA-2026-00119", subject: "Termo de cooperação para feira do produtor", interested: "Associação dos Produtores", owner: "Lucas Fontinelli", status: "Aguardando assinatura", access: "Público", updated: "Hoje, 09:18",
+    originDepartment: "Secretaria Municipal de Desenvolvimento Econômico, Agricultura e Meio Ambiente", currentDepartment: "Gabinete do Prefeito", priority: "Alta", dueDate: "2026-08-25", processType: "Convênio", description: "Formalização de cooperação para realização e apoio institucional à feira municipal do produtor.", workflowName: "Convênio e parceria", workflowSteps: PROCESS_WORKFLOWS["Convênio e parceria"], currentStep: 4,
+    movements: [{ id: "mov-p2-1", action: "Enviado para assinatura", fromDepartment: "Jurídico", toDepartment: "Gabinete do Prefeito", actor: "Lucas Fontinelli", note: "Minuta validada juridicamente.", createdAt: "Hoje, 09:18" }],
+    documents: [{ id: "doc-p2-1", name: "Termo de cooperação.pdf", version: 2, author: "Lucas Fontinelli", createdAt: "Hoje, 08:54", status: "Vigente" }],
+    dispatches: [], signatures: [{ id: "sig-p2-1", documentName: "Termo de cooperação.pdf", signer: "Prefeito Municipal", status: "Pendente", code: "72BC-181A-9920", createdAt: "Hoje, 09:18" }],
+  },
+  {
+    id: "pr-3", protocol: "PA-2026-00098", subject: "Aquisição de kits escolares", interested: "Secretaria de Educação", owner: "Leila Cibeli", status: "Análise financeira", access: "Interno", updated: "12 ago., 16:25",
+    originDepartment: "Secretaria de Educação", currentDepartment: "Secretaria de Administração e Finanças", priority: "Alta", dueDate: "2026-08-28", processType: "Contratação", description: "Aquisição de kits escolares para distribuição na rede municipal de ensino.", workflowName: "Contratação pública", workflowSteps: PROCESS_WORKFLOWS["Contratação pública"], currentStep: 2,
+    movements: [{ id: "mov-p3-1", action: "Encaminhado para análise financeira", fromDepartment: "Secretaria de Educação", toDepartment: "Secretaria de Administração e Finanças", actor: "Leila Cibeli", note: "Verificar disponibilidade orçamentária.", createdAt: "12 ago., 16:25" }],
+    documents: [{ id: "doc-p3-1", name: "Relação de kits.xlsx", version: 1, author: "Leila Cibeli", createdAt: "12 ago., 15:50", status: "Vigente" }],
+    dispatches: [], signatures: [],
+  },
+  {
+    id: "pr-4", protocol: "PA-2026-00074", subject: "Renovação do convênio de atendimento regional", interested: "Secretaria de Saúde", owner: "Natália Pedrosa", status: "Concluído", access: "Público", updated: "10 ago., 14:10",
+    originDepartment: "Secretaria de Saúde", currentDepartment: "Secretaria de Saúde", priority: "Normal", dueDate: "2026-08-10", processType: "Convênio", description: "Renovação do convênio de atendimento hospitalar regional.", workflowName: "Convênio e parceria", workflowSteps: PROCESS_WORKFLOWS["Convênio e parceria"], currentStep: 6,
+    movements: [{ id: "mov-p4-1", action: "Processo concluído", fromDepartment: "Gabinete do Prefeito", toDepartment: "Secretaria de Saúde", actor: "Natália Pedrosa", note: "Convênio assinado e publicado.", createdAt: "10 ago., 14:10" }],
+    documents: [{ id: "doc-p4-1", name: "Convênio assinado.pdf", version: 1, author: "Natália Pedrosa", createdAt: "10 ago., 13:55", status: "Vigente" }],
+    dispatches: [{ id: "des-p4-1", kind: "Decisão administrativa", content: "Aprovo a renovação do convênio nos termos constantes dos autos.", author: "Gabinete do Prefeito", status: "Finalizado", createdAt: "10 ago., 13:40" }],
+    signatures: [{ id: "sig-p4-1", documentName: "Convênio assinado.pdf", signer: "Prefeito Municipal", status: "Assinado", code: "C91D-20A8-4F71", createdAt: "10 ago., 13:50" }],
+  },
 ];
 
 const MANAGEMENT_DATA: Record<ManagementTab, ManagementItem[]> = {
@@ -255,50 +348,332 @@ export function CitizenServiceSection({ department, notify }: { department: stri
   );
 }
 
-export function ProcessesSection({ department, notify }: { department: string; notify: Notify }) {
+export function ProcessesSection({ department, currentUser, users, departments, notify }: { department: string; currentUser: ProcessUser; users: ProcessUser[]; departments: string[]; notify: Notify }) {
   const access = useCurrentPermission();
+  const storageKey = "prefeitura-conecta:processes:v4";
+  const documentInput = useRef<HTMLInputElement>(null);
   const [tab, setTab] = useState<ProcessTab>("Processos");
-  const [processes, setProcesses] = useState(INITIAL_PROCESSES);
-  const [selected, setSelected] = useState(INITIAL_PROCESSES[0]);
-  const [modal, setModal] = useState(false);
+  const [processes, setProcesses] = useState<ProcessItem[]>(INITIAL_PROCESSES);
+  const [selectedId, setSelectedId] = useState(INITIAL_PROCESSES[0].id);
+  const [query, setQuery] = useState("");
+  const [statusFilter, setStatusFilter] = useState("Todos");
+  const [priorityFilter, setPriorityFilter] = useState("Todas");
+  const [queueFilter, setQueueFilter] = useState<"Todos" | "Minha fila" | "Atrasados" | "Assinatura">("Todos");
+  const [processModal, setProcessModal] = useState<{ mode: "create" | "edit"; item?: ProcessItem } | null>(null);
+  const [moveModal, setMoveModal] = useState(false);
+  const [signatureModal, setSignatureModal] = useState(false);
+  const [versioningDocumentId, setVersioningDocumentId] = useState<string | null>(null);
+  const [documentUrls, setDocumentUrls] = useState<Record<string,string>>({});
+  const [dispatchKind, setDispatchKind] = useState("Despacho de encaminhamento");
+  const [dispatchText, setDispatchText] = useState("");
+  const [validationCode, setValidationCode] = useState("");
+  const [hydrated, setHydrated] = useState(false);
 
-  function createProcess(event: FormEvent<HTMLFormElement>) {
+  useEffect(() => {
+    setHydrated(false);
+    try {
+      const saved = localStorage.getItem(storageKey);
+      if (saved) {
+        const parsed = JSON.parse(saved) as ProcessItem[];
+        if (Array.isArray(parsed) && parsed.length) {
+          setProcesses(parsed);
+          const firstRelated = parsed.find((item) => item.originDepartment === department || item.currentDepartment === department) ?? parsed[0];
+          setSelectedId(firstRelated.id);
+          setHydrated(true);
+          return;
+        }
+      }
+    } catch { /* Mantém os dados demonstrativos. */ }
+    setProcesses(INITIAL_PROCESSES);
+    const firstRelated = INITIAL_PROCESSES.find((item) => item.originDepartment === department || item.currentDepartment === department) ?? INITIAL_PROCESSES[0];
+    setSelectedId(firstRelated.id);
+    setHydrated(true);
+  }, [storageKey]);
+
+  useEffect(() => {
+    if (!hydrated) return;
+    try { localStorage.setItem(storageKey, JSON.stringify(processes)); } catch { /* Persistência local opcional. */ }
+  }, [hydrated, processes, storageKey]);
+
+  const scopedProcesses = useMemo(() => processes.filter((item) => item.originDepartment === department || item.currentDepartment === department), [processes, department]);
+  const selected = processes.find((item) => item.id === selectedId) ?? scopedProcesses[0] ?? processes[0];
+  const today = new Date().toISOString().slice(0, 10);
+  const visibleProcesses = useMemo(() => scopedProcesses.filter((item) => {
+    const haystack = [item.protocol, item.subject, item.interested, item.owner, item.status, item.currentDepartment, item.processType].join(" ").toLowerCase();
+    const matchesQuery = haystack.includes(query.trim().toLowerCase());
+    const matchesStatus = statusFilter === "Todos" || item.status === statusFilter;
+    const matchesPriority = priorityFilter === "Todas" || item.priority === priorityFilter;
+    const matchesQueue = queueFilter === "Todos"
+      || (queueFilter === "Minha fila" && item.owner === currentUser.fullName)
+      || (queueFilter === "Atrasados" && item.status !== "Concluído" && Boolean(item.dueDate) && item.dueDate < today)
+      || (queueFilter === "Assinatura" && (item.status.toLowerCase().includes("assinatura") || item.signatures.some((signature) => signature.status === "Pendente")));
+    return matchesQuery && matchesStatus && matchesPriority && matchesQueue;
+  }), [scopedProcesses, query, statusFilter, priorityFilter, queueFilter, currentUser.fullName]);
+
+  const activeCount = scopedProcesses.filter((item) => item.status !== "Concluído").length;
+  const dispatchCount = scopedProcesses.reduce((sum, item) => sum + item.dispatches.filter((dispatch) => dispatch.status === "Rascunho").length, 0);
+  const signatureCount = scopedProcesses.reduce((sum, item) => sum + item.signatures.filter((signature) => signature.status === "Pendente").length, 0);
+  const overdueCount = scopedProcesses.filter((item) => item.status !== "Concluído" && item.dueDate && item.dueDate < today).length;
+  const statusOptions = Array.from(new Set(scopedProcesses.map((item) => item.status)));
+
+  useEffect(() => {
+    if (!selected) return;
+    const lastDraft = selected.dispatches.find((dispatch) => dispatch.status === "Rascunho");
+    setDispatchKind(lastDraft?.kind ?? "Despacho de encaminhamento");
+    setDispatchText(lastDraft?.content ?? `Processo: ${selected.protocol}\nInteressado: ${selected.interested}\n\nEncaminhe-se o presente processo ao setor competente para análise e manifestação, observando-se os documentos e prazos registrados nos autos.`);
+  }, [selectedId]);
+
+  function updateSelected(updater: (item: ProcessItem) => ProcessItem) {
+    setProcesses((current) => current.map((item) => item.id === selectedId ? updater(item) : item));
+  }
+
+  function saveProcess(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     const form = new FormData(event.currentTarget);
-    const item: ProcessItem = { id: makeDemoId(), protocol: `PA-2026-${String(processes.length + 129).padStart(5,"0")}`, subject: String(form.get("subject")), interested: String(form.get("interested")), owner: String(form.get("owner")) || "A definir", status: "Autuação", access: String(form.get("access")), updated: "Agora" };
-    setProcesses((current) => [item, ...current]); setSelected(item); setModal(false); notify(`${item.protocol} autuado com registro cronológico e controle de acesso.`);
-  }
-
-  return <section className="municipal-module-shell">
-    <div className="module-tabs wide-tabs" role="tablist" aria-label="Módulos de processos digitais">{(["Processos", "Despachos e pareceres", "Documentos e versões", "Assinaturas"] as ProcessTab[]).map((item) => <button key={item} className={tab === item ? "active" : ""} onClick={() => setTab(item)}>{item}</button>)}</div>
-    {tab === "Processos" && <><div className="process-overview"><article className="panel process-stat"><FileText size={20} /><span><strong>64</strong><small>processos em tramitação</small></span></article><article className="panel process-stat"><Clock3 size={20} /><span><strong>8</strong><small>aguardando despacho</small></span></article><article className="panel process-stat"><FileSignature size={20} /><span><strong>5</strong><small>aguardando assinatura</small></span></article><article className="panel process-stat"><CheckCircle2 size={20} /><span><strong>31</strong><small>concluídos no mês</small></span></article></div><div className="process-layout"><article className="panel process-list"><div className="module-toolbar"><label className="module-search"><Search size={15} /><input aria-label="Buscar processo" placeholder="Buscar processo ou interessado..." /></label>{access.register && <button className="button primary" onClick={() => setModal(true)}><Plus size={15} /> Novo processo</button>}</div>{processes.map((item) => <button key={item.id} className={selected.id === item.id ? "process-row active" : "process-row"} onClick={() => setSelected(item)}><span><strong>{item.subject}</strong><small>{item.protocol} · {item.interested}</small></span><StatusTag>{item.status}</StatusTag><ChevronRight size={15} /></button>)}</article><ProcessDetail item={selected} notify={notify} /></div></>}
-    {tab === "Despachos e pareceres" && <div className="document-workspace"><article className="panel document-editor"><header><div><p className="eyebrow">MINUTA ADMINISTRATIVA</p><h2>Despacho de encaminhamento</h2></div><span>Salvo às 15:42</span></header><div className="editor-toolbar"><button type="button" onClick={() => notify("Formatação em negrito preparada no editor de despacho.")}><strong>B</strong></button><button type="button" onClick={() => notify("Formatação em itálico preparada no editor de despacho.")}><em>I</em></button><button type="button" onClick={() => notify("Lista de itens aberta no editor de despacho.")}><ListChecks size={14} /></button><select aria-label="Modelo de documento" onChange={(event) => notify(`Modelo “${event.target.value}” aberto no editor.`)}><option>Despacho</option><option>Parecer técnico</option><option>Memorando</option><option>Decisão administrativa</option></select></div><textarea aria-label="Conteúdo do despacho" defaultValue={`Processo: ${selected.protocol}\nInteressado: ${selected.interested}\n\nEncaminhe-se o presente processo ao setor competente para análise e manifestação, observando-se os documentos e prazos registrados nos autos.`} /><footer><button className="button secondary" onClick={() => notify("Minuta salva no processo.")}>Salvar minuta</button><button className="button primary" onClick={() => notify("Despacho registrado na linha do tempo do processo.")}><FileCheck2 size={15} /> Finalizar despacho</button></footer></article><aside className="panel template-list"><h2>Modelos disponíveis</h2>{["Despacho de encaminhamento","Parecer técnico","Solicitação de diligência","Termo de juntada","Decisão administrativa"].map((item,index) => <button key={item} onClick={() => notify(`Modelo “${item}” aberto no editor com ${index + 2} campos automáticos.`)}><FileText size={15} /><span><strong>{item}</strong><small>{index + 2} campos automáticos</small></span><ChevronRight size={13} /></button>)}</aside></div>}
-    {tab === "Documentos e versões" && <article className="panel municipal-table-panel"><div className="module-toolbar"><div><strong>Documentos de {selected.protocol}</strong><small>Versões anteriores permanecem disponíveis para auditoria e restauração.</small></div>{access.register && <button className="button primary" onClick={() => notify("Seletor de arquivo aberto para adicionar uma nova versão.")}><Plus size={15} /> Adicionar documento</button>}</div><div className="version-list">{[["Termo de referência.pdf","Versão 3","Jaime de Souza","Hoje, 10:21","Vigente"],["Pesquisa de preços.xlsx","Versão 2","Mariana Castro","12 ago., 16:08","Vigente"],["Parecer técnico.docx","Versão 1","Bruno Fonseca","11 ago., 09:44","Substituído"],["Minuta do contrato.pdf","Versão 4","Assessoria Jurídica","Hoje, 11:42","Em revisão"]].map((item) => <div key={item[0]}><span className="version-icon"><FileText size={17} /></span><span><strong>{item[0]}</strong><small>{item[1]} · {item[2]} · {item[3]}</small></span><StatusTag>{item[4]}</StatusTag><button onClick={() => notify(`${item[0]} preparado para download.`)}>Baixar</button><button onClick={() => notify(`Histórico de versões de ${item[0]} exibido.`)}>Versões</button></div>)}</div></article>}
-    {tab === "Assinaturas" && <div className="signature-layout"><article className="panel signature-card"><span className="signature-icon"><FileSignature size={26} /></span><h2>Assinatura eletrônica</h2><p>Documentos podem receber assinatura simulada, código de validação e registro do signatário. A integração com um provedor oficial será necessária para validade jurídica externa.</p><div className="signature-steps"><span className="done"><Check size={13} /> Documento conferido</span><span className="done"><Check size={13} /> Signatários definidos</span><span><Clock3 size={13} /> Aguardando assinatura</span></div><button className="button primary" onClick={() => notify("Solicitação de assinatura simulada enviada aos signatários.")}><FileSignature size={15} /> Solicitar assinatura</button></article><article className="panel validation-card"><QrCode size={86} /><div><p className="eyebrow">VALIDAÇÃO PÚBLICA</p><h2>8AF3-26B1-9C04</h2><p>O código permite conferir a versão, a integridade e os signatários registrados no sistema.</p><button className="button secondary" onClick={() => notify("Código validado: documento íntegro e versão vigente.")}>Validar documento</button></div></article></div>}
-    {modal && <ModalShell eyebrow="PROCESSO ADMINISTRATIVO DIGITAL" title="Autuar novo processo" onClose={() => setModal(false)}><form onSubmit={createProcess}><label className="field full"><span>Assunto *</span><input name="subject" required placeholder="Informe o objeto do processo" /></label><label className="field"><span>Interessado *</span><input name="interested" required defaultValue={department} /></label><label className="field"><span>Responsável</span><input name="owner" placeholder="Nome do servidor responsável" /></label><label className="field"><span>Nível de acesso</span><select name="access" defaultValue="Interno"><option>Público</option><option>Interno</option><option>Restrito — dados pessoais</option><option>Sigiloso</option></select></label><label className="field"><span>Tipo de processo</span><select><option>Administrativo</option><option>Contratação</option><option>Convênio</option><option>Apuração</option><option>Licenciamento</option></select></label><label className="field full"><span>Descrição inicial</span><textarea placeholder="Contextualize a abertura do processo" /></label><div className="modal-actions"><button type="button" className="button secondary" onClick={() => setModal(false)}>Cancelar</button><button className="button primary"><FileText size={15} /> Autuar processo</button></div></form></ModalShell>}
-  <WorkflowAutomationHub notify={notify} /></section>;
-}
-
-function ProcessDetail({ item, notify }: { item: ProcessItem; notify: Notify }) {
-  const access = useCurrentPermission();
-  const [moving, setMoving] = useState(false);
-  const [target, setTarget] = useState("");
-  const [note, setNote] = useState("");
-  const [movements, setMovements] = useState<Array<{ title: string; detail: string }>>([
-    { title: "Encaminhado para parecer", detail: "Hoje, 11:42 · Administração e Finanças" },
-    { title: "Documentos complementares juntados", detail: "Hoje, 09:18 · 2 novos arquivos" },
-    { title: "Processo autuado", detail: "11 ago., 14:05 · Secretaria de Governo" },
-  ]);
-
-  function moveProcess() {
-    if (!target) return;
+    const base = processModal?.item;
+    const workflowName = String(form.get("workflowName") || "Fluxo administrativo");
     const now = new Date().toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" });
-    setMovements((current) => [{ title: `Encaminhado para ${target}`, detail: `Hoje, ${now}${note.trim() ? ` · ${note.trim()}` : ""}` }, ...current]);
-    setTarget(""); setNote(""); setMoving(false);
-    notify("Movimentação registrada com destino, responsável e histórico preservado.");
+    const item: ProcessItem = {
+      id: base?.id ?? makeDemoId(),
+      protocol: base?.protocol ?? `PA-2026-${String(processes.length + 129).padStart(5,"0")}`,
+      subject: String(form.get("subject") ?? "").trim(),
+      interested: String(form.get("interested") ?? "").trim(),
+      owner: String(form.get("owner") ?? "A definir") || "A definir",
+      status: String(form.get("status") ?? base?.status ?? "Autuação"),
+      access: String(form.get("access") ?? "Interno"),
+      updated: `Hoje, ${now}`,
+      originDepartment: base?.originDepartment ?? department,
+      currentDepartment: String(form.get("currentDepartment") ?? department),
+      priority: String(form.get("priority") ?? "Normal") as ProcessItem["priority"],
+      dueDate: String(form.get("dueDate") ?? ""),
+      processType: String(form.get("processType") ?? "Administrativo"),
+      description: String(form.get("description") ?? "").trim(),
+      workflowName,
+      workflowSteps: PROCESS_WORKFLOWS[workflowName] ?? PROCESS_WORKFLOWS["Fluxo administrativo"],
+      currentStep: base?.currentStep ?? 0,
+      movements: base?.movements ?? [{ id: makeDemoId(), action: "Processo autuado", fromDepartment: department, toDepartment: department, actor: currentUser.fullName, note: "Abertura do processo administrativo digital.", createdAt: `Hoje, ${now}` }],
+      documents: base?.documents ?? [],
+      dispatches: base?.dispatches ?? [],
+      signatures: base?.signatures ?? [],
+    };
+    if (!item.subject || !item.interested) return;
+    setProcesses((current) => base ? current.map((process) => process.id === base.id ? item : process) : [item, ...current]);
+    setSelectedId(item.id);
+    setProcessModal(null);
+    notify(base ? `${item.protocol} atualizado.` : `${item.protocol} autuado e incluído na fila do setor.`);
   }
 
-  return <aside className="panel process-detail"><header><div><p className="eyebrow">{item.protocol}</p><h2>{item.subject}</h2></div><StatusTag>{item.status}</StatusTag></header><dl><div><dt>Interessado</dt><dd>{item.interested}</dd></div><div><dt>Responsável atual</dt><dd>{item.owner}</dd></div><div><dt>Nível de acesso</dt><dd><ShieldCheck size={13} /> {item.access}</dd></div><div><dt>Última movimentação</dt><dd>{item.updated}</dd></div></dl><h3>Linha do tempo</h3><div className="process-timeline">{movements.map((movement, index) => <div className={index === 0 ? "current" : ""} key={`${movement.title}-${index}`}><i /><span><strong>{movement.title}</strong><small>{movement.detail}</small></span></div>)}</div>{moving && <div className="process-move-panel"><label><span>Próximo setor</span><select value={target} onChange={(event) => setTarget(event.target.value)}><option value="">Selecione</option><option>Administração e Finanças</option><option>Jurídico</option><option>Gabinete do Prefeito</option><option>Compras e Licitações</option><option>Controle Interno</option><option>Secretaria de Governo</option></select></label><label><span>Despacho / providência</span><textarea value={note} onChange={(event) => setNote(event.target.value)} placeholder="Registre o motivo e a providência esperada." /></label><div><button className="button secondary" onClick={() => setMoving(false)}>Cancelar</button><button className="button primary" disabled={!target} onClick={moveProcess}>Registrar tramitação <ChevronRight size={14} /></button></div></div>}<footer><button className="button secondary" onClick={() => notify("Histórico completo do processo exibido.")}>Ver autos</button>{access.edit && <button className="button primary" onClick={() => setMoving(true)}>Movimentar <ChevronRight size={14} /></button>}</footer></aside>;
+  function duplicateProcess() {
+    if (!selected || !access.register) return;
+    const duplicate: ProcessItem = {
+      ...selected,
+      id: makeDemoId(),
+      protocol: `PA-2026-${String(processes.length + 129).padStart(5,"0")}`,
+      subject: `${selected.subject} — cópia`,
+      status: "Autuação",
+      currentStep: 0,
+      updated: "Agora",
+      movements: [{ id: makeDemoId(), action: "Processo duplicado", fromDepartment: department, toDepartment: department, actor: currentUser.fullName, note: `Criado a partir de ${selected.protocol}.`, createdAt: "Agora" }],
+      dispatches: [], signatures: [],
+    };
+    setProcesses((current) => [duplicate, ...current]);
+    setSelectedId(duplicate.id);
+    notify(`Cópia criada como ${duplicate.protocol}.`);
+  }
+
+  function moveProcess(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (!selected) return;
+    const form = new FormData(event.currentTarget);
+    const targetDepartment = String(form.get("targetDepartment") ?? "");
+    const owner = String(form.get("owner") ?? selected.owner);
+    const action = String(form.get("action") ?? "Encaminhamento");
+    const note = String(form.get("note") ?? "").trim();
+    if (!targetDepartment) return;
+    const now = new Date().toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" });
+    updateSelected((item) => ({
+      ...item,
+      currentDepartment: targetDepartment,
+      owner: owner || item.owner,
+      status: action === "Diligência" ? "Aguardando diligência" : "Em tramitação",
+      currentStep: Math.min(item.currentStep + 1, item.workflowSteps.length - 1),
+      updated: `Hoje, ${now}`,
+      movements: [{ id: makeDemoId(), action, fromDepartment: item.currentDepartment, toDepartment: targetDepartment, actor: currentUser.fullName, note, createdAt: `Hoje, ${now}` }, ...item.movements],
+    }));
+    setMoveModal(false);
+    notify(`${selected.protocol} encaminhado para ${targetDepartment}.`);
+  }
+
+  function toggleConclusion() {
+    if (!selected || !access.edit) return;
+    const concluding = selected.status !== "Concluído";
+    updateSelected((item) => ({
+      ...item,
+      status: concluding ? "Concluído" : "Em tramitação",
+      currentStep: concluding ? item.workflowSteps.length - 1 : Math.max(0, item.workflowSteps.length - 2),
+      updated: "Agora",
+      movements: [{ id: makeDemoId(), action: concluding ? "Processo concluído" : "Processo reaberto", fromDepartment: item.currentDepartment, toDepartment: item.currentDepartment, actor: currentUser.fullName, note: concluding ? "Encerramento administrativo registrado." : "Processo reaberto para nova providência.", createdAt: "Agora" }, ...item.movements],
+    }));
+    notify(concluding ? "Processo concluído." : "Processo reaberto.");
+  }
+
+  function selectDispatchTemplate(kind: string) {
+    if (!selected) return;
+    setDispatchKind(kind);
+    const templates: Record<string,string> = {
+      "Despacho de encaminhamento": `Processo: ${selected.protocol}\nInteressado: ${selected.interested}\n\nEncaminhe-se o presente processo ao setor competente para análise e manifestação, observando-se os documentos e prazos registrados nos autos.`,
+      "Parecer técnico": `PARECER TÉCNICO\nProcesso: ${selected.protocol}\n\nApós análise dos elementos constantes dos autos, registra-se a manifestação técnica a seguir:\n\n`,
+      "Solicitação de diligência": `Processo: ${selected.protocol}\n\nSolicita-se diligência para complementação das informações e documentos necessários à continuidade da análise.`,
+      "Termo de juntada": `TERMO DE JUNTADA\n\nNesta data, procedo à juntada de documento ao processo ${selected.protocol}, para que passe a integrar os autos digitais.`,
+      "Decisão administrativa": `DECISÃO ADMINISTRATIVA\nProcesso: ${selected.protocol}\n\nConsiderando os elementos dos autos, DECIDO:\n\n`,
+    };
+    setDispatchText(templates[kind] ?? templates["Despacho de encaminhamento"]);
+  }
+
+  function saveDispatch(status: "Rascunho" | "Finalizado") {
+    if (!selected || !dispatchText.trim()) return;
+    const dispatch: ProcessDispatch = { id: makeDemoId(), kind: dispatchKind, content: dispatchText.trim(), author: currentUser.fullName, status, createdAt: "Agora" };
+    updateSelected((item) => ({
+      ...item,
+      status: status === "Finalizado" ? "Despacho registrado" : item.status,
+      updated: "Agora",
+      dispatches: status === "Rascunho"
+        ? [dispatch, ...item.dispatches.filter((entry) => entry.status !== "Rascunho")]
+        : [dispatch, ...item.dispatches.filter((entry) => entry.status !== "Rascunho")],
+      movements: status === "Finalizado" ? [{ id: makeDemoId(), action: dispatchKind, fromDepartment: item.currentDepartment, toDepartment: item.currentDepartment, actor: currentUser.fullName, note: "Documento finalizado e juntado aos autos.", createdAt: "Agora" }, ...item.movements] : item.movements,
+    }));
+    notify(status === "Rascunho" ? "Minuta salva." : "Despacho finalizado e registrado na linha do tempo.");
+  }
+
+  function openDocumentUpload(documentId?: string) {
+    setVersioningDocumentId(documentId ?? null);
+    documentInput.current?.click();
+  }
+
+  function uploadDocument(file: File) {
+    if (!selected) return;
+    const previous = versioningDocumentId ? selected.documents.find((doc) => doc.id === versioningDocumentId) : undefined;
+    const id = makeDemoId();
+    const document: ProcessDocument = {
+      id,
+      name: file.name || previous?.name || "Documento",
+      version: previous ? previous.version + 1 : 1,
+      author: currentUser.fullName,
+      createdAt: "Agora",
+      status: "Vigente",
+      size: file.size,
+    };
+    const url = URL.createObjectURL(file);
+    setDocumentUrls((current) => ({ ...current, [id]: url }));
+    updateSelected((item) => ({
+      ...item,
+      updated: "Agora",
+      documents: [document, ...item.documents.map((doc) => previous && doc.id === previous.id ? { ...doc, status: "Substituído" } : doc)],
+      movements: [{ id: makeDemoId(), action: previous ? "Nova versão de documento" : "Documento juntado", fromDepartment: item.currentDepartment, toDepartment: item.currentDepartment, actor: currentUser.fullName, note: `${document.name} · versão ${document.version}.`, createdAt: "Agora" }, ...item.movements],
+    }));
+    setVersioningDocumentId(null);
+    notify(`${document.name} adicionado ao processo.`);
+  }
+
+  function downloadDocument(document: ProcessDocument) {
+    const existingUrl = documentUrls[document.id];
+    const url = existingUrl ?? URL.createObjectURL(new Blob([`Registro demonstrativo do documento\nProcesso: ${selected?.protocol ?? ""}\nDocumento: ${document.name}\nVersão: ${document.version}\nAutor: ${document.author}\nData: ${document.createdAt}`], { type: "text/plain;charset=utf-8" }));
+    const anchor = window.document.createElement("a");
+    anchor.href = url;
+    anchor.download = existingUrl ? document.name : `${document.name}.registro.txt`;
+    anchor.click();
+    if (!existingUrl) URL.revokeObjectURL(url);
+  }
+
+  function requestSignature(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (!selected) return;
+    const form = new FormData(event.currentTarget);
+    const documentName = String(form.get("documentName") ?? "");
+    const signer = String(form.get("signer") ?? "");
+    if (!documentName || !signer) return;
+    const signature: ProcessSignature = { id: makeDemoId(), documentName, signer, status: "Pendente", code: crypto.randomUUID().slice(0, 12).toUpperCase(), createdAt: "Agora" };
+    updateSelected((item) => ({ ...item, status: "Aguardando assinatura", updated: "Agora", signatures: [signature, ...item.signatures] }));
+    setSignatureModal(false);
+    notify(`Assinatura solicitada a ${signer}.`);
+  }
+
+  function signNow(signatureId: string) {
+    updateSelected((item) => ({
+      ...item,
+      updated: "Agora",
+      signatures: item.signatures.map((signature) => signature.id === signatureId ? { ...signature, status: "Assinado", createdAt: "Agora" } : signature),
+      movements: [{ id: makeDemoId(), action: "Documento assinado", fromDepartment: item.currentDepartment, toDepartment: item.currentDepartment, actor: currentUser.fullName, note: "Assinatura eletrônica simulada registrada.", createdAt: "Agora" }, ...item.movements],
+    }));
+    notify("Assinatura registrada.");
+  }
+
+  function validateSignature() {
+    const match = processes.flatMap((process) => process.signatures.map((signature) => ({ process, signature }))).find(({ signature }) => signature.code.toLowerCase() === validationCode.trim().toLowerCase());
+    notify(match ? `Código válido: ${match.process.protocol} · ${match.signature.documentName} · ${match.signature.status}.` : "Código de validação não encontrado.");
+  }
+
+  const progress = selected ? Math.round(((selected.currentStep + 1) / Math.max(1, selected.workflowSteps.length)) * 100) : 0;
+  const selectedOverdue = Boolean(selected?.dueDate && selected.status !== "Concluído" && selected.dueDate < today);
+
+  return <section className="municipal-module-shell process-digital-v2">
+    <div className="process-command-center panel">
+      <div><p className="eyebrow">CENTRAL DE PROCESSOS</p><h2>Tramitação digital do setor</h2><p>Encontre o processo, confira a próxima ação e registre a movimentação sem sair da mesma tela.</p></div>
+      <div className="process-command-actions">{access.register && <button className="button primary" onClick={() => setProcessModal({ mode: "create" })}><Plus size={15} /> Novo processo</button>}<button className="button secondary" onClick={() => setQueueFilter("Minha fila")}><UserRound size={15} /> Minha fila</button></div>
+    </div>
+
+    <div className="process-overview process-overview-v2">
+      <button className={`panel process-stat ${queueFilter === "Todos" ? "active" : ""}`} onClick={() => setQueueFilter("Todos")}><FileText size={20} /><span><strong>{activeCount}</strong><small>em tramitação</small></span></button>
+      <button className={`panel process-stat ${queueFilter === "Atrasados" ? "active danger" : ""}`} onClick={() => setQueueFilter("Atrasados")}><Clock3 size={20} /><span><strong>{overdueCount}</strong><small>prazo vencido</small></span></button>
+      <button className={`panel process-stat ${tab === "Despachos e pareceres" ? "active" : ""}`} onClick={() => setTab("Despachos e pareceres")}><FileCheck2 size={20} /><span><strong>{dispatchCount}</strong><small>minutas pendentes</small></span></button>
+      <button className={`panel process-stat ${queueFilter === "Assinatura" ? "active" : ""}`} onClick={() => { setQueueFilter("Assinatura"); setTab("Assinaturas"); }}><FileSignature size={20} /><span><strong>{signatureCount}</strong><small>assinaturas pendentes</small></span></button>
+    </div>
+
+    <div className="module-tabs wide-tabs process-tabs-v2" role="tablist" aria-label="Módulos de processos digitais">
+      {(["Processos", "Despachos e pareceres", "Documentos e versões", "Assinaturas"] as ProcessTab[]).map((item) => <button key={item} className={tab === item ? "active" : ""} onClick={() => setTab(item)}><span>{item}</span>{item === "Despachos e pareceres" && dispatchCount > 0 && <b>{dispatchCount}</b>}{item === "Assinaturas" && signatureCount > 0 && <b>{signatureCount}</b>}</button>)}
+    </div>
+
+    {tab === "Processos" && <div className="process-layout process-layout-v2">
+      <article className="panel process-list process-list-v2">
+        <div className="process-list-heading"><div><strong>Fila de processos</strong><small>{visibleProcesses.length} exibidos de {scopedProcesses.length}</small></div>{access.register && <button onClick={() => setProcessModal({ mode: "create" })}><Plus size={14} /> Novo</button>}</div>
+        <div className="process-filter-stack">
+          <label className="module-search"><Search size={15} /><input aria-label="Buscar processo" value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Protocolo, assunto ou interessado..." /></label>
+          <div className="process-filter-row"><select aria-label="Filtrar status" value={statusFilter} onChange={(event) => setStatusFilter(event.target.value)}><option>Todos</option>{statusOptions.map((status) => <option key={status}>{status}</option>)}</select><select aria-label="Filtrar prioridade" value={priorityFilter} onChange={(event) => setPriorityFilter(event.target.value)}><option>Todas</option><option>Urgente</option><option>Alta</option><option>Normal</option><option>Baixa</option></select></div>
+          <div className="process-queue-chips">{(["Todos", "Minha fila", "Atrasados", "Assinatura"] as const).map((item) => <button key={item} className={queueFilter === item ? "active" : ""} onClick={() => setQueueFilter(item)}>{item}</button>)}</div>
+        </div>
+        <div className="process-scroll-list">{visibleProcesses.map((item) => {
+          const itemOverdue = item.status !== "Concluído" && Boolean(item.dueDate) && item.dueDate < today;
+          return <button key={item.id} className={selected?.id === item.id ? "process-row active" : "process-row"} onClick={() => setSelectedId(item.id)}><span className={`process-priority-dot ${item.priority.toLowerCase()}`} /><span className="process-row-copy"><strong>{item.subject}</strong><small>{item.protocol} · {item.currentDepartment}</small><em>{item.owner} · {itemOverdue ? "Prazo vencido" : item.dueDate ? `Prazo ${new Date(`${item.dueDate}T12:00:00`).toLocaleDateString("pt-BR")}` : "Sem prazo"}</em></span><StatusTag>{item.status}</StatusTag><ChevronRight size={15} /></button>;
+        })}{visibleProcesses.length === 0 && <div className="process-empty"><Search size={22} /><strong>Nenhum processo encontrado</strong><p>Limpe os filtros ou busque por outro termo.</p><button onClick={() => { setQuery(""); setStatusFilter("Todos"); setPriorityFilter("Todas"); setQueueFilter("Todos"); }}>Limpar filtros</button></div>}</div>
+      </article>
+
+      {selected && <aside className="panel process-detail process-detail-v2">
+        <header className="process-detail-header"><div><div className="process-protocol-line"><span>{selected.protocol}</span><i className={`priority-${selected.priority.toLowerCase()}`}>{selected.priority}</i>{selectedOverdue && <i className="process-overdue">Prazo vencido</i>}</div><h2>{selected.subject}</h2><p>{selected.description || "Sem descrição complementar."}</p></div><StatusTag>{selected.status}</StatusTag></header>
+        <div className="process-progress-block"><div><span>Fluxo: <strong>{selected.workflowName}</strong></span><b>{progress}%</b></div><i><span style={{ width: `${progress}%` }} /></i><div className="process-stepper">{selected.workflowSteps.map((step, index) => <button key={step} className={index < selected.currentStep ? "done" : index === selected.currentStep ? "current" : ""} onClick={() => access.edit ? updateSelected((item) => ({ ...item, currentStep: index, status: step, updated: "Agora" })) : notify("Seu perfil possui acesso de consulta ao fluxo do processo.")}><span>{index < selected.currentStep ? <Check size={11} /> : index + 1}</span><small>{step}</small></button>)}</div></div>
+        <div className="process-detail-grid"><div><span>Setor atual</span><strong>{selected.currentDepartment}</strong></div><div><span>Responsável</span><strong>{selected.owner}</strong></div><div><span>Interessado</span><strong>{selected.interested}</strong></div><div><span>Prazo</span><strong>{selected.dueDate ? new Date(`${selected.dueDate}T12:00:00`).toLocaleDateString("pt-BR") : "Sem prazo"}</strong></div><div><span>Tipo</span><strong>{selected.processType}</strong></div><div><span>Acesso</span><strong><ShieldCheck size={12} /> {selected.access}</strong></div></div>
+        <div className="process-quick-actions"><button onClick={() => access.register ? setTab("Despachos e pareceres") : notify("Seu perfil pode consultar despachos, mas não registrar novos documentos.")}><FileCheck2 size={16} /><span><strong>Novo despacho</strong><small>Registrar manifestação</small></span></button><button onClick={() => access.register ? openDocumentUpload() : notify("Seu perfil não possui permissão para juntar documentos.")}><Plus size={16} /><span><strong>Juntar documento</strong><small>Arquivo ou nova versão</small></span></button><button onClick={() => access.register ? setSignatureModal(true) : notify("Seu perfil não possui permissão para solicitar assinatura.")}><FileSignature size={16} /><span><strong>Solicitar assinatura</strong><small>Definir signatário</small></span></button><button onClick={() => access.edit ? setMoveModal(true) : notify("Seu perfil não possui permissão para movimentar processos.")}><ChevronRight size={16} /><span><strong>Movimentar</strong><small>Encaminhar ao próximo setor</small></span></button></div>
+        <section className="process-timeline-section"><header><div><h3>Linha do tempo</h3><p>Histórico cronológico do processo</p></div><button onClick={() => setTab("Documentos e versões")}>Ver documentos</button></header><div className="process-timeline">{selected.movements.slice(0,6).map((movement, index) => <div className={index === 0 ? "current" : ""} key={movement.id}><i /><span><strong>{movement.action}</strong><small>{movement.createdAt} · {movement.actor}</small><em>{movement.fromDepartment !== movement.toDepartment ? `${movement.fromDepartment} → ${movement.toDepartment}` : movement.toDepartment}{movement.note ? ` · ${movement.note}` : ""}</em></span></div>)}</div></section>
+        <footer className="process-detail-actions"><button className="button secondary" onClick={() => access.register ? duplicateProcess() : notify("Seu perfil não possui permissão para duplicar processos.")}><Copy size={14} /> Duplicar</button>{access.edit && <button className="button secondary" onClick={() => setProcessModal({ mode: "edit", item: selected })}><Pencil size={14} /> Editar</button>}{access.edit && <button className="button secondary" onClick={toggleConclusion}>{selected.status === "Concluído" ? "Reabrir" : "Concluir"}</button>}{access.edit && <button className="button primary" onClick={() => setMoveModal(true)}>Movimentar <ChevronRight size={14} /></button>}</footer>
+      </aside>}
+    </div>}
+
+    {tab === "Despachos e pareceres" && selected && <div className="document-workspace process-document-workspace-v2">
+      <article className="panel document-editor"><header><div><p className="eyebrow">{selected.protocol}</p><h2>{dispatchKind}</h2><p>{selected.subject}</p></div><span>{selected.dispatches[0]?.status === "Rascunho" ? "Rascunho salvo" : "Editor pronto"}</span></header><div className="editor-toolbar"><button type="button" title="Negrito" onClick={() => setDispatchText((value) => `${value}\n**texto em destaque**`)}><strong>B</strong></button><button type="button" title="Itálico" onClick={() => setDispatchText((value) => `${value}\n_texto em itálico_`)}><em>I</em></button><button type="button" title="Lista" onClick={() => setDispatchText((value) => `${value}\n\n1. Item\n2. Item`)}><ListChecks size={14} /></button><select aria-label="Modelo de documento" value={dispatchKind} onChange={(event) => selectDispatchTemplate(event.target.value)}>{["Despacho de encaminhamento","Parecer técnico","Solicitação de diligência","Termo de juntada","Decisão administrativa"].map((item) => <option key={item}>{item}</option>)}</select></div><textarea aria-label="Conteúdo do despacho" value={dispatchText} onChange={(event) => setDispatchText(event.target.value)} /><footer><button className="button secondary" onClick={() => access.register ? saveDispatch("Rascunho") : notify("Seu perfil possui acesso apenas de consulta.")}><Save size={14} /> Salvar minuta</button><button className="button primary" onClick={() => access.register ? saveDispatch("Finalizado") : notify("Seu perfil possui acesso apenas de consulta.")}><FileCheck2 size={15} /> Finalizar e juntar aos autos</button></footer></article>
+      <aside className="panel template-list process-dispatch-history"><h2>Despachos do processo</h2><p>Selecione um registro para reutilizar o conteúdo.</p>{selected.dispatches.length ? selected.dispatches.map((dispatch) => <button key={dispatch.id} onClick={() => { setDispatchKind(dispatch.kind); setDispatchText(dispatch.content); }}><FileText size={15} /><span><strong>{dispatch.kind}</strong><small>{dispatch.createdAt} · {dispatch.author}</small></span><StatusTag>{dispatch.status}</StatusTag></button>) : <div className="process-side-empty"><FileText size={20} /><span><strong>Nenhum despacho</strong><small>Use o editor para criar a primeira manifestação.</small></span></div>}</aside>
+    </div>}
+
+    {tab === "Documentos e versões" && selected && <article className="panel version-panel process-version-panel-v2"><div className="module-toolbar"><div><strong>Documentos de {selected.protocol}</strong><small>{selected.documents.length} registros · versões anteriores permanecem identificadas.</small></div>{access.register && <button className="button primary" onClick={() => openDocumentUpload()}><Plus size={15} /> Juntar documento</button>}</div><div className="version-list">{selected.documents.map((document) => <div key={document.id}><span className="version-icon"><FileText size={17} /></span><span><strong>{document.name}</strong><small>Versão {document.version} · {document.author} · {document.createdAt}{document.size ? ` · ${Math.max(1, Math.round(document.size / 1024))} KB` : ""}</small></span><StatusTag>{document.status}</StatusTag><button onClick={() => downloadDocument(document)}><Download size={12} /> Baixar</button>{access.register && <button onClick={() => openDocumentUpload(document.id)}>Nova versão</button>}</div>)}{selected.documents.length === 0 && <div className="process-empty process-empty-docs"><FileText size={24} /><strong>Nenhum documento juntado</strong><p>Adicione o primeiro arquivo para iniciar os autos digitais.</p><button onClick={() => openDocumentUpload()}>Juntar documento</button></div>}</div></article>}
+
+    {tab === "Assinaturas" && selected && <div className="signature-layout process-signature-layout-v2"><article className="panel signature-card"><span className="signature-icon"><FileSignature size={26} /></span><div className="signature-card-heading"><div><p className="eyebrow">{selected.protocol}</p><h2>Assinaturas do processo</h2></div>{access.register && <button className="button primary" onClick={() => setSignatureModal(true)}><Plus size={14} /> Solicitar assinatura</button>}</div><p>Acompanhe quem precisa assinar e o código de validação de cada documento.</p><div className="process-signature-list">{selected.signatures.map((signature) => <article key={signature.id}><span className={signature.status === "Assinado" ? "done" : "pending"}>{signature.status === "Assinado" ? <Check size={14} /> : <Clock3 size={14} />}</span><span><strong>{signature.documentName}</strong><small>{signature.signer} · {signature.createdAt}</small><em>Código: {signature.code}</em></span><StatusTag>{signature.status}</StatusTag>{signature.status === "Pendente" && access.edit && <button onClick={() => signNow(signature.id)}>Assinar agora</button>}</article>)}{selected.signatures.length === 0 && <div className="process-side-empty"><FileSignature size={22} /><span><strong>Nenhuma assinatura solicitada</strong><small>Escolha um documento e defina o signatário.</small></span></div>}</div></article><article className="panel validation-card process-validation-card-v2"><QrCode size={74} /><div><p className="eyebrow">VALIDAÇÃO</p><h2>Conferir assinatura</h2><p>Digite o código de validação emitido pelo sistema.</p><label><input value={validationCode} onChange={(event) => setValidationCode(event.target.value)} placeholder="Ex.: 8AF3-26B1-9C04" /><button className="button secondary" onClick={validateSignature}>Validar</button></label></div></article></div>}
+
+    <input ref={documentInput} className="hidden-input" type="file" accept=".pdf,.doc,.docx,.xls,.xlsx,.csv,.txt,.png,.jpg,.jpeg" onChange={(event) => { const file = event.target.files?.[0]; if (file) uploadDocument(file); event.target.value = ""; }} />
+
+    {processModal && <ModalShell eyebrow="PROCESSO ADMINISTRATIVO DIGITAL" title={processModal.mode === "create" ? "Autuar novo processo" : `Editar ${processModal.item?.protocol}`} onClose={() => setProcessModal(null)}><form onSubmit={saveProcess}><label className="field full"><span>Assunto *</span><input name="subject" required defaultValue={processModal.item?.subject} placeholder="Informe o objeto do processo" /></label><label className="field"><span>Interessado *</span><input name="interested" required defaultValue={processModal.item?.interested ?? department} /></label><label className="field"><span>Tipo de processo</span><select name="processType" defaultValue={processModal.item?.processType ?? "Administrativo"}><option>Administrativo</option><option>Contratação</option><option>Convênio</option><option>Apuração</option><option>Licenciamento</option></select></label><label className="field"><span>Prioridade</span><select name="priority" defaultValue={processModal.item?.priority ?? "Normal"}><option>Urgente</option><option>Alta</option><option>Normal</option><option>Baixa</option></select></label><label className="field"><span>Prazo</span><input name="dueDate" type="date" defaultValue={processModal.item?.dueDate} /></label><label className="field"><span>Setor atual</span><select name="currentDepartment" defaultValue={processModal.item?.currentDepartment ?? department}>{Array.from(new Set([department, ...departments])).map((item) => <option key={item}>{item}</option>)}</select></label><label className="field"><span>Responsável</span><select name="owner" defaultValue={processModal.item?.owner ?? currentUser.fullName}><option value="A definir">A definir</option>{users.map((user) => <option key={user.id} value={user.fullName}>{user.fullName} · {user.department}</option>)}</select></label><label className="field"><span>Nível de acesso</span><select name="access" defaultValue={processModal.item?.access ?? "Interno"}><option>Público</option><option>Interno</option><option>Restrito — dados pessoais</option><option>Sigiloso</option></select></label><label className="field"><span>Fluxo de tramitação</span><select name="workflowName" defaultValue={processModal.item?.workflowName ?? "Fluxo administrativo"}>{Object.keys(PROCESS_WORKFLOWS).map((workflow) => <option key={workflow}>{workflow}</option>)}</select></label><label className="field"><span>Status</span><input name="status" defaultValue={processModal.item?.status ?? "Autuação"} /></label><label className="field full"><span>Descrição inicial</span><textarea name="description" defaultValue={processModal.item?.description} placeholder="Contextualize a abertura do processo" /></label><div className="modal-actions"><button type="button" className="button secondary" onClick={() => setProcessModal(null)}>Cancelar</button><button className="button primary"><Save size={14} /> {processModal.mode === "create" ? "Autuar processo" : "Salvar alterações"}</button></div></form></ModalShell>}
+
+    {moveModal && selected && <ModalShell eyebrow={selected.protocol} title="Movimentar processo" onClose={() => setMoveModal(false)}><form onSubmit={moveProcess}><div className="process-move-summary full"><span><strong>Origem atual</strong><small>{selected.currentDepartment}</small></span><ChevronRight size={18} /><span><strong>Próximo destino</strong><small>Selecione abaixo</small></span></div><label className="field"><span>Setor de destino *</span><select name="targetDepartment" required defaultValue=""><option value="" disabled>Selecione o setor</option>{Array.from(new Set([department, ...departments])).filter((item) => item !== selected.currentDepartment).map((item) => <option key={item}>{item}</option>)}</select></label><label className="field"><span>Novo responsável</span><select name="owner" defaultValue={selected.owner}><option>A definir</option>{users.map((user) => <option key={user.id} value={user.fullName}>{user.fullName} · {user.department}</option>)}</select></label><label className="field full"><span>Ação</span><select name="action" defaultValue="Encaminhamento"><option>Encaminhamento</option><option>Diligência</option><option>Retorno para ajustes</option><option>Análise técnica</option><option>Análise jurídica</option><option>Validação</option></select></label><label className="field full"><span>Despacho / providência *</span><textarea name="note" required placeholder="Explique o motivo da movimentação e o que o próximo setor deve fazer." /></label><div className="modal-actions"><button type="button" className="button secondary" onClick={() => setMoveModal(false)}>Cancelar</button><button className="button primary">Registrar tramitação <ChevronRight size={14} /></button></div></form></ModalShell>}
+
+    {signatureModal && selected && <ModalShell eyebrow={selected.protocol} title="Solicitar assinatura" onClose={() => setSignatureModal(false)}><form onSubmit={requestSignature}><label className="field full"><span>Documento *</span><select name="documentName" required defaultValue=""><option value="" disabled>Selecione um documento</option>{selected.documents.filter((document) => document.status === "Vigente").map((document) => <option key={document.id}>{document.name}</option>)}</select></label><label className="field full"><span>Signatário *</span><select name="signer" required defaultValue=""><option value="" disabled>Selecione o responsável</option>{users.map((user) => <option key={user.id} value={user.fullName}>{user.fullName} · {user.role}</option>)}</select></label><p className="ticket-modal-privacy"><ShieldCheck size={14} /> A solicitação ficará registrada no processo e poderá ser validada por código.</p><div className="modal-actions"><button type="button" className="button secondary" onClick={() => setSignatureModal(false)}>Cancelar</button><button className="button primary"><FileSignature size={14} /> Solicitar assinatura</button></div></form></ModalShell>}
+  </section>;
 }
 
 export function MunicipalManagementSection({ department, notify }: { department: string; notify: Notify }) {
