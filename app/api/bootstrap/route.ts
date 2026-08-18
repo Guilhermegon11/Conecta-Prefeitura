@@ -15,7 +15,8 @@ export async function GET(request: Request) {
         account_status AS accountStatus, invited_by AS invitedBy, invited_at AS invitedAt
         FROM users ORDER BY full_name`),
       db.prepare(`SELECT t.id, t.protocol, t.title, t.description, t.requester, t.department, t.priority, t.status,
-        t.assignee_id AS assigneeId, t.due_date AS dueDate, t.created_at AS createdAt, t.updated_at AS updatedAt,
+        t.assignee_id AS assigneeId, t.neighborhood, t.address, t.latitude, t.longitude,
+        t.due_date AS dueDate, t.created_at AS createdAt, t.updated_at AS updatedAt,
         u.full_name AS assigneeName, u.initials AS assigneeInitials
         FROM tickets t LEFT JOIN users u ON u.id = t.assignee_id
         WHERE LOWER(TRIM(t.department)) = LOWER(TRIM(?)) ORDER BY t.created_at DESC`).bind(viewer.department),

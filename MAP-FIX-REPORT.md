@@ -1,19 +1,26 @@
-# Correção — mapa de chamados
+# Correção do mapa de chamados — v3
 
-## Problema corrigido
-Os marcadores anteriores eram `position:absolute` sobre um `iframe` do Google Maps. Ao mover o mapa, os marcadores permaneciam presos à viewport.
+## Problema identificado
+A versão anterior só plotava chamados que já possuíam `address`. Os chamados demonstrativos e registros persistidos pelo backend antigo não armazenavam esse campo, portanto o mapa podia receber zero registros georreferenciáveis. Além disso, a geocodificação alternativa era feita diretamente no navegador.
 
-## Implementação atual
-- A Área do Setor recebe os chamados reais (`privateTickets`).
-- Somente chamados com `address` preenchido entram no mapa.
-- O campo Rua / endereço passou a ser obrigatório na criação de novos chamados.
-- Com `NEXT_PUBLIC_GOOGLE_MAPS_API_KEY`, o mapa usa Google Maps JavaScript API + Geocoder e marcadores nativos.
-- Sem chave Google, usa Leaflet/OpenStreetMap e geocodificação por endereço como fallback.
-- Os marcadores são latitude/longitude reais do resultado de geocodificação e acompanham pan e zoom.
-- O antigo OperationalMapPanel genérico foi removido da Área do Setor para evitar pontos que não sejam chamados.
+## Correções aplicadas
+- `address` e `neighborhood` passam a existir no schema persistente de chamados.
+- Foram adicionados campos opcionais `latitude` e `longitude` para evolução futura.
+- Nova migração `0006_ticket_geolocation.sql`.
+- `create_ticket` grava bairro e endereço.
+- `/api/bootstrap` devolve bairro/endereço/coordenadas.
+- Chamados demonstrativos receberam endereço de referência por rua.
+- Estado local antigo é migrado para incluir os endereços dos chamados demonstrativos conhecidos.
+- Nova rota `/api/geocode` executa a geocodificação no servidor.
+- A consulta de localização usa somente a rua + bairro + Várzea da Palma/MG, sem depender do número do imóvel.
+- Leaflet passa a ser instalado como dependência do projeto, em vez de carregado por CDN.
+- O mapa continua exibindo somente chamados do setor com rua cadastrada.
+- Marcadores são geográficos e acompanham pan/zoom do mapa.
 
-## Validação local
-- `app/sector-workspaces.tsx`: transpile TypeScript/TSX sem erros sintáticos.
-- `app/page.tsx`: transpile TypeScript/TSX sem erros sintáticos.
-- `app/municipal-location.tsx`: transpile TypeScript/TSX sem erros sintáticos.
-- Fix anterior da Vercel em `resolveActorId` preservado.
+## Validações
+- Sintaxe TypeScript/TSX validada nos arquivos alterados com `typescript.transpileModule`: sem erros.
+- Migrações 0000 a 0006 aplicadas em SQLite temporário via Python: sucesso.
+- `package.json`, `package-lock.json`, journal e snapshot JSON: válidos.
+
+## Build
+O build completo não foi executado neste ambiente porque a nova dependência `leaflet` precisa ser instalada pelo `npm install`. A Vercel já usa `npm install` conforme `vercel.json`, portanto deverá resolver `leaflet` e `@types/leaflet` antes de `next build`.

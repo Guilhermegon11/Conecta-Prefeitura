@@ -88,7 +88,7 @@ type NavItem = PermissionModule | "Funcionários" | "Configurações";
 type ChatTab = "direct" | "group";
 type OfficeCategory = "Prefeitura e apoio" | "Secretarias" | "Departamentos" | "Seções e subprefeitura";
 
-type Ticket = { id: string; protocol: string; title: string; description: string; requester: string; department: string; priority: Priority; status: TicketStatus; dueDate: string | null; assigneeId: string | null; assigneeName?: string; assigneeInitials?: string; neighborhood?: string; address?: string; createdAt: string; updatedAt: string };
+type Ticket = { id: string; protocol: string; title: string; description: string; requester: string; department: string; priority: Priority; status: TicketStatus; dueDate: string | null; assigneeId: string | null; assigneeName?: string; assigneeInitials?: string; neighborhood?: string; address?: string; latitude?: string | number | null; longitude?: string | number | null; createdAt: string; updatedAt: string };
 type AccountStatus = "Ativo" | "Aguardando criação de senha";
 type User = { id: string; fullName: string; email: string; department: string; role: string; initials: string; accountStatus?: AccountStatus; invitedAt?: string | null; invitedBy?: string | null };
 type Office = { id: string; name: string; head: string; hours: string; phone: string; email: string; address: string; category: OfficeCategory };
@@ -153,15 +153,34 @@ const USERS: User[] = [
 ];
 
 const INITIAL_TICKETS: Ticket[] = [
-  { id: "t-190", protocol: "CH-2026-0190", title: "Consolidar prioridades para a reunião do secretariado", description: "Reunir os pontos críticos enviados pelos setores e preparar a pauta executiva.", requester: "Gabinete do Prefeito", department: "Secretaria de Governo", priority: "Alta", status: "Recebido", dueDate: "2026-08-14T16:00:00.000Z", assigneeId: "u-ana", assigneeName: "Artur Paulo Fagundes Rabelo", assigneeInitials: "AR", createdAt: "2026-08-13T15:05:00.000Z", updatedAt: "2026-08-13T15:05:00.000Z" },
-  { id: "t-189", protocol: "CH-2026-0189", title: "Revisar comunicado sobre serviços municipais", description: "Validar as informações recebidas antes da publicação nos canais oficiais.", requester: "Secretaria de Comunicação e Eventos", department: "Secretaria de Governo", priority: "Média", status: "Em análise", dueDate: "2026-08-14T18:00:00.000Z", assigneeId: "u-demo-mariana", assigneeName: "Mariana Castro", assigneeInitials: "MC", createdAt: "2026-08-13T13:20:00.000Z", updatedAt: "2026-08-13T15:12:00.000Z" },
-  { id: "t-188", protocol: "CH-2026-0188", title: "Validar cronograma da audiência pública", description: "Conferir responsáveis, local, acessibilidade e etapas de divulgação.", requester: "Assessoria do Gabinete", department: "Secretaria de Governo", priority: "Média", status: "Aguardando aprovação", dueDate: "2026-08-15T17:00:00.000Z", assigneeId: "u-demo-andre", assigneeName: "André Lima", assigneeInitials: "AL", createdAt: "2026-08-12T16:00:00.000Z", updatedAt: "2026-08-13T14:48:00.000Z" },
-  { id: "t-187", protocol: "CH-2026-0187", title: "Manutenção da iluminação na Praça Central", description: "Substituição de luminárias e revisão do quadro elétrico.", requester: "Ouvidoria Municipal", department: "Secretaria de Infraestrutura e Transporte", priority: "Alta", status: "Em execução", dueDate: "2026-08-13T19:00:00.000Z", assigneeId: "u-rafael", assigneeName: "Bruno Gonçalves da Fonseca", assigneeInitials: "BF", createdAt: "2026-08-13T10:00:00.000Z", updatedAt: "2026-08-13T14:36:00.000Z" },
-  { id: "t-186", protocol: "CH-2026-0186", title: "Revisão do calendário de vacinação", description: "Validar datas, locais e comunicação da campanha.", requester: "Gabinete do Prefeito", department: "Secretaria de Saúde", priority: "Média", status: "Aguardando aprovação", dueDate: "2026-08-14T18:00:00.000Z", assigneeId: "u-lucas", assigneeName: "Natália Cristina Pedrosa Cabral", assigneeInitials: "NC", createdAt: "2026-08-12T13:00:00.000Z", updatedAt: "2026-08-13T14:52:00.000Z" },
-  { id: "t-185", protocol: "CH-2026-0185", title: "Atualização do transporte escolar — Zona Norte", description: "Revisar itinerários antes da volta às aulas.", requester: "Secretaria de Educação", department: "Secretaria de Educação", priority: "Alta", status: "Recebido", dueDate: "2026-08-15T18:00:00.000Z", assigneeId: "u-amanda", assigneeName: "Leila Cibeli Silveira Mendes", assigneeInitials: "LM", createdAt: "2026-08-12T11:00:00.000Z", updatedAt: "2026-08-12T11:00:00.000Z" },
-  { id: "t-184", protocol: "CH-2026-0184", title: "Parecer sobre contratação emergencial", description: "Análise administrativa concluída.", requester: "Secretaria de Governo", department: "Secretaria de Administração e Finanças", priority: "Baixa", status: "Concluído", dueDate: "2026-08-12T18:00:00.000Z", assigneeId: "u-carla", assigneeName: "Jaime de Souza", assigneeInitials: "JS", createdAt: "2026-08-10T09:00:00.000Z", updatedAt: "2026-08-13T12:00:00.000Z" },
-  { id: "t-183", protocol: "CH-2026-0183", title: "Liberação de área para feira de produtores", description: "Avaliação ambiental e autorização de uso.", requester: "Gabinete do Prefeito", department: "Secretaria Municipal de Desenvolvimento Econômico, Agricultura e Meio Ambiente", priority: "Média", status: "Em execução", dueDate: "2026-08-16T18:00:00.000Z", assigneeId: "u-felipe", assigneeName: "Lucas Fontinelli de Oliveira da Silva", assigneeInitials: "LS", createdAt: "2026-08-11T15:00:00.000Z", updatedAt: "2026-08-13T11:00:00.000Z" },
+  { id: "t-190", protocol: "CH-2026-0190", title: "Consolidar prioridades para a reunião do secretariado", description: "Reunir os pontos críticos enviados pelos setores e preparar a pauta executiva.", requester: "Gabinete do Prefeito", department: "Secretaria de Governo", priority: "Alta", status: "Recebido", dueDate: "2026-08-14T16:00:00.000Z", assigneeId: "u-ana", assigneeName: "Artur Paulo Fagundes Rabelo", assigneeInitials: "AR", neighborhood: "Pinlar I", address: "Rua Cláudio Manoel da Costa, 1000", createdAt: "2026-08-13T15:05:00.000Z", updatedAt: "2026-08-13T15:05:00.000Z" },
+  { id: "t-189", protocol: "CH-2026-0189", title: "Revisar comunicado sobre serviços municipais", description: "Validar as informações recebidas antes da publicação nos canais oficiais.", requester: "Secretaria de Comunicação e Eventos", department: "Secretaria de Governo", priority: "Média", status: "Em análise", dueDate: "2026-08-14T18:00:00.000Z", assigneeId: "u-demo-mariana", assigneeName: "Mariana Castro", assigneeInitials: "MC", neighborhood: "Pinlar I", address: "Rua Cláudio Manoel da Costa, 1000", createdAt: "2026-08-13T13:20:00.000Z", updatedAt: "2026-08-13T15:12:00.000Z" },
+  { id: "t-188", protocol: "CH-2026-0188", title: "Validar cronograma da audiência pública", description: "Conferir responsáveis, local, acessibilidade e etapas de divulgação.", requester: "Assessoria do Gabinete", department: "Secretaria de Governo", priority: "Média", status: "Aguardando aprovação", dueDate: "2026-08-15T17:00:00.000Z", assigneeId: "u-demo-andre", assigneeName: "André Lima", assigneeInitials: "AL", neighborhood: "Pinlar I", address: "Rua Cláudio Manoel da Costa, 1000", createdAt: "2026-08-12T16:00:00.000Z", updatedAt: "2026-08-13T14:48:00.000Z" },
+  { id: "t-187", protocol: "CH-2026-0187", title: "Manutenção da iluminação na Praça Central", description: "Substituição de luminárias e revisão do quadro elétrico.", requester: "Ouvidoria Municipal", department: "Secretaria de Infraestrutura e Transporte", priority: "Alta", status: "Em execução", dueDate: "2026-08-13T19:00:00.000Z", assigneeId: "u-rafael", assigneeName: "Bruno Gonçalves da Fonseca", assigneeInitials: "BF", neighborhood: "Centro", address: "Avenida Dr. Mallard", createdAt: "2026-08-13T10:00:00.000Z", updatedAt: "2026-08-13T14:36:00.000Z" },
+  { id: "t-186", protocol: "CH-2026-0186", title: "Revisão do calendário de vacinação", description: "Validar datas, locais e comunicação da campanha.", requester: "Gabinete do Prefeito", department: "Secretaria de Saúde", priority: "Média", status: "Aguardando aprovação", dueDate: "2026-08-14T18:00:00.000Z", assigneeId: "u-lucas", assigneeName: "Natália Cristina Pedrosa Cabral", assigneeInitials: "NC", neighborhood: "Planalto", address: "Rua Reinaldo Rodrigues, 305", createdAt: "2026-08-12T13:00:00.000Z", updatedAt: "2026-08-13T14:52:00.000Z" },
+  { id: "t-185", protocol: "CH-2026-0185", title: "Atualização do transporte escolar — Zona Norte", description: "Revisar itinerários antes da volta às aulas.", requester: "Secretaria de Educação", department: "Secretaria de Educação", priority: "Alta", status: "Recebido", dueDate: "2026-08-15T18:00:00.000Z", assigneeId: "u-amanda", assigneeName: "Leila Cibeli Silveira Mendes", assigneeInitials: "LM", neighborhood: "Centro", address: "Rua Safira, 1244", createdAt: "2026-08-12T11:00:00.000Z", updatedAt: "2026-08-12T11:00:00.000Z" },
+  { id: "t-184", protocol: "CH-2026-0184", title: "Parecer sobre contratação emergencial", description: "Análise administrativa concluída.", requester: "Secretaria de Governo", department: "Secretaria de Administração e Finanças", priority: "Baixa", status: "Concluído", dueDate: "2026-08-12T18:00:00.000Z", assigneeId: "u-carla", assigneeName: "Jaime de Souza", assigneeInitials: "JS", neighborhood: "Pinlar I", address: "Rua Cláudio Manoel da Costa, 1000", createdAt: "2026-08-10T09:00:00.000Z", updatedAt: "2026-08-13T12:00:00.000Z" },
+  { id: "t-183", protocol: "CH-2026-0183", title: "Liberação de área para feira de produtores", description: "Avaliação ambiental e autorização de uso.", requester: "Gabinete do Prefeito", department: "Secretaria Municipal de Desenvolvimento Econômico, Agricultura e Meio Ambiente", priority: "Média", status: "Em execução", dueDate: "2026-08-16T18:00:00.000Z", assigneeId: "u-felipe", assigneeName: "Lucas Fontinelli de Oliveira da Silva", assigneeInitials: "LS", neighborhood: "Centro", address: "Rua Pedro Rodrigues de Menezes, 1474", createdAt: "2026-08-11T15:00:00.000Z", updatedAt: "2026-08-13T11:00:00.000Z" },
 ];
+
+const TICKET_LOCATION_DEFAULTS: Record<string,{address:string;neighborhood:string}> = {
+  "t-190": { address: "Rua Cláudio Manoel da Costa, 1000", neighborhood: "Pinlar I" },
+  "t-189": { address: "Rua Cláudio Manoel da Costa, 1000", neighborhood: "Pinlar I" },
+  "t-188": { address: "Rua Cláudio Manoel da Costa, 1000", neighborhood: "Pinlar I" },
+  "t-187": { address: "Avenida Dr. Mallard", neighborhood: "Centro" },
+  "t-186": { address: "Rua Reinaldo Rodrigues, 305", neighborhood: "Planalto" },
+  "t-185": { address: "Rua Safira, 1244", neighborhood: "Centro" },
+  "t-184": { address: "Rua Cláudio Manoel da Costa, 1000", neighborhood: "Pinlar I" },
+  "t-183": { address: "Rua Pedro Rodrigues de Menezes, 1474", neighborhood: "Centro" },
+};
+
+function backfillTicketLocations(tickets: Ticket[]) {
+  return tickets.map((ticket) => {
+    if (ticket.address?.trim()) return ticket;
+    const fallback = TICKET_LOCATION_DEFAULTS[ticket.id];
+    return fallback ? { ...ticket, ...fallback } : ticket;
+  });
+}
 
 const INITIAL_GROUPS: Group[] = [
   { id: "g-volta-aulas", name: "Operação Volta às Aulas 2026", description: "Educação, Mobilidade e Governo", memberCount: 3, createdAt: "2026-08-13T14:00:00.000Z", memberUserIds: ["u-ana", "u-amanda"], pendingUserIds: ["u-rafael"] },
@@ -345,7 +364,7 @@ export default function Home() {
           events?: SectorEvent[]; audit?: AuditItem[]; notifications?: NotificationItem[]; invitations?: GroupInvitation[];
         } | null;
         if (demo) {
-          if (demo.ticketData?.length) setTicketData(demo.ticketData);
+          if (demo.ticketData?.length) setTicketData(backfillTicketLocations(demo.ticketData));
           if (demo.users?.length) setUsers(demo.users);
           if (demo.groups?.length) setGroups(demo.groups);
           if (demo.messages?.length) setMessages(demo.messages);
@@ -385,7 +404,7 @@ export default function Home() {
     fetch(`/api/bootstrap?userId=${encodeURIComponent(currentUserId)}`).then((response) => response.ok ? response.json() : Promise.reject()).then((data) => {
       const payload = data as BootstrapPayload;
       if (payload.users?.length) setUsers([...payload.users, ...USERS.filter((user) => (user.id.startsWith("u-demo-") || user.id === "u-prefeito" || user.id === "u-vice") && !payload.users!.some((saved) => saved.id === user.id))]);
-      if (payload.tickets?.length) setTicketData(payload.tickets.map((ticket) => ({ ...ticket, status: normalizeTicketStatus(ticket.status) })));
+      if (payload.tickets?.length) setTicketData(backfillTicketLocations(payload.tickets.map((ticket) => ({ ...ticket, status: normalizeTicketStatus(ticket.status) }))));
       if (payload.groups?.length) setGroups(payload.groups.map((group) => {
         const memberships = (payload.groupMemberships ?? []).filter((membership) => membership.groupId === group.id);
         return { ...group, memberCount: Number(group.memberCount), memberUserIds: memberships.filter((membership) => membership.status === "aceito").map((membership) => membership.userId), pendingUserIds: memberships.filter((membership) => membership.status === "convidado").map((membership) => membership.userId) };

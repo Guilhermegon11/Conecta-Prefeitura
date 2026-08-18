@@ -159,10 +159,12 @@ async function createTicket(payload: ActionPayload) {
     .bind(department, actorId).all<{ id: string }>();
 
   await database.batch([
-    database.prepare(`INSERT INTO tickets (id, protocol, title, description, requester, department, priority, status, assignee_id, due_date, created_at, updated_at)
-      VALUES (?, ?, ?, ?, ?, ?, ?, 'Recebido', ?, ?, ?, ?)`).bind(
+    database.prepare(`INSERT INTO tickets (id, protocol, title, description, requester, department, priority, status, assignee_id, neighborhood, address, due_date, created_at, updated_at)
+      VALUES (?, ?, ?, ?, ?, ?, ?, 'Recebido', ?, ?, ?, ?, ?, ?)`).bind(
       id, protocol, title, String(payload.description ?? ""), String(payload.requester ?? "Secretaria de Governo"), department,
       String(payload.priority ?? "Média"), assigneeId,
+      payload.neighborhood ? String(payload.neighborhood).trim() : null,
+      payload.address ? String(payload.address).trim() : null,
       payload.dueDate ? String(payload.dueDate) : null, now, now,
     ),
     database.prepare("INSERT INTO audit_logs (id, actor_id, action, entity_type, entity_id, detail, created_at) VALUES (?, ?, 'chamado_criado', 'chamado', ?, ?, ?)")

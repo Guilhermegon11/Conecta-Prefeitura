@@ -12,6 +12,7 @@ export const tickets = sqliteTable("tickets", {
   description: text("description").notNull().default(""), requester: text("requester").notNull(),
   department: text("department").notNull(), priority: text("priority").notNull().default("Média"),
   status: text("status").notNull().default("Recebido"), assigneeId: text("assignee_id").references(() => users.id),
+  neighborhood: text("neighborhood"), address: text("address"), latitude: text("latitude"), longitude: text("longitude"),
   dueDate: text("due_date"), createdAt: text("created_at").notNull(), updatedAt: text("updated_at").notNull(),
 }, (table) => [index("tickets_status_idx").on(table.status), index("tickets_department_idx").on(table.department)]);
 

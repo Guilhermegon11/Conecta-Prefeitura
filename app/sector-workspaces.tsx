@@ -53,6 +53,8 @@ type SectorMapTicket = {
   status: string;
   address?: string;
   neighborhood?: string;
+  latitude?: string | number | null;
+  longitude?: string | number | null;
 };
 
 const MUNICIPAL_MAP_EMBED = "https://maps.google.com/maps?q=-17.5989135,-44.7331539&z=15&output=embed";
@@ -193,76 +195,42 @@ function toneFor(status:string) {
 }
 
 
-let googleMapsLoader: Promise<any> | null = null;
 let leafletLoader: Promise<any> | null = null;
-let lastNominatimRequest = 0;
 
 function loadLeaflet() {
   if (typeof window === "undefined") return Promise.reject(new Error("Browser indisponível"));
   const existing=(window as any).L;
   if(existing) return Promise.resolve(existing);
   if(leafletLoader) return leafletLoader;
-  leafletLoader=new Promise((resolve,reject)=>{
-    if(!document.querySelector('link[data-prefeitura-leaflet]')){
-      const css=document.createElement("link");
-      css.rel="stylesheet";
-      css.href="https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.css";
-      css.setAttribute("data-prefeitura-leaflet","true");
-      document.head.appendChild(css);
-    }
-    const script=document.createElement("script");
-    script.src="https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.js";
-    script.async=true;
-    script.onload=()=>{const L=(window as any).L; if(L) resolve(L); else reject(new Error("Leaflet não carregou"));};
-    script.onerror=()=>{leafletLoader=null;reject(new Error("Falha ao carregar mapa"));};
-    document.head.appendChild(script);
-  });
+  leafletLoader=import("leaflet").then((module:any)=>{
+    const L=module.default ?? module;
+    (window as any).L=L;
+    return L;
+  }).catch((error)=>{leafletLoader=null;throw error;});
   return leafletLoader;
 }
 
-async function geocodeOpenStreetMap(query:string) {
-  const cacheKey=`prefeitura-conecta:geocode:${query.toLowerCase()}`;
+async function geocodeTicket(query:string) {
+  const cacheKey=`prefeitura-conecta:geocode:v2:${query.toLowerCase()}`;
   try {
     const cached=localStorage.getItem(cacheKey);
-    if(cached){const parsed=JSON.parse(cached) as {lat:number;lng:number}; if(Number.isFinite(parsed.lat)&&Number.isFinite(parsed.lng)) return parsed;}
-  } catch { /* cache opcional */ }
-  const elapsed=Date.now()-lastNominatimRequest;
-  if(elapsed<1100) await new Promise(resolve=>window.setTimeout(resolve,1100-elapsed));
-  lastNominatimRequest=Date.now();
-  const url=`https://nominatim.openstreetmap.org/search?format=jsonv2&limit=1&countrycodes=br&accept-language=pt-BR&q=${encodeURIComponent(query)}`;
-  const response=await fetch(url,{headers:{Accept:"application/json"}});
-  if(!response.ok) throw new Error("Falha na geocodificação");
-  const data=await response.json() as Array<{lat:string;lon:string}>;
-  if(!data[0]) throw new Error("Endereço não encontrado");
-  const result={lat:Number(data[0].lat),lng:Number(data[0].lon)};
-  try {localStorage.setItem(cacheKey,JSON.stringify(result));} catch { /* cache opcional */ }
+    if(cached){
+      const parsed=JSON.parse(cached) as {lat:number;lng:number;displayName?:string};
+      if(Number.isFinite(parsed.lat)&&Number.isFinite(parsed.lng)) return { ...parsed, cached: true };
+    }
+  } catch { /* cache local opcional */ }
+  const response=await fetch(`/api/geocode?q=${encodeURIComponent(query)}`,{headers:{Accept:"application/json"}});
+  const payload=await response.json().catch(()=>null) as {lat?:number;lng?:number;displayName?:string;cached?:boolean;error?:string}|null;
+  if(!response.ok||!payload||!Number.isFinite(payload.lat)||!Number.isFinite(payload.lng)) throw new Error(payload?.error ?? "Rua não localizada");
+  const result={lat:Number(payload.lat),lng:Number(payload.lng),displayName:payload.displayName,cached:Boolean(payload.cached)};
+  try {localStorage.setItem(cacheKey,JSON.stringify(result));} catch { /* cache local opcional */ }
   return result;
 }
 
-function loadGoogleMaps(apiKey:string) {
-  if (typeof window === "undefined") return Promise.reject(new Error("Browser indisponível"));
-  const existing=(window as any).google?.maps;
-  if(existing) return Promise.resolve(existing);
-  if(googleMapsLoader) return googleMapsLoader;
-  googleMapsLoader=new Promise((resolve,reject)=>{
-    const callback=`__prefeituraMapsReady_${Date.now()}`;
-    (window as any)[callback]=()=>{
-      const maps=(window as any).google?.maps;
-      delete (window as any)[callback];
-      if(maps) resolve(maps); else reject(new Error("Google Maps não carregou"));
-    };
-    const script=document.createElement("script");
-    script.src=`https://maps.googleapis.com/maps/api/js?key=${encodeURIComponent(apiKey)}&callback=${callback}&v=weekly`;
-    script.async=true;
-    script.defer=true;
-    script.onerror=()=>{delete (window as any)[callback];googleMapsLoader=null;reject(new Error("Falha ao carregar Google Maps"));};
-    document.head.appendChild(script);
-  });
-  return googleMapsLoader;
-}
-
 function ticketAddressQuery(ticket:SectorMapTicket) {
-  return [ticket.address?.trim(),ticket.neighborhood?.trim(),"Várzea da Palma","MG","Brasil"].filter(Boolean).join(", ");
+  const rawAddress=ticket.address?.trim() ?? "";
+  const streetOnly=rawAddress.split(",")[0]?.trim() || rawAddress;
+  return [streetOnly,ticket.neighborhood?.trim(),"Várzea da Palma","MG","Brasil"].filter(Boolean).join(", ");
 }
 
 function escapeMapText(value:string) {
@@ -273,80 +241,71 @@ function TicketStreetMap({tickets,selectedId,onSelect}:{tickets:SectorMapTicket[
   const mapRoot=useRef<HTMLDivElement|null>(null);
   const [mapError,setMapError]=useState<string|null>(null);
   const [loading,setLoading]=useState(false);
-  const apiKey=process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY ?? "";
+  const [locatedCount,setLocatedCount]=useState(0);
 
   useEffect(()=>{
     if(!mapRoot.current||tickets.length===0) return;
     let cancelled=false;
-    let cleanup=()=>{};
+    let map:any=null;
+    const markers:any[]=[];
     setLoading(true);
     setMapError(null);
+    setLocatedCount(0);
 
-    if(apiKey){
-      void loadGoogleMaps(apiKey).then(async(maps:any)=>{
-        if(cancelled||!mapRoot.current) return;
-        const map=new maps.Map(mapRoot.current,{center:{lat:-17.5989135,lng:-44.7331539},zoom:15,mapTypeControl:false,streetViewControl:false,fullscreenControl:true});
-        const geocoder=new maps.Geocoder();
-        const bounds=new maps.LatLngBounds();
-        const markers:any[]=[];
-        let plotted=0;
-        for(const ticket of tickets){
-          if(cancelled) return;
-          try {
-            const result:any=await new Promise((resolve,reject)=>{
-              geocoder.geocode({address:ticketAddressQuery(ticket),componentRestrictions:{country:"BR"}},(results:any[],status:string)=>{
-                if(status==="OK"&&results?.[0]) resolve(results[0]); else reject(new Error(status));
-              });
-            });
-            if(cancelled) return;
-            const position=result.geometry.location;
-            const marker=new maps.Marker({map,position,title:`${ticket.protocol} · ${ticket.title}`});
-            marker.addListener("click",()=>onSelect(ticket.id));
-            markers.push(marker);
-            bounds.extend(position);
-            plotted+=1;
-          } catch { /* Chamados não localizados ficam na lista. */ }
-        }
+    void loadLeaflet().then(async(L:any)=>{
+      if(cancelled||!mapRoot.current) return;
+      map=L.map(mapRoot.current,{zoomControl:true,attributionControl:true}).setView([-17.5989135,-44.7331539],15);
+      L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png",{maxZoom:19,attribution:'&copy; OpenStreetMap contributors'}).addTo(map);
+      const bounds:any[]=[];
+      let plotted=0;
+      let failed=0;
+      for(const ticket of tickets){
         if(cancelled) return;
-        if(plotted>0){map.fitBounds(bounds);maps.event.addListenerOnce(map,"bounds_changed",()=>{if(map.getZoom()>17) map.setZoom(17);});}
-        else setMapError("Nenhum chamado com rua válida pôde ser localizado.");
-        cleanup=()=>markers.forEach(marker=>marker.setMap(null));
-        setLoading(false);
-      }).catch(()=>{if(!cancelled){setMapError("Não foi possível carregar o Google Maps. Tentando mapa alternativo requer recarregar a página sem a chave configurada.");setLoading(false);}});
-    } else {
-      void loadLeaflet().then(async(L:any)=>{
-        if(cancelled||!mapRoot.current) return;
-        const map=L.map(mapRoot.current,{zoomControl:true,attributionControl:true}).setView([-17.5989135,-44.7331539],15);
-        L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png",{maxZoom:19,attribution:'&copy; OpenStreetMap contributors'}).addTo(map);
-        const bounds:any[]=[];
-        const markers:any[]=[];
-        let plotted=0;
-        for(const ticket of tickets){
+        try {
+          const savedLat=Number(ticket.latitude);
+          const savedLng=Number(ticket.longitude);
+          const hasSavedPosition=Number.isFinite(savedLat)&&Number.isFinite(savedLng)&&savedLat!==0&&savedLng!==0;
+          const position=hasSavedPosition
+            ? {lat:savedLat,lng:savedLng,cached:true}
+            : await geocodeTicket(ticketAddressQuery(ticket));
           if(cancelled) return;
-          try {
-            const position=await geocodeOpenStreetMap(ticketAddressQuery(ticket));
-            if(cancelled) return;
-            const icon=L.divIcon({className:"ticket-leaflet-icon",html:`<span>${plotted+1}</span>`,iconSize:[30,30],iconAnchor:[15,30]});
-            const marker=L.marker([position.lat,position.lng],{icon,title:`${ticket.protocol} · ${ticket.title}`}).addTo(map);
-            marker.bindTooltip(`<strong>${escapeMapText(ticket.protocol)}</strong><br>${escapeMapText(ticket.address ?? "")}`,{direction:"top",offset:[0,-28]});
-            marker.on("click",()=>onSelect(ticket.id));
-            markers.push(marker);
-            bounds.push([position.lat,position.lng]);
-            plotted+=1;
-          } catch { /* endereço permanece visível na lista */ }
-        }
-        if(cancelled){map.remove();return;}
-        if(plotted>0){map.fitBounds(bounds,{padding:[40,40],maxZoom:17});}
-        else setMapError("Nenhum chamado com rua válida pôde ser localizado.");
-        cleanup=()=>{markers.forEach(marker=>marker.remove());map.remove();};
-        setLoading(false);
-      }).catch(()=>{if(!cancelled){setMapError("Não foi possível carregar o mapa interativo.");setLoading(false);}});
-    }
+          const icon=L.divIcon({className:"ticket-leaflet-icon",html:`<span>${plotted+1}</span>`,iconSize:[30,30],iconAnchor:[15,30]});
+          const marker=L.marker([position.lat,position.lng],{icon,title:`${ticket.protocol} · ${ticket.title}`}).addTo(map);
+          marker.bindPopup(`<div class="ticket-map-popup"><strong>${escapeMapText(ticket.protocol)}</strong><span>${escapeMapText(ticket.title)}</span><small>${escapeMapText(ticket.address ?? "")}</small></div>`);
+          marker.on("click",()=>onSelect(ticket.id));
+          markers.push(marker);
+          bounds.push([position.lat,position.lng]);
+          plotted+=1;
+          setLocatedCount(plotted);
+          if(!position.cached && plotted + failed < tickets.length) await new Promise(resolve=>window.setTimeout(resolve,1100));
+        } catch { failed+=1; }
+      }
+      if(cancelled) return;
+      if(plotted>0){
+        if(plotted===1) map.setView(bounds[0],17);
+        else map.fitBounds(bounds,{padding:[45,45],maxZoom:17});
+        if(failed>0) setMapError(`${failed} chamado(s) não puderam ser localizados pela rua informada.`);
+      } else {
+        setMapError("Nenhum chamado pôde ser localizado. Confira se a rua e o bairro estão preenchidos corretamente.");
+      }
+      setLoading(false);
+    }).catch(()=>{
+      if(!cancelled){setMapError("O mapa interativo não conseguiu carregar. Recarregue a página após o novo deploy.");setLoading(false);}
+    });
 
-    return()=>{cancelled=true;cleanup();};
-  },[apiKey,tickets,onSelect]);
+    return()=>{
+      cancelled=true;
+      markers.forEach(marker=>{try{marker.remove();}catch{}});
+      if(map){try{map.remove();}catch{}}
+    };
+  },[tickets,onSelect]);
 
-  return <div className="sector-map-canvas real-map native-ticket-map"><div ref={mapRoot} className="google-ticket-map"/>{loading&&<div className="map-geocode-status"><MapPin size={15}/>Sincronizando ruas dos chamados…</div>}{mapError&&<div className="map-geocode-status error"><AlertTriangle size={15}/>{mapError}</div>}<div className="map-overlay-note"><MapPin size={13}/>Marcadores geográficos dos chamados</div></div>;
+  useEffect(()=>{
+    if(!selectedId) return;
+    // A seleção é refletida no painel lateral; o clique no marcador já abre o popup no mapa.
+  },[selectedId]);
+
+  return <div className="sector-map-canvas real-map native-ticket-map"><div ref={mapRoot} className="google-ticket-map"/>{loading&&<div className="map-geocode-status"><MapPin size={15}/>Localizando ruas dos chamados…</div>}{mapError&&<div className="map-geocode-status error"><AlertTriangle size={15}/>{mapError}</div>}<div className="map-overlay-note"><MapPin size={13}/>{locatedCount} chamado(s) localizado(s)</div></div>;
 }
 
 export function SectorWorkspaceSection({department,userName,userRole,departments,tickets,notify}:{department:string;userName:string;userRole:string;departments:string[];tickets:SectorMapTicket[];notify:Notify}) {

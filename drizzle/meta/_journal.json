@@ -43,6 +43,13 @@
       "when": 1787026249391,
       "tag": "0005_operational_evolution",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "6",
+      "when": 1787030250235,
+      "tag": "0006_ticket_geolocation",
+      "breakpoints": true
     }
   ]
 }
