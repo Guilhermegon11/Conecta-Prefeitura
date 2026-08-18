@@ -1,6 +1,6 @@
 "use client";
 
-import { FormEvent, useEffect, useMemo, useRef, useState } from "react";
+import { FormEvent, useEffect, useMemo, useState } from "react";
 import {
   Activity,
   AlertTriangle,
@@ -16,14 +16,12 @@ import {
   ClipboardCheck,
   Clock3,
   CloudOff,
-  ExternalLink,
   FileText,
   Gauge,
   HeartHandshake,
   Layers3,
   ListChecks,
   LockKeyhole,
-  Map,
   MapPin,
   Navigation,
   Plus,
@@ -42,24 +40,9 @@ import type { LucideIcon } from "lucide-react";
 import { useCurrentPermission } from "./permission-context";
 
 type Notify = (message: string) => void;
-type WorkspaceTab = "Painel setorial" | "Cadastros e formulários" | "Mapa municipal" | "Equipes de campo" | "Metas e indicadores" | "Encaminhamentos";
+type WorkspaceTab = "Painel setorial" | "Cadastros e formulários" | "Equipes de campo" | "Metas e indicadores" | "Encaminhamentos";
 type Metric = [label: string, value: string, detail: string];
 type RecordRow = [title: string, detail: string, status: string];
-type SectorMapTicket = {
-  id: string;
-  protocol: string;
-  title: string;
-  description: string;
-  status: string;
-  address?: string;
-  neighborhood?: string;
-  latitude?: string | number | null;
-  longitude?: string | number | null;
-};
-
-const MUNICIPAL_MAP_EMBED = "https://maps.google.com/maps?q=-17.5989135,-44.7331539&z=15&output=embed";
-const MUNICIPAL_MAP_LINK = "https://www.google.com/maps/search/?api=1&query=-17.5989135%2C-44.7331539";
-
 type SectorProfile = {
   title: string;
   mission: string;
@@ -176,7 +159,6 @@ const PROFILES: Record<string, SectorProfile> = {
 const TAB_META: Record<WorkspaceTab,{icon:LucideIcon;label:string}> = {
   "Painel setorial":{icon:Layers3,label:"Painel setorial"},
   "Cadastros e formulários":{icon:FileText,label:"Cadastros"},
-  "Mapa municipal":{icon:Map,label:"Mapa"},
   "Equipes de campo":{icon:Smartphone,label:"Campo"},
   "Metas e indicadores":{icon:Target,label:"Metas"},
   "Encaminhamentos":{icon:Send,label:"Encaminhamentos"},
@@ -195,120 +177,7 @@ function toneFor(status:string) {
 }
 
 
-let leafletLoader: Promise<any> | null = null;
-
-function loadLeaflet() {
-  if (typeof window === "undefined") return Promise.reject(new Error("Browser indisponível"));
-  const existing=(window as any).L;
-  if(existing) return Promise.resolve(existing);
-  if(leafletLoader) return leafletLoader;
-  leafletLoader=import("leaflet").then((module:any)=>{
-    const L=module.default ?? module;
-    (window as any).L=L;
-    return L;
-  }).catch((error)=>{leafletLoader=null;throw error;});
-  return leafletLoader;
-}
-
-async function geocodeTicket(query:string) {
-  const cacheKey=`prefeitura-conecta:geocode:v2:${query.toLowerCase()}`;
-  try {
-    const cached=localStorage.getItem(cacheKey);
-    if(cached){
-      const parsed=JSON.parse(cached) as {lat:number;lng:number;displayName?:string};
-      if(Number.isFinite(parsed.lat)&&Number.isFinite(parsed.lng)) return { ...parsed, cached: true };
-    }
-  } catch { /* cache local opcional */ }
-  const response=await fetch(`/api/geocode?q=${encodeURIComponent(query)}`,{headers:{Accept:"application/json"}});
-  const payload=await response.json().catch(()=>null) as {lat?:number;lng?:number;displayName?:string;cached?:boolean;error?:string}|null;
-  if(!response.ok||!payload||!Number.isFinite(payload.lat)||!Number.isFinite(payload.lng)) throw new Error(payload?.error ?? "Rua não localizada");
-  const result={lat:Number(payload.lat),lng:Number(payload.lng),displayName:payload.displayName,cached:Boolean(payload.cached)};
-  try {localStorage.setItem(cacheKey,JSON.stringify(result));} catch { /* cache local opcional */ }
-  return result;
-}
-
-function ticketAddressQuery(ticket:SectorMapTicket) {
-  const rawAddress=ticket.address?.trim() ?? "";
-  const streetOnly=rawAddress.split(",")[0]?.trim() || rawAddress;
-  return [streetOnly,ticket.neighborhood?.trim(),"Várzea da Palma","MG","Brasil"].filter(Boolean).join(", ");
-}
-
-function escapeMapText(value:string) {
-  return value.replace(/[&<>"']/g,(character)=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[character] ?? character));
-}
-
-function TicketStreetMap({tickets,selectedId,onSelect}:{tickets:SectorMapTicket[];selectedId:string|null;onSelect:(id:string)=>void}) {
-  const mapRoot=useRef<HTMLDivElement|null>(null);
-  const [mapError,setMapError]=useState<string|null>(null);
-  const [loading,setLoading]=useState(false);
-  const [locatedCount,setLocatedCount]=useState(0);
-
-  useEffect(()=>{
-    if(!mapRoot.current||tickets.length===0) return;
-    let cancelled=false;
-    let map:any=null;
-    const markers:any[]=[];
-    setLoading(true);
-    setMapError(null);
-    setLocatedCount(0);
-
-    void loadLeaflet().then(async(L:any)=>{
-      if(cancelled||!mapRoot.current) return;
-      map=L.map(mapRoot.current,{zoomControl:true,attributionControl:true}).setView([-17.5989135,-44.7331539],15);
-      L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png",{maxZoom:19,attribution:'&copy; OpenStreetMap contributors'}).addTo(map);
-      const bounds:any[]=[];
-      let plotted=0;
-      let failed=0;
-      for(const ticket of tickets){
-        if(cancelled) return;
-        try {
-          const savedLat=Number(ticket.latitude);
-          const savedLng=Number(ticket.longitude);
-          const hasSavedPosition=Number.isFinite(savedLat)&&Number.isFinite(savedLng)&&savedLat!==0&&savedLng!==0;
-          const position=hasSavedPosition
-            ? {lat:savedLat,lng:savedLng,cached:true}
-            : await geocodeTicket(ticketAddressQuery(ticket));
-          if(cancelled) return;
-          const icon=L.divIcon({className:"ticket-leaflet-icon",html:`<span>${plotted+1}</span>`,iconSize:[30,30],iconAnchor:[15,30]});
-          const marker=L.marker([position.lat,position.lng],{icon,title:`${ticket.protocol} · ${ticket.title}`}).addTo(map);
-          marker.bindPopup(`<div class="ticket-map-popup"><strong>${escapeMapText(ticket.protocol)}</strong><span>${escapeMapText(ticket.title)}</span><small>${escapeMapText(ticket.address ?? "")}</small></div>`);
-          marker.on("click",()=>onSelect(ticket.id));
-          markers.push(marker);
-          bounds.push([position.lat,position.lng]);
-          plotted+=1;
-          setLocatedCount(plotted);
-          if(!position.cached && plotted + failed < tickets.length) await new Promise(resolve=>window.setTimeout(resolve,1100));
-        } catch { failed+=1; }
-      }
-      if(cancelled) return;
-      if(plotted>0){
-        if(plotted===1) map.setView(bounds[0],17);
-        else map.fitBounds(bounds,{padding:[45,45],maxZoom:17});
-        if(failed>0) setMapError(`${failed} chamado(s) não puderam ser localizados pela rua informada.`);
-      } else {
-        setMapError("Nenhum chamado pôde ser localizado. Confira se a rua e o bairro estão preenchidos corretamente.");
-      }
-      setLoading(false);
-    }).catch(()=>{
-      if(!cancelled){setMapError("O mapa interativo não conseguiu carregar. Recarregue a página após o novo deploy.");setLoading(false);}
-    });
-
-    return()=>{
-      cancelled=true;
-      markers.forEach(marker=>{try{marker.remove();}catch{}});
-      if(map){try{map.remove();}catch{}}
-    };
-  },[tickets,onSelect]);
-
-  useEffect(()=>{
-    if(!selectedId) return;
-    // A seleção é refletida no painel lateral; o clique no marcador já abre o popup no mapa.
-  },[selectedId]);
-
-  return <div className="sector-map-canvas real-map native-ticket-map"><div ref={mapRoot} className="google-ticket-map"/>{loading&&<div className="map-geocode-status"><MapPin size={15}/>Localizando ruas dos chamados…</div>}{mapError&&<div className="map-geocode-status error"><AlertTriangle size={15}/>{mapError}</div>}<div className="map-overlay-note"><MapPin size={13}/>{locatedCount} chamado(s) localizado(s)</div></div>;
-}
-
-export function SectorWorkspaceSection({department,userName,userRole,departments,tickets,notify}:{department:string;userName:string;userRole:string;departments:string[];tickets:SectorMapTicket[];notify:Notify}) {
+export function SectorWorkspaceSection({department,userName,userRole,departments,notify}:{department:string;userName:string;userRole:string;departments:string[];notify:Notify}) {
   const access=useCurrentPermission();
   const profile=profileFor(department);
   const [tab,setTab]=useState<WorkspaceTab>("Painel setorial");
@@ -318,8 +187,6 @@ export function SectorWorkspaceSection({department,userName,userRole,departments
   const [selectedForm,setSelectedForm]=useState(profile.forms[0]);
   const [query,setQuery]=useState("");
   const [statusFilter,setStatusFilter]=useState("Todos os status");
-  const [layer,setLayer]=useState("Chamados do setor");
-  const [selectedMapTicketId,setSelectedMapTicketId]=useState<string|null>(null);
   const [periodFilter,setPeriodFilter]=useState<"Hoje"|"Semana"|"Mês">("Hoje");
   const [priorityFilter,setPriorityFilter]=useState<"Todas"|"Críticas"|"Em andamento">("Todas");
   const [referrals,setReferrals]=useState<Array<[string,string,string]>>([["Secretaria de Administração e Finanças","Solicitação de apoio administrativo","Somente dados necessários"],["Secretaria de Comunicação e Eventos","Divulgação de ação do setor","Informações institucionais"]]);
@@ -336,14 +203,11 @@ export function SectorWorkspaceSection({department,userName,userRole,departments
   })),[records]);
   const quickModules=profile.modules.slice(0,3);
   const routineModules=profile.modules.slice(3);
-  const mappableTickets=useMemo(()=>tickets.filter(ticket=>ticket.address?.trim()).slice(0,25),[tickets]);
   const heroHighlights=[
     {label:"Pendências críticas",value:String(records.filter(item=>toneFor(item[2])!=="success").length)},
-    {label:"Chamados no mapa",value:String(mappableTickets.length)},
+    {label:"Endereços registrados",value:String(records.length)},
     {label:"Encaminhamentos ativos",value:String(referrals.length)},
   ];
-  const selectedMapTicket=mappableTickets.find(ticket=>ticket.id===selectedMapTicketId) ?? mappableTickets[0];
-  const selectedPointMapLink=`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(selectedMapTicket ? ticketAddressQuery(selectedMapTicket) : "Várzea da Palma, MG")}`;
 
   useEffect(()=>{
     const timer=window.setTimeout(()=>{
@@ -360,11 +224,6 @@ export function SectorWorkspaceSection({department,userName,userRole,departments
     if(!hydrated)return;
     try {localStorage.setItem(storageKey,JSON.stringify({records,referrals}));} catch { /* A demonstração segue funcional sem persistência. */ }
   },[hydrated,records,referrals,storageKey]);
-
-  useEffect(()=>{
-    if(mappableTickets.length===0){setSelectedMapTicketId(null);return;}
-    if(!selectedMapTicketId||!mappableTickets.some(ticket=>ticket.id===selectedMapTicketId)) setSelectedMapTicketId(mappableTickets[0].id);
-  },[mappableTickets,selectedMapTicketId]);
 
   function openRecord(form=profile.forms[0]){if(!access.register){notify("Seu perfil possui acesso de consulta nesta área.");return;}setSelectedForm(form);setRecordModal(true);}
   function createRecord(event:FormEvent<HTMLFormElement>){event.preventDefault();if(!access.register)return;const form=new FormData(event.currentTarget);const item:RecordRow=[String(form.get("primary")),`${String(form.get("secondary"))} · ${String(form.get("notes"))||"Registro criado pela equipe"}`,"Cadastrado"];setRecords(current=>[item,...current]);setRecordModal(false);notify(`${profile.recordLabel[0].toUpperCase()+profile.recordLabel.slice(1)} cadastrado na área de ${department}.`);}
@@ -388,7 +247,7 @@ export function SectorWorkspaceSection({department,userName,userRole,departments
       <div className="sector-hero-actions">{access.register?<><button className="button secondary" onClick={()=>setFieldModal(true)}><Navigation size={15}/> Registrar atividade externa</button><button className="button primary" onClick={()=>openRecord()}><Plus size={15}/> Cadastrar {profile.recordLabel}</button></>:<span className="sector-access-badge"><LockKeyhole size={14}/>Perfil de consulta</span>}</div>
     </article>
 
-    <nav className="sector-tabs sector-tabs-v2" aria-label="Navegação da área do setor">{(Object.keys(TAB_META) as WorkspaceTab[]).map(item=>{const Icon=TAB_META[item].icon;const badge=item==="Encaminhamentos"?referrals.length:item==="Equipes de campo"?profile.teams.length:item==="Mapa municipal"?mappableTickets.length:0;return <button key={item} className={tab===item?"active":""} onClick={()=>setTab(item)}><Icon size={16}/><span>{TAB_META[item].label}</span>{badge>0&&<b>{badge}</b>}</button>})}</nav>
+    <nav className="sector-tabs sector-tabs-v2" aria-label="Navegação da área do setor">{(Object.keys(TAB_META) as WorkspaceTab[]).map(item=>{const Icon=TAB_META[item].icon;const badge=item==="Encaminhamentos"?referrals.length:item==="Equipes de campo"?profile.teams.length:0;return <button key={item} className={tab===item?"active":""} onClick={()=>setTab(item)}><Icon size={16}/><span>{TAB_META[item].label}</span>{badge>0&&<b>{badge}</b>}</button>})}</nav>
 
     <div className="sector-command-bar sector-command-bar-v2">
       <div className="sector-command-summary"><span className="sector-live-dot"/><span><strong>Central do dia</strong><small>{records.length} registros ativos · {referrals.length} encaminhamentos acompanhados</small></span><i>{periodFilter}</i></div>
@@ -435,8 +294,6 @@ export function SectorWorkspaceSection({department,userName,userRole,departments
     </>}
 
     {tab==="Cadastros e formulários"&&<div className="sector-record-layout"><aside className="panel sector-form-catalog"><header><BookOpenCheck size={19}/><div><h3>Formulários do setor</h3><p>Campos e checklists adaptados à atividade.</p></div></header>{profile.forms.map((form,index)=><button key={form} onClick={()=>openRecord(form)}><span>{String(index+1).padStart(2,"0")}</span><strong>{form}</strong><ChevronRight size={13}/></button>)}</aside><article className="panel sector-records"><div className="module-toolbar"><label className="module-search"><Search size={15}/><input aria-label="Buscar nos registros do setor" value={query} onChange={event=>setQuery(event.target.value)} placeholder="Buscar registros específicos..."/></label><select aria-label="Filtrar registros" value={statusFilter} onChange={event=>setStatusFilter(event.target.value)}><option>Todos os status</option><option>Prioridade</option><option>Em andamento</option><option>Em análise</option><option>Agendado</option><option>Concluído</option></select>{access.register&&<button className="button primary" onClick={()=>openRecord()}><Plus size={15}/> Novo registro</button>}</div><div className="sector-record-list">{visibleRecords.map(([title,detail,status],index)=><button key={`${title}-${index}`} onClick={()=>notify(`Ficha de “${title}” aberta com histórico, documentos e responsáveis.`)}><span className="sector-record-icon"><FileText size={16}/></span><span><strong>{title}</strong><small>{detail}</small></span><i className={toneFor(status)}>{status}</i><ChevronRight size={14}/></button>)}{visibleRecords.length===0&&<div className="sector-empty"><Search size={22}/><strong>Nenhum registro encontrado</strong><p>Revise a busca ou selecione outro status.</p></div>}</div></article></div>}
-
-    {tab==="Mapa municipal"&&<div className="sector-map-layout"><article className="panel sector-map-panel"><header><div><span className="map-source-label"><MapPin size={13}/>Várzea da Palma · Minas Gerais</span><h3>Chamados no mapa</h3><p>Somente chamados com rua/endereço informado são exibidos. O marcador é geocodificado pela rua e passa a fazer parte do mapa, acompanhando corretamente movimento e zoom.</p></div><div className="map-header-actions"><select aria-label="Registros exibidos no mapa" value={layer} onChange={event=>setLayer(event.target.value)}><option>Chamados do setor</option></select><a className="button secondary" href={MUNICIPAL_MAP_LINK} target="_blank" rel="noreferrer"><ExternalLink size={13}/>Abrir no Google Maps</a></div></header>{mappableTickets.length>0?<TicketStreetMap tickets={mappableTickets} selectedId={selectedMapTicket?.id ?? null} onSelect={setSelectedMapTicketId}/>:<div className="map-no-address"><MapPin size={26}/><strong>Nenhum chamado possui rua cadastrada</strong><p>Informe o endereço no chamado para que ele possa ser georreferenciado no mapa.</p></div>}<div className="map-operational-points"><div><h4>Chamados localizados por rua</h4><p>{mappableTickets.length} chamado(s) com endereço disponível para georreferenciamento.</p></div><div>{mappableTickets.map((ticket,index)=><button aria-label={`Selecionar chamado ${ticket.protocol}: ${ticket.title}`} key={ticket.id} className={selectedMapTicket?.id===ticket.id?"selected":""} onClick={()=>setSelectedMapTicketId(ticket.id)}><span>{index+1}</span><span><strong>{ticket.address}</strong><small>{ticket.protocol} · {ticket.title}</small></span><i className={toneFor(ticket.status)}>{ticket.status}</i></button>)}</div></div><footer><span className="map-real-note"><ShieldCheck size={13}/>A rua vem diretamente do cadastro do chamado. Chamados sem endereço não são plotados.</span><span><i className="layer-1"/>Camada ativa: Chamados do setor</span></footer></article><aside className="panel map-detail-card"><span className="map-detail-icon"><MapPin size={22}/></span><p className="eyebrow">CHAMADO SELECIONADO</p><h3>{selectedMapTicket?.protocol ?? "Nenhum chamado"}</h3><p>{selectedMapTicket?.title ?? "Selecione um chamado localizado."}</p>{selectedMapTicket&&<i className={toneFor(selectedMapTicket.status)}>{selectedMapTicket.status}</i>}<dl><div><dt>Rua / endereço</dt><dd>{selectedMapTicket?.address || "Não informado"}</dd></div><div><dt>Bairro</dt><dd>{selectedMapTicket?.neighborhood || "Não informado"}</dd></div><div><dt>Setor responsável</dt><dd>{department}</dd></div><div><dt>Georreferenciamento</dt><dd>{selectedMapTicket?.address?"Endereço do chamado enviado ao serviço de geocodificação":"Indisponível"}</dd></div></dl>{selectedMapTicket&&<><div className="map-related-summary"><strong>Resumo do chamado</strong><small>{selectedMapTicket.description}</small></div><a className="button primary" href={selectedPointMapLink} target="_blank" rel="noreferrer"><ExternalLink size={14}/>Abrir esta rua no Google Maps</a><button className="button secondary" onClick={()=>notify(`Ficha do chamado ${selectedMapTicket.protocol} aberta.`)}>Abrir ficha do chamado</button></>}</aside></div>}
 
     {tab==="Equipes de campo"&&<><article className="field-app-banner"><span><Smartphone size={24}/></span><div><p className="eyebrow">APLICATIVO DE CAMPO</p><h3>Registro móvel com funcionamento temporariamente offline</h3><p>Localização, fotos, checklist, horário, materiais, assinatura e observações são sincronizados quando houver conexão.</p></div><span className="offline-badge"><CloudOff size={14}/>Modo offline disponível no protótipo</span>{access.register&&<button className="button primary" onClick={()=>setFieldModal(true)}>Nova atividade de campo</button>}</article><div className="field-team-grid">{profile.teams.map(([team,size,status],index)=><article className="panel" key={team}><header><span>{index+1}</span><i className={toneFor(status)}>{status}</i></header><h3>{team}</h3><p><UsersRound size={14}/>{size}</p><div className="team-progress"><span><i style={{width:`${[74,92,61][index]}%`}}/></span><small>{["3 atividades hoje","Rota atualizada","2 pendências"][index]}</small></div><button onClick={()=>access.register?setFieldModal(true):notify(`Agenda e histórico da equipe “${team}” abertos para consulta.`)}>{access.register?"Registrar atividade":"Consultar atividades"} <ArrowRight size={13}/></button></article>)}</div></>}
 

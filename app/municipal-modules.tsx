@@ -37,7 +37,7 @@ import {
   X,
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
-import { NeighborhoodMapField } from "./municipal-location";
+import { AddressRegistrationField } from "./municipal-location";
 import { useCurrentPermission } from "./permission-context";
 import { FieldOperationsPanel, WorkflowAutomationHub } from "./enhanced-features";
 
@@ -213,7 +213,7 @@ export function CitizenServiceSection({ department, notify }: { department: stri
     setServiceNeighborhood("");
     setServiceAddress("");
     setTab("Protocolos");
-    notify(`${item.protocol} registrado para ${serviceNeighborhood}. A área foi vinculada ao mapa municipal.`);
+    notify(`${item.protocol} registrado para ${serviceNeighborhood}. O endereço foi registrado no protocolo.`);
   }
 
   return (
@@ -246,7 +246,7 @@ export function CitizenServiceSection({ department, notify }: { department: stri
       {tab === "Satisfação" && <div className="satisfaction-layout"><article className="panel satisfaction-score"><span><Star size={24} /></span><strong>4,7</strong><p>média de 184 avaliações em agosto</p><div>{[1,2,3,4,5].map((star) => <Star key={star} size={16} fill="currentColor" />)}</div></article><article className="panel satisfaction-breakdown"><h2>Qualidade percebida</h2>{[["Resultado do atendimento",92],["Clareza das informações",89],["Tempo de resposta",84],["Cordialidade",96]].map(([label,value]) => <div className="rating-row" key={String(label)}><span>{label}</span><div><i style={{width:`${value}%`}} /></div><strong>{value}%</strong></div>)}</article><article className="panel satisfaction-comments"><h2>Comentários recentes</h2><blockquote>“Recebi o número do protocolo e consegui acompanhar cada atualização.”<cite>Atendimento de iluminação · 12 ago.</cite></blockquote><blockquote>“A lista de documentos evitou uma segunda ida ao setor.”<cite>Matrícula escolar · 11 ago.</cite></blockquote></article></div>}
 
       {modal && <ModalShell eyebrow="ATENDIMENTO AO CIDADÃO" title="Registrar novo protocolo" onClose={() => setModal(false)}><form onSubmit={createProtocol}><label className="field"><span>Tipo de manifestação *</span><select name="kind" required defaultValue="Solicitação"><option>Solicitação</option><option>Reclamação</option><option>Sugestão</option><option>Elogio</option><option>Denúncia</option><option>Acesso à informação</option></select></label><label className="field"><span>Setor responsável</span><input name="department" defaultValue={department} /></label><label className="field full"><span>Assunto *</span><input name="subject" required placeholder="Descreva o assunto principal" /></label><label className="field full"><span>Nome do solicitante</span><input name="requester" placeholder="Deixe em branco se não houver identificação" /></label><label className="field full"><span>Descrição detalhada *</span><textarea name="description" required placeholder="Registre a manifestação e as informações necessárias para a triagem" /></label><label className="municipal-check full"><input type="checkbox" name="confidential" /> <span>Restringir dados pessoais e identidade aos responsáveis autorizados</span></label><div className="modal-actions"><button type="button" className="button secondary" onClick={() => setModal(false)}>Cancelar</button><button className="button primary"><FileBadge size={15} /> Gerar protocolo</button></div></form></ModalShell>}
-      {selectedService && <ModalShell eyebrow="CARTA DE SERVIÇOS" title={selectedService.title} onClose={() => setSelectedService(null)}><form onSubmit={createServiceRequest}><div className="service-request-summary full"><Landmark size={18} /><div><strong>{selectedService.department}</strong><span>{selectedService.deadline} · {selectedService.documents}</span></div></div><label className="field full"><span>Nome do solicitante</span><input name="requester" placeholder="Nome da pessoa, empresa ou entidade" /></label><NeighborhoodMapField neighborhood={serviceNeighborhood} address={serviceAddress} onNeighborhoodChange={setServiceNeighborhood} onAddressChange={setServiceAddress} /><label className="field full"><span>Descrição do serviço</span><textarea name="description" placeholder="Descreva a necessidade e acrescente referências para a equipe responsável." /></label><p className="ticket-modal-privacy"><ShieldCheck size={14} /> O bairro e o endereço serão vinculados ao protocolo para orientar a triagem e o atendimento em campo.</p><div className="modal-actions"><button type="button" className="button secondary" onClick={() => setSelectedService(null)}>Cancelar</button><button className="button primary"><MapPin size={15} /> Solicitar e localizar</button></div></form></ModalShell>}
+      {selectedService && <ModalShell eyebrow="CARTA DE SERVIÇOS" title={selectedService.title} onClose={() => setSelectedService(null)}><form onSubmit={createServiceRequest}><div className="service-request-summary full"><Landmark size={18} /><div><strong>{selectedService.department}</strong><span>{selectedService.deadline} · {selectedService.documents}</span></div></div><label className="field full"><span>Nome do solicitante</span><input name="requester" placeholder="Nome da pessoa, empresa ou entidade" /></label><AddressRegistrationField neighborhood={serviceNeighborhood} address={serviceAddress} onNeighborhoodChange={setServiceNeighborhood} onAddressChange={setServiceAddress} /><label className="field full"><span>Descrição do serviço</span><textarea name="description" placeholder="Descreva a necessidade e acrescente referências para a equipe responsável." /></label><p className="ticket-modal-privacy"><ShieldCheck size={14} /> O bairro e o endereço serão vinculados ao protocolo para orientar a triagem e o atendimento em campo.</p><div className="modal-actions"><button type="button" className="button secondary" onClick={() => setSelectedService(null)}>Cancelar</button><button className="button primary"><MapPin size={15} /> Registrar solicitação</button></div></form></ModalShell>}
     </section>
   );
 }
@@ -405,7 +405,7 @@ const HELP_TUTORIALS: HelpTutorial[] = [
   },
   {
     id: "setor", category: "Área do Setor", title: "Operar o painel e as equipes do setor", duration: "8 min",
-    summary: "Prioridades, formulários específicos, mapa, campo, metas e encaminhamentos.",
+    summary: "Prioridades, formulários específicos, endereços, campo, metas e encaminhamentos.",
     steps: [
       { title: "Leia a central do dia", text: "Na Área do Setor, consulte indicadores, itens prioritários e o fluxo de trabalho antes de iniciar novos registros." },
       { title: "Use o formulário específico", text: "Em Cadastros, escolha o modelo adequado ao serviço. Os campos mudam de acordo com a secretaria ou departamento." },

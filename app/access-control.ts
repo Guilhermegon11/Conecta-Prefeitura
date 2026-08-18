@@ -36,7 +36,7 @@ export type DepartmentPermissionSettings = {
 
 export const PERMISSION_MODULES: Array<{ module: PermissionModule; group: string; description: string }> = [
   { module: "Visão geral", group: "Início", description: "Resumo e prioridades do setor" },
-  { module: "Área do Setor", group: "Início", description: "Formulários, mapa, equipes e metas" },
+  { module: "Área do Setor", group: "Início", description: "Formulários, endereços, equipes e metas" },
   { module: "Fluxos e Anotações", group: "Início", description: "Quadros de trabalho e registros internos adaptados ao setor" },
   { module: "Chamados", group: "Atendimento", description: "Demandas internas e execução" },
   { module: "Comunicação", group: "Atendimento", description: "Conversas, grupos e anexos" },

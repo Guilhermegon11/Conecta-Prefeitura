@@ -25,11 +25,11 @@ Eliminar controles visualmente clicáveis que não produziam resposta e tornar a
 - “Vincular chamado” no chat abre seletor e vincula o chamado à próxima mensagem ou documento.
 - Ferramentas de formatação e modelos em Processos Digitais respondem ao clique.
 - Ações demonstrativas que antes exibiam apenas texto curto agora podem abrir um modal funcional de contexto.
-- Mapa da Área do Setor preserva marcadores clicáveis dos compromissos.
+- Registro de bairro e rua/endereço permanece disponível nos chamados.
 
 ## Preservado
 - Fonte Geist Sans.
-- Melhorias da Área do Setor e mapa com compromissos.
+- Melhorias da Área do Setor e registro estruturado de endereços.
 - Correção de deploy da Vercel em `resolveActorId`.
 
 ## Build local

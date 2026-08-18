@@ -34,7 +34,7 @@ import {
 import { PermissionScopePanel } from "./enhanced-features";
 
 type Employee = { id: string; fullName: string; email: string; initials: string; role: string; accountStatus?: string };
-type SettingsTab = "permissions" | "employees" | "experience";
+type SettingsTab = "permissions" | "employees" | "privacy" | "experience";
 
 export function SettingsSection({
   department,
@@ -43,9 +43,12 @@ export function SettingsSection({
   settings,
   soundEnabled,
   motionEnabled,
+  isMayor,
+  crossSectorCommunicationEnabled,
   onSettingsChange,
   onSoundChange,
   onMotionChange,
+  onCrossSectorCommunicationChange,
   onTestSound,
   onResetDemo,
   notify,
@@ -56,9 +59,12 @@ export function SettingsSection({
   settings: DepartmentPermissionSettings;
   soundEnabled: boolean;
   motionEnabled: boolean;
+  isMayor: boolean;
+  crossSectorCommunicationEnabled: boolean;
   onSettingsChange: (settings: DepartmentPermissionSettings) => void;
   onSoundChange: (enabled: boolean) => void;
   onMotionChange: (enabled: boolean) => void;
+  onCrossSectorCommunicationChange: (enabled: boolean) => void;
   onTestSound: () => void;
   onResetDemo: () => void;
   notify: (message: string) => void;
@@ -120,9 +126,9 @@ export function SettingsSection({
       <article className="settings-hero">
         <span className="settings-hero-icon"><Settings2 size={25} /></span>
         <div>
-          <p className="eyebrow">CONTROLE DO SECRETÁRIO</p>
-          <h2>Configurações do setor</h2>
-          <p>Defina o que cada perfil pode visualizar, registrar e alterar. As mudanças são aplicadas imediatamente no ambiente de demonstração.</p>
+          <p className="eyebrow">{isMayor ? "CONTROLE DO PREFEITO" : "CONTROLE DO SECRETÁRIO"}</p>
+          <h2>{isMayor ? "Configurações executivas" : "Configurações do setor"}</h2>
+          <p>{isMayor ? "Gerencie permissões do setor e as regras de privacidade da visão executiva." : "Defina o que cada perfil pode visualizar, registrar e alterar. As mudanças são aplicadas imediatamente no ambiente de demonstração."}</p>
           <small><ShieldCheck size={13} /> {department} · administrado por {managerName}</small>
         </div>
         <div className="settings-hero-status"><span><i /> Configuração protegida</span><small>{settings.updatedAt ? "Alterada nesta demonstração" : "Modelo recomendado ativo"}</small></div>
@@ -131,6 +137,7 @@ export function SettingsSection({
       <nav className="settings-tabs" aria-label="Seções das configurações">
         <button className={tab === "permissions" ? "active" : ""} onClick={() => setTab("permissions")}><KeyRound size={16} /><span>Perfis e permissões</span></button>
         <button className={tab === "employees" ? "active" : ""} onClick={() => setTab("employees")}><UserCog size={16} /><span>Funcionários</span><i>{employees.length}</i></button>
+        {isMayor && <button className={tab === "privacy" ? "active" : ""} onClick={() => setTab("privacy")}><LockKeyhole size={16} /><span>Privacidade executiva</span></button>}
         <button className={tab === "experience" ? "active" : ""} onClick={() => setTab("experience")}><SlidersHorizontal size={16} /><span>Experiência e demonstração</span></button>
       </nav>
 
@@ -193,6 +200,18 @@ export function SettingsSection({
           <footer><span>{dirty ? "Revise e salve as novas atribuições." : "Todas as atribuições estão salvas."}</span><button className="button primary" onClick={save} disabled={!dirty}><Save size={14} /> Salvar atribuições</button></footer>
         </article>
         <aside className="panel access-preview-card"><span><Eye size={22} /></span><p className="eyebrow">PRÉVIA DE ACESSO</p><h3>Teste pela troca de perfil</h3><p>Depois de salvar, selecione o funcionário em “Visualizar como”. O menu e as ações serão adaptados às permissões definidas.</p><div><Check size={13} /> Menus sem acesso ficam ocultos</div><div><Check size={13} /> Ações de registro e alteração são bloqueadas</div><div><Check size={13} /> O secretário mantém controle integral</div></aside>
+      </div>}
+
+      {tab === "privacy" && isMayor && <div className="executive-privacy-layout">
+        <article className="panel executive-privacy-card">
+          <header><span><LockKeyhole size={21} /></span><div><p className="eyebrow">COMUNICAÇÃO INTERSETORIAL</p><h3>Privacidade da comunicação dos setores</h3><p>Defina se o Prefeito pode abrir a área de Comunicação enquanto estiver visualizando outro setor.</p></div><i className={crossSectorCommunicationEnabled ? "privacy-state open" : "privacy-state private"}>{crossSectorCommunicationEnabled ? "Acesso autorizado" : "Privado"}</i></header>
+          <div className="executive-privacy-default"><ShieldCheck size={17} /><span><strong>Padrão recomendado: Privado</strong><small>Mensagens e grupos de outros setores ficam ocultos até que o Prefeito habilite este acesso de forma explícita.</small></span></div>
+          <button type="button" className="preference-toggle-row executive-privacy-toggle" onClick={() => onCrossSectorCommunicationChange(!crossSectorCommunicationEnabled)}>
+            <span>{crossSectorCommunicationEnabled ? <Eye size={18} /> : <LockKeyhole size={18} />}<span><strong>{crossSectorCommunicationEnabled ? "Visualização intersetorial habilitada" : "Comunicações de outros setores privadas"}</strong><small>{crossSectorCommunicationEnabled ? "O Prefeito poderá consultar a Comunicação do setor selecionado em modo executivo." : "O Prefeito verá apenas a comunicação do próprio Gabinete e as conversas das quais participa."}</small></span></span>
+            <i className={crossSectorCommunicationEnabled ? "toggle active" : "toggle"}><b /></i>
+          </button>
+          <div className="executive-privacy-rules"><div><Check size={13} /><span>O acesso não é ativado automaticamente ao trocar de setor.</span></div><div><Check size={13} /><span>A visualização intersetorial é identificada como acesso executivo.</span></div><div><Check size={13} /><span>Com o modo privado ativo, o conteúdo de outros setores não é carregado na interface.</span></div></div>
+        </article>
       </div>}
 
       {tab === "experience" && <div className="settings-experience-grid">

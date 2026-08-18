@@ -99,18 +99,6 @@ export function PermissionScopePanel({ notify }: { notify: (message: string) => 
   return <article className="panel permission-scope"><header><div><p className="eyebrow">ESCOPO DE DADOS</p><h3>Permissão contextual e temporária</h3><p>Além de poder ver/registrar/alterar, limite quais registros cada perfil pode acessar.</p></div><ShieldCheck size={19}/></header><label><span>Escopo padrão</span><select value={scope} onChange={(e)=>setScope(e.target.value)}><option>Somente registros próprios</option><option>Toda a secretaria</option><option>Secretarias selecionadas</option><option>Prefeitura inteira</option></select></label><button className="temporary-access" onClick={()=>setTemporary(!temporary)}><span><TimerReset size={16}/><span><strong>Acesso temporário</strong><small>{temporary ? "Ativo até 25/08/2026" : "Conceda substituição por período definido"}</small></span></span><i className={temporary?"toggle active":"toggle"}><b/></i></button><footer><span><UsersRound size={14}/> Escopo atual: <strong>{scope}</strong></span><button onClick={()=>notify("Escopo de acesso salvo no modo demonstração.")}>Salvar escopo</button></footer></article>;
 }
 
-export function OperationalMapPanel({ department, notify }: { department: string; notify: (message: string) => void }) {
-  const layers = ["Chamados", "Obras", "Iluminação", "Vistorias", "Escolas", "UBS", "Eventos"];
-  const [active, setActive] = useState(["Chamados", "Obras", "Vistorias"]);
-  const neighborhoods = [
-    { name: "Planalto", calls: 32, alert: "Iluminação +18%", tone: "high" },
-    { name: "Pinlar I", calls: 21, alert: "6 vistorias", tone: "medium" },
-    { name: "Centro", calls: 18, alert: "4 obras", tone: "normal" },
-    { name: "Nova Esperança", calls: 11, alert: "estável", tone: "normal" },
-  ];
-  return <article className="panel operational-map"><header><div><p className="eyebrow">LEITURA TERRITORIAL</p><h2>Mapa operacional</h2><p>Camadas de ocorrências e serviços para {department}.</p></div><MapPin size={21}/></header><div className="map-layer-row">{layers.map((layer)=><button key={layer} className={active.includes(layer)?"active":""} onClick={()=>setActive((current)=>current.includes(layer)?current.filter((item)=>item!==layer):[...current,layer])}><span>{active.includes(layer)?<Check size={11}/>:<Plus size={11}/>}</span>{layer}</button>)}</div><div className="map-simulation"><div className="map-grid-lines"/><span className="map-pin p1">32</span><span className="map-pin p2">21</span><span className="map-pin p3">18</span><span className="map-pin p4">11</span><div className="map-legend"><strong>Camadas ativas</strong><small>{active.join(" · ") || "Nenhuma camada"}</small></div></div><div className="territory-list">{neighborhoods.map((item)=><button key={item.name} onClick={()=>notify(`Painel territorial de ${item.name} aberto: ${item.calls} registros relacionados às camadas selecionadas.`)}><i className={item.tone}/><span><strong>{item.name}</strong><small>{item.calls} registros</small></span><b>{item.alert}</b><ArrowRight size={13}/></button>)}</div></article>;
-}
-
 export function ApprovalCenterPanel({ notify }: { notify: (message: string) => void }) {
   const [decisions, setDecisions] = useState<Record<string,string>>({});
   const items = [

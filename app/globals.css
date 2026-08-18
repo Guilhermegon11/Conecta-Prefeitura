@@ -1833,7 +1833,7 @@ img, video, canvas, iframe { max-width: 100%; }
   .sector-flow-v2 > div { grid-template-columns:1fr 1fr; }
 }
 
-/* Área do setor — melhorias operacionais e compromissos no mapa */
+/* Área do setor — melhorias operacionais */
 .sector-hero-compact { grid-template-columns:auto minmax(0,1fr) auto; align-items:start; }
 .sector-hero-highlights { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:10px; margin-top:14px; max-width:620px; }
 .sector-hero-highlights > div { padding:10px 12px; border:1px solid rgba(255,255,255,.12); border-radius:12px; background:rgba(255,255,255,.06); }
@@ -1937,17 +1937,125 @@ img, video, canvas, iframe { max-width: 100%; }
   .interaction-action-body { grid-template-columns:1fr; }
 }
 
-/* Mapa de chamados com marcadores geográficos reais */
+/* Endereço dos chamados */
 .native-ticket-map { position:relative; }
 .google-ticket-map { width:100%; height:100%; min-height:440px; }
-.map-geocode-status { position:absolute; left:50%; top:18px; z-index:4; display:flex; align-items:center; gap:7px; padding:8px 11px; border:1px solid #d9e5e1; border-radius:999px; transform:translateX(-50%); color:#315d56; background:rgba(255,255,255,.96); box-shadow:0 8px 20px rgba(40,62,57,.12); font-size:11px; font-weight:750; }
-.map-geocode-status.error { color:#954a43; border-color:#ead0cc; background:#fff8f7; }
 .map-no-address { display:grid; min-height:320px; place-items:center; align-content:center; gap:8px; padding:30px; color:#76878c; background:#f7faf9; text-align:center; }
 .map-no-address strong { color:#40555c; font-size:14px; }
 .map-no-address p { max-width:430px; margin:0; font-size:11px; line-height:1.5; }
-@media (max-width:720px){.google-ticket-map{min-height:360px}.map-geocode-status{max-width:86%;white-space:normal;text-align:center}}
-.ticket-leaflet-icon { background:transparent!important; border:0!important; }
-.ticket-leaflet-icon > span { display:grid; width:30px; height:30px; place-items:center; border:3px solid #fff; border-radius:50% 50% 50% 8px; transform:rotate(-45deg); color:#fff; background:#157e71; box-shadow:0 5px 14px rgba(31,66,59,.3); font-size:10px; font-weight:850; }
-.ticket-leaflet-icon > span::first-letter { transform:rotate(45deg); }
-.native-ticket-map .leaflet-container { width:100%; height:100%; font-family:inherit; }
-.native-ticket-map .leaflet-tooltip { border:1px solid #dbe5e2; border-radius:8px; color:#3e5359; box-shadow:0 8px 18px rgba(37,61,56,.12); font-size:11px; }
+
+/* Registro de endereços */
+.location-address-only { display:grid; gap:12px; }
+.location-address-only .location-inputs { margin-bottom:0; }
+.address-registration-note { display:grid; grid-template-columns:auto minmax(0,1fr) auto; align-items:center; gap:11px; padding:12px 14px; border:1px solid #dce8e5; border-radius:11px; color:#58706f; background:#f5faf8; }
+.address-registration-note > span { display:grid; width:34px; height:34px; place-items:center; border-radius:9px; color:var(--teal); background:#e2f2ee; }
+.address-registration-note strong,.address-registration-note p { display:block; }
+.address-registration-note strong { color:#36514f; font-size:12px; }
+.address-registration-note p { margin:3px 0 0; color:#80908e; font-size:10.5px; line-height:1.45; }
+.address-registration-note > svg { color:#6b9f96; }
+.sector-tabs { grid-template-columns:repeat(5,minmax(0,1fr)); }
+.ticket-address-card { display:flex; align-items:flex-start; gap:10px; margin:10px 0 13px; padding:11px 12px; border:1px solid #dfe8e5; border-radius:10px; background:#f8fbfa; }
+.ticket-address-card > span { display:grid; width:32px; height:32px; flex:0 0 32px; place-items:center; border-radius:8px; color:var(--teal); background:#e4f2ee; }
+.ticket-address-card small,.ticket-address-card strong,.ticket-address-card p { display:block; }
+.ticket-address-card small { color:#81908e; font-size:9.5px; font-weight:700; text-transform:uppercase; letter-spacing:.04em; }
+.ticket-address-card strong { margin-top:3px; color:#374e53; font-size:12px; }
+.ticket-address-card p { margin:3px 0 0; color:#899694; font-size:10.5px; }
+
+/* Comunicação — aparência de mensageria */
+.chat-shell { grid-template-columns:330px minmax(0,1fr); border-radius:16px; border:1px solid #dfe7e5; background:#fff; box-shadow:0 15px 38px rgba(34,57,53,.08); }
+.conversation-list { background:#f7faf9; border-right:1px solid #e1e8e6; }
+.chat-tabs { padding:12px 13px 0; background:#fff; }
+.conversation-search { margin:12px 13px 9px; border-radius:999px; background:#eef3f2; border:1px solid transparent; }
+.conversation-search:focus-within { border-color:#9bcac2; background:#fff; box-shadow:0 0 0 3px rgba(35,139,124,.08); }
+.conversation-items { padding:4px 8px 12px; }
+.conversation { min-height:64px; padding:9px 10px; border-radius:12px; }
+.conversation:hover { background:#eef6f4; }
+.conversation.active { background:#e3f2ef; box-shadow:inset 0 0 0 1px #c7e2dc; }
+.conversation.active::before { inset:12px auto 12px 0; width:3px; }
+.conversation > span:nth-child(2) { min-width:0; }
+.conversation strong { overflow:hidden; text-overflow:ellipsis; white-space:nowrap; font-size:12.8px; }
+.conversation small { max-width:none; color:#81908e; font-size:11px; }
+.conversation-avatar { position:relative; width:40px; height:40px; }
+.conversation-avatar b { position:absolute; right:0; bottom:1px; width:10px; height:10px; border:2px solid #f7faf9; border-radius:50%; background:#45b989; }
+.conversation-side { display:grid!important; align-self:stretch; justify-items:end; align-content:center; gap:6px; }
+.conversation-side time { color:#96a2a0; font-size:9.5px; }
+.conversation-side i { display:grid; min-width:18px; height:18px; place-items:center; padding:0 5px; border-radius:999px; color:#fff; background:var(--teal); font-size:9px; font-style:normal; font-weight:800; }
+.chat-main { background:#f6f9f8; }
+.chat-header { min-height:72px; padding:11px 16px; background:rgba(255,255,255,.96); backdrop-filter:blur(8px); }
+.chat-header > .avatar,.chat-header > .group-avatar { width:42px; height:42px; }
+.chat-header > div:nth-child(2) strong { color:#30474d; font-size:13.5px; }
+.chat-mode-badge { display:inline-flex!important; align-items:center; gap:5px; margin-left:auto!important; padding:5px 8px; border-radius:999px; color:#5b7772!important; background:#edf5f3; font-size:9.5px!important; font-weight:800; white-space:nowrap; }
+.chat-mode-badge.executive { color:#7a6126!important; background:#fff4d9; }
+.chat-header .chat-header-actions { margin-left:6px; }
+.message-stream-v2 { padding:18px 24px 22px; background-color:#eef4f2; background-image:radial-gradient(rgba(77,118,108,.065) .8px,transparent .8px); background-size:18px 18px; }
+.message { max-width:min(72%,620px); gap:8px; margin-bottom:11px; }
+.message > .activity-avatar { width:30px; height:30px; flex:0 0 30px; font-size:9.5px; }
+.message.own > .activity-avatar { display:none; }
+.message-bubble { min-width:96px; max-width:100%; padding:7px 9px 6px; border:1px solid #dde6e3; border-radius:5px 14px 14px 14px; background:#fff; box-shadow:0 2px 8px rgba(29,48,44,.055); }
+.message.own .message-bubble { border-color:#b9dfd7; border-radius:14px 5px 14px 14px; background:#dff3ee; }
+.message-meta { margin-bottom:3px; }
+.message-meta strong { color:#58716d; font-size:10px; }
+.message-meta time { margin-left:auto; font-size:9px; }
+.message.own .message-meta strong { display:none; }
+.message-bubble > p,.message > div > p { margin:0!important; padding:0!important; border:0!important; border-radius:0!important; color:#33484e!important; background:transparent!important; box-shadow:none!important; font-size:12.5px!important; line-height:1.48!important; }
+.message.own .message-bubble > p,.message.own > div > p { color:#26433d!important; }
+.message-bubble .ticket-attachment,.message-bubble .file-attachment { margin-top:7px; }
+.date-divider { margin:3px 0 15px; }
+.date-divider span { padding:5px 9px; border:1px solid #d9e3e0; border-radius:999px; color:#778986; background:rgba(255,255,255,.88); font-size:9.5px; font-weight:700; }
+.date-divider::before,.date-divider::after { background:#dfe7e5; }
+.message-composer { padding:10px 14px; border-top:1px solid #dce5e2; background:#fff; }
+.message-composer textarea { min-height:42px!important; max-height:110px; padding:11px 14px!important; border:1px solid #dce5e2!important; border-radius:18px!important; background:#f6f9f8!important; resize:none; }
+.message-composer textarea:focus { border-color:#9bcac2!important; background:#fff!important; box-shadow:0 0 0 3px rgba(35,139,124,.08); outline:0; }
+.compose-actions { align-self:center; }
+.compose-actions button { border-radius:50%!important; }
+.send-button { align-self:center; width:40px!important; height:40px!important; border-radius:50%!important; }
+
+/* Privacidade executiva da comunicação */
+.communication-privacy-gate { display:grid; min-height:430px; place-items:center; align-content:center; padding:42px; text-align:center; }
+.communication-privacy-icon { display:grid; width:62px; height:62px; place-items:center; margin-bottom:12px; border-radius:18px; color:#17786d; background:#e4f3ef; }
+.communication-privacy-gate h2 { max-width:650px; margin:4px 0 8px; color:#334a50; font-size:22px; }
+.communication-privacy-gate > p:not(.eyebrow) { max-width:650px; margin:0; color:#7c8d91; font-size:12px; line-height:1.6; }
+.communication-privacy-rules { display:flex; flex-wrap:wrap; justify-content:center; gap:8px; margin:18px 0; }
+.communication-privacy-rules span { display:inline-flex; align-items:center; gap:6px; padding:7px 10px; border:1px solid #dce7e4; border-radius:999px; color:#607673; background:#f8fbfa; font-size:10.5px; font-weight:700; }
+.communication-privacy-gate > small { color:#8a979a; font-size:11px; }
+.executive-privacy-layout { display:grid; grid-template-columns:minmax(0,760px); }
+.executive-privacy-card { overflow:hidden; }
+.executive-privacy-card > header { display:grid; grid-template-columns:auto minmax(0,1fr) auto; align-items:center; gap:12px; padding:18px; border-bottom:1px solid #e9eeec; }
+.executive-privacy-card > header > span { display:grid; width:42px; height:42px; place-items:center; border-radius:11px; color:var(--teal); background:#e6f4f1; }
+.executive-privacy-card h3 { margin:3px 0 4px; color:#364c52; font-size:15px; }
+.executive-privacy-card header p:last-child { margin:0; color:#839196; font-size:11px; }
+.privacy-state { padding:6px 9px; border-radius:999px; font-size:10px; font-style:normal; font-weight:800; }
+.privacy-state.private { color:#755c27; background:#fff2d3; }
+.privacy-state.open { color:#236f5e; background:#e3f3ec; }
+.executive-privacy-default { display:flex; align-items:flex-start; gap:9px; margin:15px; padding:11px 12px; border:1px solid #e9dec3; border-radius:10px; color:#8a6b2d; background:#fffaf0; }
+.executive-privacy-default strong,.executive-privacy-default small { display:block; }
+.executive-privacy-default strong { font-size:11.5px; }
+.executive-privacy-default small { margin-top:3px; color:#937b4c; font-size:10px; line-height:1.45; }
+.executive-privacy-toggle { margin:0 15px 14px; width:calc(100% - 30px); }
+.executive-privacy-rules { display:grid; gap:8px; padding:0 17px 18px; }
+.executive-privacy-rules > div { display:flex; align-items:center; gap:7px; color:#70827f; font-size:10.5px; }
+.executive-privacy-rules svg { color:var(--teal); }
+.executive-chat-label { display:flex; align-items:center; gap:9px; padding:14px 15px; border-bottom:1px solid #e1e8e6; color:#8a6b2d; background:#fff8e8; }
+.executive-chat-label > span strong,.executive-chat-label > span small { display:block; }
+.executive-chat-label strong { color:#6b5224; font-size:11.5px; }
+.executive-chat-label small { margin-top:2px; color:#987e4c; font-size:9.5px; }
+.executive-thread-list { padding-top:8px; }
+.executive-thread-list .conversation > time { color:#97a3a0; font-size:9px; }
+.executive-readonly-chat { grid-template-rows:auto auto minmax(0,1fr) auto; }
+.executive-access-notice { display:flex; grid-row:2; align-items:center; gap:8px; padding:8px 16px; border-bottom:1px solid #eadfca; color:#79602f; background:#fff9ed; }
+.executive-access-notice strong,.executive-access-notice small { display:block; }
+.executive-access-notice strong { font-size:10.5px; }
+.executive-access-notice small { margin-top:2px; color:#9a8257; font-size:9.5px; }
+.executive-readonly-chat .message-stream { grid-row:3; }
+.executive-readonly-chat .read-only-composer { grid-row:4; }
+.executive-message { max-width:min(76%,680px); }
+
+@media (max-width:720px) {
+  .sector-tabs { grid-template-columns:repeat(2,minmax(0,1fr)); }
+  .chat-mode-badge { display:none!important; }
+  .communication-privacy-gate { min-height:340px; padding:28px 18px; }
+  .communication-privacy-rules { display:grid; }
+  .executive-privacy-card > header { grid-template-columns:auto 1fr; }
+  .executive-privacy-card > header .privacy-state { grid-column:2; justify-self:start; }
+  .message { max-width:88%; }
+}

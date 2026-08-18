@@ -62,7 +62,7 @@ import {
 } from "./municipal-modules";
 import { SectorWorkspaceSection } from "./sector-workspaces";
 import { SectorNotesSection } from "./sector-notes";
-import { NeighborhoodMapField } from "./municipal-location";
+import { AddressRegistrationField } from "./municipal-location";
 import { SettingsSection } from "./settings-section";
 import {
   ApprovalCenterPanel,
@@ -88,7 +88,7 @@ type NavItem = PermissionModule | "Funcionários" | "Configurações";
 type ChatTab = "direct" | "group";
 type OfficeCategory = "Prefeitura e apoio" | "Secretarias" | "Departamentos" | "Seções e subprefeitura";
 
-type Ticket = { id: string; protocol: string; title: string; description: string; requester: string; department: string; priority: Priority; status: TicketStatus; dueDate: string | null; assigneeId: string | null; assigneeName?: string; assigneeInitials?: string; neighborhood?: string; address?: string; latitude?: string | number | null; longitude?: string | number | null; createdAt: string; updatedAt: string };
+type Ticket = { id: string; protocol: string; title: string; description: string; requester: string; department: string; priority: Priority; status: TicketStatus; dueDate: string | null; assigneeId: string | null; assigneeName?: string; assigneeInitials?: string; neighborhood?: string; address?: string; createdAt: string; updatedAt: string };
 type AccountStatus = "Ativo" | "Aguardando criação de senha";
 type User = { id: string; fullName: string; email: string; department: string; role: string; initials: string; accountStatus?: AccountStatus; invitedAt?: string | null; invitedBy?: string | null };
 type Office = { id: string; name: string; head: string; hours: string; phone: string; email: string; address: string; category: OfficeCategory };
@@ -265,6 +265,7 @@ const statuses = Object.keys(statusMeta) as TicketStatus[];
 const DEMO_STATE_KEY = "prefeitura-conecta:demo-state:v7";
 const PERMISSION_SETTINGS_KEY = "prefeitura-conecta:permission-settings:v3";
 const EXPERIENCE_SETTINGS_KEY = "prefeitura-conecta:experience-settings:v1";
+const EXECUTIVE_COMMUNICATION_KEY = "prefeitura-conecta:executive-communication:v1";
 
 export default function Home() {
   const [activeNav, setActiveNav] = useState<NavItem>("Visão geral");
@@ -292,6 +293,7 @@ export default function Home() {
   const [tourStep, setTourStep] = useState<number | null>(null);
   const [soundEnabled, setSoundEnabled] = useState(true);
   const [motionEnabled, setMotionEnabled] = useState(true);
+  const [executiveCommunicationAccess, setExecutiveCommunicationAccess] = useState(false);
   const [permissionConfigs, setPermissionConfigs] = useState<Record<string, DepartmentPermissionSettings>>({});
   const [demoReady, setDemoReady] = useState(false);
   const restoredLocalState = useRef(false);
@@ -299,6 +301,7 @@ export default function Home() {
 
   const currentUser = users.find((user) => user.id === currentUserId) ?? USERS[0];
   const executiveAccess = isExecutiveAccess(currentUser);
+  const mayorAccess = isMayor(currentUser);
   const allDepartments = useMemo(() => Array.from(new Set([
     ...OFFICES.map((office) => office.name),
     ...users.map((user) => user.department),
@@ -313,8 +316,14 @@ export default function Home() {
     .filter((event) => (event.targetDepartments?.length ? event.targetDepartments : [event.department]).some((department) => sameDepartment(department, activeDepartment)))
     .sort((first, second) => new Date(first.startsAt).getTime() - new Date(second.startsAt).getTime());
   const currentEventIds = new Set(currentEvents.map((event) => event.id));
-  const privateMessages = messages.filter((message) => !message.ticketId || privateTicketIds.has(message.ticketId));
-  const privateMessageIds = new Set(privateMessages.map((message) => message.id));
+  const ownCommunicationMessages = messages.filter((message) => messageVisibleToUser(message, currentUserId, groups));
+  const viewingOtherDepartment = executiveAccess && !sameDepartment(activeDepartment, currentUser.department);
+  const executiveCommunicationMonitor = mayorAccess && executiveCommunicationAccess && viewingOtherDepartment;
+  const communicationLocked = viewingOtherDepartment && !executiveCommunicationMonitor;
+  const communicationMessages = executiveCommunicationMonitor
+    ? messages.filter((message) => messageTouchesDepartment(message, activeDepartment, users, groups))
+    : ownCommunicationMessages;
+  const privateMessageIds = new Set(communicationMessages.map((message) => message.id));
   const privateAudit = audit.filter((item) => {
     if (item.entityType === "chamado") return privateTicketIds.has(item.entityId);
     if (item.entityType === "mensagem") return privateMessageIds.has(item.entityId);
@@ -326,9 +335,11 @@ export default function Home() {
   const currentInvitations = invitations.filter((item) => item.userId === currentUserId && item.status === "convidado");
   const pendingTickets = privateTickets.filter((ticket) => ticket.status === "Aguardando aprovação");
   const unreadCount = currentNotifications.filter((item) => !item.readAt).length;
-  const messageBadgeCount = privateMessages.filter((message) => message.senderId !== currentUserId).length;
+  const messageBadgeCount = communicationLocked ? 0 : communicationMessages.filter((message) => message.senderId !== currentUserId).length;
   const pendingCount = currentInvitations.length + pendingTickets.length;
-  const accessibleGroups = executiveAccess ? groups : groups.filter((group) => !group.memberUserIds || group.memberUserIds.includes(currentUserId));
+  const accessibleGroups = executiveCommunicationMonitor
+    ? groups.filter((group) => (group.memberUserIds ?? []).some((userId) => users.some((user) => user.id === userId && sameDepartment(user.department, activeDepartment))))
+    : groups.filter((group) => !group.memberUserIds || group.memberUserIds.includes(currentUserId));
   const activeUsers = users.filter((user) => (user.accountStatus ?? "Ativo") === "Ativo");
   const canManageEmployees = isSectorManager(currentUser);
   const sectorUsers = users.filter((user) => sameDepartment(user.department, activeDepartment));
@@ -357,6 +368,8 @@ export default function Home() {
         const experience = JSON.parse(localStorage.getItem(EXPERIENCE_SETTINGS_KEY) ?? "null") as { soundEnabled?: boolean; motionEnabled?: boolean } | null;
         if (typeof experience?.soundEnabled === "boolean") setSoundEnabled(experience.soundEnabled);
         if (typeof experience?.motionEnabled === "boolean") setMotionEnabled(experience.motionEnabled);
+        const executiveCommunication = JSON.parse(localStorage.getItem(EXECUTIVE_COMMUNICATION_KEY) ?? "null") as { enabled?: boolean } | null;
+        setExecutiveCommunicationAccess(executiveCommunication?.enabled === true);
         const savedPermissions = JSON.parse(localStorage.getItem(PERMISSION_SETTINGS_KEY) ?? "null") as Record<string, DepartmentPermissionSettings> | null;
         if (savedPermissions) setPermissionConfigs(savedPermissions);
         const demo = JSON.parse(localStorage.getItem(DEMO_STATE_KEY) ?? "null") as {
@@ -388,6 +401,11 @@ export default function Home() {
     if (!demoReady) return;
     localStorage.setItem(EXPERIENCE_SETTINGS_KEY, JSON.stringify({ soundEnabled, motionEnabled }));
   }, [demoReady, motionEnabled, soundEnabled]);
+
+  useEffect(() => {
+    if (!demoReady) return;
+    localStorage.setItem(EXECUTIVE_COMMUNICATION_KEY, JSON.stringify({ enabled: executiveCommunicationAccess }));
+  }, [demoReady, executiveCommunicationAccess]);
 
   useEffect(() => {
     if (!demoReady) return;
@@ -861,14 +879,18 @@ export default function Home() {
             </div>
           </section>
 
-          {executiveAccess && <div className="executive-access-bar"><Crown size={18} /><span><strong>Visão executiva com acesso integral</strong><small>Visualizando agora: {activeDepartment}</small></span><button type="button" onClick={() => setActiveNav("Área do Setor")}>Abrir painel do setor <ArrowRight size={13} /></button></div>}
+          {executiveAccess && <div className="executive-access-bar"><Crown size={18} /><span><strong>Visão executiva</strong><small>Visualizando agora: {activeDepartment} · comunicação de outros setores segue a regra de privacidade definida nas Configurações</small></span><button type="button" onClick={() => setActiveNav("Área do Setor")}>Abrir painel do setor <ArrowRight size={13} /></button></div>}
           {!canManageEmployees && <div className="employee-access-scope"><ShieldCheck size={16} /><span><strong>Acesso como funcionário</strong><small>{currentPermission.register ? "Pode registrar" : "Somente consulta"} · {currentPermission.edit ? "Pode alterar neste módulo" : "Alterações bloqueadas pelo secretário"}</small></span><button onClick={() => setActiveNav("Central de Ajuda")}>Entender permissões</button></div>}
 
           {activeNav === "Visão geral" && <Dashboard tickets={filteredTickets} allTickets={ticketData} audit={privateAudit} executive={executiveAccess} department={activeDepartment} userName={currentUser.fullName} onNavigate={setActiveNav} />}
-          {activeNav === "Área do Setor" && <><SectorWorkspaceSection key={activeDepartment} department={activeDepartment} userName={currentUser.fullName} userRole={currentUser.role} departments={allDepartments} tickets={privateTickets} notify={notify} /><FormBuilderPanel notify={notify} /></>}
+          {activeNav === "Área do Setor" && <><SectorWorkspaceSection key={activeDepartment} department={activeDepartment} userName={currentUser.fullName} userRole={currentUser.role} departments={allDepartments} notify={notify} /><FormBuilderPanel notify={notify} /></>}
           {activeNav === "Fluxos e Anotações" && <SectorNotesSection key={activeDepartment} department={activeDepartment} userName={currentUser.fullName} team={sectorUsers.map((user) => ({ id: user.id, name: user.fullName, role: user.role }))} notify={notify} />}
           {activeNav === "Chamados" && <TicketsSection tickets={filteredTickets} department={activeDepartment} onStatus={updateStatus} onNew={() => setTicketModal(true)} />}
-          {activeNav === "Comunicação" && <CommunicationSection currentUser={currentUser} users={activeUsers} groups={accessibleGroups} messages={privateMessages} tickets={privateTickets} onSend={sendMessage} onSendAttachment={sendChatAttachment} onNewGroup={() => setGroupModal(true)} onTicketStatus={updateStatus} />}
+          {activeNav === "Comunicação" && (communicationLocked
+            ? <CommunicationPrivacyGate department={activeDepartment} isMayor={mayorAccess} onOpenSettings={() => setActiveNav("Configurações")} />
+            : executiveCommunicationMonitor
+              ? <ExecutiveCommunicationViewer department={activeDepartment} users={activeUsers} groups={accessibleGroups} messages={communicationMessages} />
+              : <CommunicationSection currentUser={currentUser} users={activeUsers} groups={accessibleGroups} messages={communicationMessages} tickets={privateTickets} onSend={sendMessage} onSendAttachment={sendChatAttachment} onNewGroup={() => setGroupModal(true)} onTicketStatus={updateStatus} />)}
           {activeNav === "Atendimento ao Cidadão" && <CitizenServiceSection department={activeDepartment} notify={notify} />}
           {activeNav === "Processos Digitais" && <ProcessesSection department={activeDepartment} notify={notify} />}
           {activeNav === "Gestão Municipal" && <MunicipalManagementSection department={activeDepartment} notify={notify} />}
@@ -882,7 +904,7 @@ export default function Home() {
           {activeNav === "Segurança e LGPD" && <SecuritySection department={activeDepartment} notify={notify} />}
           {activeNav === "Auditoria" && <AuditSection audit={privateAudit} department={activeDepartment} notify={notify} />}
           {activeNav === "Central de Ajuda" && <HelpCenterSection notify={notify} />}
-          {activeNav === "Configurações" && canManageEmployees && <SettingsSection key={activeDepartment} department={activeDepartment} managerName={currentUser.fullName} employees={sectorEmployees} settings={departmentPermissionSettings} soundEnabled={soundEnabled} motionEnabled={motionEnabled} onSettingsChange={updatePermissionSettings} onSoundChange={setSoundEnabled} onMotionChange={setMotionEnabled} onTestSound={() => { playNotificationChime(); notify("Som de notificação reproduzido."); }} onResetDemo={resetDemo} notify={notify} />}
+          {activeNav === "Configurações" && canManageEmployees && <SettingsSection key={activeDepartment} department={activeDepartment} managerName={currentUser.fullName} employees={sectorEmployees} settings={departmentPermissionSettings} soundEnabled={soundEnabled} motionEnabled={motionEnabled} isMayor={mayorAccess} crossSectorCommunicationEnabled={executiveCommunicationAccess} onSettingsChange={updatePermissionSettings} onSoundChange={setSoundEnabled} onMotionChange={setMotionEnabled} onCrossSectorCommunicationChange={(enabled) => { setExecutiveCommunicationAccess(enabled); notify(enabled ? "Acesso executivo à comunicação de outros setores habilitado." : "Comunicações de outros setores voltaram ao modo privado."); }} onTestSound={() => { playNotificationChime(); notify("Som de notificação reproduzido."); }} onResetDemo={resetDemo} notify={notify} />}
         </div>
         </PermissionProvider>
       </main>
@@ -903,7 +925,7 @@ export default function Home() {
 function getHeading(active: NavItem) {
   const headings: Record<NavItem, { eyebrow: string; title: string; subtitle: string }> = {
     "Visão geral": { eyebrow: "", title: "Bom dia.", subtitle: "Acompanhe as demandas e mantenha as secretarias alinhadas." },
-    "Área do Setor": { eyebrow: "AMBIENTE ESPECIALIZADO", title: "Área do Setor", subtitle: "Formulários, indicadores, equipes e fluxos adaptados às responsabilidades da unidade selecionada." },
+    "Área do Setor": { eyebrow: "AMBIENTE ESPECIALIZADO", title: "Área do Setor", subtitle: "Formulários, endereços, indicadores, equipes e fluxos adaptados às responsabilidades da unidade selecionada." },
     "Fluxos e Anotações": { eyebrow: "MEMÓRIA OPERACIONAL", title: "Fluxos e Anotações", subtitle: "Organize decisões, providências e registros internos em etapas próprias para cada setor." },
     Chamados: { eyebrow: "GESTÃO DE DEMANDAS", title: "Chamados", subtitle: "Organize cada solicitação do recebimento à entrega final." },
     Comunicação: { eyebrow: "CENTRAL DE COMUNICAÇÃO", title: "Conversas", subtitle: "Mensagens diretas e grupos por convite entre as secretarias." },
@@ -1043,9 +1065,67 @@ function TicketsSection({ tickets, department, onStatus, onNew }: { tickets: Tic
   );
 }
 
+function CommunicationPrivacyGate({ department, isMayor, onOpenSettings }: { department: string; isMayor: boolean; onOpenSettings: () => void }) {
+  return <section className="communication-privacy-gate panel">
+    <span className="communication-privacy-icon"><LockKeyhole size={28} /></span>
+    <p className="eyebrow">COMUNICAÇÃO PRIVADA</p>
+    <h2>As conversas de {department} estão protegidas</h2>
+    <p>A comunicação entre servidores e grupos do setor não é aberta automaticamente na visão executiva. O padrão do sistema é privado.</p>
+    <div className="communication-privacy-rules"><span><ShieldCheck size={15} /> Conteúdo de outros setores não carregado</span><span><UsersRound size={15} /> Grupos continuam restritos aos participantes</span><span><LockKeyhole size={15} /> Acesso executivo exige ativação explícita</span></div>
+    {isMayor ? <button className="button primary" onClick={onOpenSettings}><Settings size={15} /> Configurar acesso executivo</button> : <small>Somente o Prefeito pode alterar esta configuração.</small>}
+  </section>;
+}
+
+function ExecutiveCommunicationViewer({ department, users, groups, messages }: { department: string; users: User[]; groups: Group[]; messages: Message[] }) {
+  const threads = useMemo(() => {
+    const grouped = new Map<string, Message[]>();
+    messages.forEach((message) => grouped.set(message.conversationId, [...(grouped.get(message.conversationId) ?? []), message]));
+    return Array.from(grouped.entries()).map(([id, threadMessages]) => {
+      const sorted = [...threadMessages].sort((a, b) => a.createdAt.localeCompare(b.createdAt));
+      const first = sorted[0];
+      if (first?.conversationType === "group") {
+        const group = groups.find((item) => item.id === id);
+        return { id, type: "group" as const, title: group?.name ?? "Grupo setorial", subtitle: group?.description ?? `${sorted.length} mensagens`, messages: sorted };
+      }
+      const participants = directParticipants(id).map((userId) => users.find((user) => user.id === userId)).filter((user): user is User => Boolean(user));
+      return { id, type: "direct" as const, title: participants.map((user) => user.fullName).join(" ↔ ") || "Conversa direta", subtitle: participants.map((user) => user.department).filter((value, index, list) => list.indexOf(value) === index).join(" · "), messages: sorted };
+    }).sort((a, b) => (b.messages[b.messages.length - 1]?.createdAt ?? "").localeCompare(a.messages[a.messages.length - 1]?.createdAt ?? ""));
+  }, [groups, messages, users]);
+  const [selectedId, setSelectedId] = useState(() => threads[0]?.id ?? "");
+  const selectedThread = threads.find((thread) => thread.id === selectedId) ?? threads[0];
+
+  useEffect(() => {
+    if (!threads.length) { setSelectedId(""); return; }
+    if (!threads.some((thread) => thread.id === selectedId)) setSelectedId(threads[0].id);
+  }, [selectedId, threads]);
+
+  return <section className="chat-shell panel executive-chat-viewer">
+    <aside className="conversation-list">
+      <div className="executive-chat-label"><Crown size={15} /><span><strong>Acesso executivo</strong><small>{department}</small></span></div>
+      <div className="conversation-items executive-thread-list">{threads.map((thread) => {
+        const last = thread.messages[thread.messages.length - 1];
+        return <button key={thread.id} className={selectedThread?.id === thread.id ? "conversation active" : "conversation"} onClick={() => setSelectedId(thread.id)}>
+          <span className={thread.type === "group" ? "group-avatar" : "avatar"}>{thread.type === "group" ? <Hash size={16} /> : <MessagesSquare size={15} />}</span>
+          <span><strong>{thread.title}</strong><small>{last?.body || last?.attachmentName || thread.subtitle}</small></span><time>{last ? formatTime(last.createdAt) : ""}</time>
+        </button>;
+      })}{!threads.length && <div className="chat-panel-empty"><LockKeyhole size={24} /><strong>Sem conversas disponíveis</strong><p>Não há mensagens associadas ao setor nesta demonstração.</p></div>}</div>
+    </aside>
+    <div className="chat-main executive-readonly-chat">
+      <header className="chat-header"><div className="group-avatar"><ShieldCheck size={16} /></div><div><strong>{selectedThread?.title ?? "Comunicação do setor"}</strong><span>{selectedThread?.subtitle ?? department}</span></div><span className="chat-mode-badge executive"><Crown size={12} /> Somente consulta</span></header>
+      <div className="executive-access-notice"><ShieldCheck size={14} /><span><strong>Visualização executiva autorizada</strong><small>Este modo existe porque o Prefeito habilitou o acesso intersetorial nas Configurações.</small></span></div>
+      <div className="message-stream message-stream-v2">
+        <div className="date-divider"><span>Mensagens registradas</span></div>
+        {selectedThread?.messages.map((message) => <div key={message.id} className="message executive-message"><span className="activity-avatar blue">{message.senderInitials}</span><div className="message-bubble"><div className="message-meta"><strong>{message.senderName}</strong><time>{formatTime(message.createdAt)}</time></div>{message.body && <p>{message.body}</p>}{message.attachmentName && <div className="file-attachment"><span>{fileBadge(message.attachmentName)}</span><div><strong>{message.attachmentName}</strong><small>Documento anexado</small></div></div>}</div></div>)}
+      </div>
+      <div className="read-only-composer"><LockKeyhole size={16} /><span><strong>Modo executivo de consulta</strong><small>O conteúdo pode ser visualizado, mas mensagens não podem ser enviadas por esta tela.</small></span></div>
+    </div>
+  </section>;
+}
+
 function CommunicationSection({ currentUser, users, groups, messages, tickets, onSend, onSendAttachment, onNewGroup, onTicketStatus }: { currentUser: User; users: User[]; groups: Group[]; messages: Message[]; tickets: Ticket[]; onSend: (message: Message, recipientId?: string) => void; onSendAttachment: (file: File, context: { conversationType: ChatTab; conversationId: string; recipientId?: string; body: string; ticketId?: string | null }) => Promise<boolean>; onNewGroup: () => void; onTicketStatus: (id: string, status: TicketStatus) => void }) {
   const access = useCurrentPermission();
   const [tab, setTab] = useState<ChatTab>("direct");
+  const [conversationSearch, setConversationSearch] = useState("");
   const [selected, setSelected] = useState("u-rafael");
   const [draft, setDraft] = useState("");
   const [pendingFile, setPendingFile] = useState<File | null>(null);
@@ -1070,6 +1150,13 @@ function CommunicationSection({ currentUser, users, groups, messages, tickets, o
   const invitedParticipants = tab === "group"
     ? users.filter((user) => selectedGroup?.pendingUserIds?.includes(user.id))
     : [];
+  const normalizedConversationSearch = normalizeText(conversationSearch);
+  const filteredDirectUsers = directUsers.filter((user) => !normalizedConversationSearch || normalizeText(`${user.fullName} ${user.department}`).includes(normalizedConversationSearch));
+  const filteredGroups = groups.filter((group) => !normalizedConversationSearch || normalizeText(`${group.name} ${group.description}`).includes(normalizedConversationSearch));
+  function lastConversationMessage(type: ChatTab, id: string) {
+    const threadId = type === "direct" ? directConversationId(currentUser.id, id) : id;
+    return [...messages].filter((message) => message.conversationType === type && message.conversationId === threadId).sort((a, b) => b.createdAt.localeCompare(a.createdAt))[0];
+  }
 
   function selectConversation(id: string) { setSelected(id); setPendingTicketId(null); setDetailPanel(null); setMoreOpen(false); }
   function changeTab(next: ChatTab) { setTab(next); setSelected(next === "direct" ? directUsers[0]?.id ?? "" : groups[0]?.id ?? ""); setPendingFile(null); setPendingTicketId(null); setDetailPanel(null); setMoreOpen(false); }
@@ -1099,24 +1186,27 @@ function CommunicationSection({ currentUser, users, groups, messages, tickets, o
           <button className={tab === "direct" ? "active" : ""} onClick={() => changeTab("direct")}>Diretas</button>
           <button className={tab === "group" ? "active" : ""} onClick={() => changeTab("group")}>Grupos <span>{groups.length}</span></button>
         </div>
-        <label className="conversation-search"><Search size={15} /><input placeholder="Buscar conversa..." /></label>
+        <label className="conversation-search"><Search size={15} /><input placeholder="Buscar conversa..." value={conversationSearch} onChange={(event) => setConversationSearch(event.target.value)} /></label>
         {tab === "group" && access.register && <button className="new-group-row" onClick={onNewGroup}><Plus size={14} /> Criar grupo por convite</button>}
         <div className="conversation-items">
-          {tab === "direct" ? directUsers.map((user, index) => (
-            <button key={user.id} className={effectiveSelected === user.id ? "conversation active" : "conversation"} onClick={() => selectConversation(user.id)}>
-              <span className="avatar">{user.initials}</span><span><strong>{user.fullName}</strong><small>{user.department}</small></span>{index < 2 && <i>{index + 1}</i>}
-            </button>
-          )) : groups.map((group) => (
-            <button key={group.id} className={effectiveSelected === group.id ? "conversation active" : "conversation"} onClick={() => selectConversation(group.id)}>
-              <span className="group-avatar"><Hash size={16} /></span><span><strong>{group.name}</strong><small>{group.memberCount} participantes · por convite</small></span>
-            </button>
-          ))}
+          {tab === "direct" ? filteredDirectUsers.map((user, index) => {
+            const last = lastConversationMessage("direct", user.id);
+            return <button key={user.id} className={effectiveSelected === user.id ? "conversation active" : "conversation"} onClick={() => selectConversation(user.id)}>
+              <span className="avatar conversation-avatar">{user.initials}<b /></span><span><strong>{user.fullName}</strong><small>{last?.body || last?.attachmentName || user.department}</small></span><span className="conversation-side"><time>{last ? formatTime(last.createdAt) : ""}</time>{index < 2 && <i>{index + 1}</i>}</span>
+            </button>;
+          }) : filteredGroups.map((group) => {
+            const last = lastConversationMessage("group", group.id);
+            return <button key={group.id} className={effectiveSelected === group.id ? "conversation active" : "conversation"} onClick={() => selectConversation(group.id)}>
+              <span className="group-avatar"><Hash size={16} /></span><span><strong>{group.name}</strong><small>{last?.body || last?.attachmentName || `${group.memberCount} participantes`}</small></span><span className="conversation-side"><time>{last ? formatTime(last.createdAt) : ""}</time></span>
+            </button>;
+          })}
         </div>
       </aside>
       <div className="chat-main">
         <header className="chat-header">
           <div className={tab === "group" ? "group-avatar" : "avatar"}>{tab === "group" ? <Hash size={16} /> : selectedUser?.initials}</div>
           <div><strong>{tab === "group" ? selectedGroup?.name : selectedUser?.fullName}</strong><span>{tab === "group" ? `${selectedGroup?.memberCount ?? 0} participantes` : selectedUser?.department}</span></div>
+          <span className="chat-mode-badge"><LockKeyhole size={12} /> Privado</span>
           <div className="chat-header-actions">
             <button className={detailPanel === "attachments" ? "active" : ""} title="Anexos da conversa" aria-label="Ver anexos da conversa" aria-pressed={detailPanel === "attachments"} onClick={() => togglePanel("attachments")}><ClipboardList size={16} /></button>
             <button className={detailPanel === "participants" ? "active" : ""} title="Participantes" aria-label="Ver participantes da conversa" aria-pressed={detailPanel === "participants"} onClick={() => togglePanel("participants")}><UsersRound size={16} /></button>
@@ -1140,13 +1230,13 @@ function CommunicationSection({ currentUser, users, groups, messages, tickets, o
             {!conversationAttachments.length && <div className="chat-panel-empty"><Paperclip size={24} /><strong>Nenhum anexo enviado</strong><p>Os documentos desta conversa aparecerão aqui.</p></div>}
           </div>}
         </aside>}
-        <div className="message-stream">
+        <div className="message-stream message-stream-v2">
           <div className="date-divider"><span>Hoje</span></div>
           {visibleMessages.length === 0 && <div className="empty-chat"><span><MessagesSquare size={25} /></span><strong>Comece esta conversa</strong><p>Mensagens, chamados e documentos ficarão registrados aqui.</p></div>}
           {visibleMessages.map((message) => (
             <div key={message.id} className={message.senderId === currentUser.id ? "message own" : "message"}>
               <span className="activity-avatar blue">{message.senderInitials}</span>
-              <div>
+              <div className="message-bubble">
                 <div className="message-meta"><strong>{message.senderName}</strong><time>{formatTime(message.createdAt)}</time></div>{message.body && <p>{message.body}</p>}
                 {message.ticketId && <button className="ticket-attachment" onClick={() => setLinkedTicket(tickets.find((ticket) => ticket.id === message.ticketId) ?? null)}><ClipboardList size={12} /> {tickets.find((ticket) => ticket.id === message.ticketId)?.protocol ?? "Chamado relacionado"}</button>}
                 {message.attachmentName && (message.attachmentUrl || message.attachmentId ? <a className="file-attachment" href={message.attachmentUrl ?? `/api/files?id=${encodeURIComponent(message.attachmentId ?? "")}&userId=${encodeURIComponent(currentUser.id)}`} download={message.attachmentName}><span>{fileBadge(message.attachmentName)}</span><div><strong>{message.attachmentName}</strong><small>{message.attachmentSize ? `${formatSize(message.attachmentSize)} · ` : ""}Documento anexado</small></div><i><Download size={14} /></i></a> : <div className="file-attachment"><span>{fileBadge(message.attachmentName)}</span><div><strong>{message.attachmentName}</strong><small>Documento registrado</small></div><i><FileText size={14} /></i></div>)}
@@ -1394,7 +1484,7 @@ function TicketDetailModal({ ticket, onClose, onStatus }: { ticket: Ticket; onCl
     { id: "approve", label: "Submeter ao responsável pela aprovação", done: ticket.status === "Concluído" },
     { id: "proof", label: "Anexar comprovante, parecer ou fotografia final", done: ticket.status === "Concluído" },
   ]);
-  return <div className="modal-backdrop" role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget) onClose(); }}><section className="modal ticket-detail-modal" role="dialog" aria-modal="true" aria-labelledby="ticket-detail-title"><header><div><p className="eyebrow">{ticket.protocol} · {ticket.requester}</p><h2 id="ticket-detail-title">{ticket.title}</h2></div><button type="button" onClick={onClose} aria-label="Fechar"><X size={18} /></button></header><div className="ticket-detail-body"><div className="ticket-detail-meta"><StatusPill status={ticket.status} /><span className={`priority-label ${ticket.priority.toLowerCase().replace("é", "e")}`}>{ticket.priority}</span><span><Clock3 size={13} /> SLA: {formatDue(ticket.dueDate)}</span>{!access.edit && <span className="read-only-chip"><ShieldCheck size={11} /> Somente consulta</span>}</div><p className="ticket-detail-description">{ticket.description}</p><div className="ticket-sla-meter"><strong>SLA operacional</strong><span><i style={{ width: `${ticket.status === "Concluído" ? 100 : ticket.priority === "Urgente" ? 82 : ticket.priority === "Alta" ? 66 : 48}%` }} /></span><em>{formatDue(ticket.dueDate)}</em></div><article className="ticket-timeline"><h3>Linha do tempo do chamado</h3><ol><li><time>08:42</time><i /><span><strong>Chamado registrado</strong>Solicitação recebida e protocolo gerado.</span></li><li><time>09:03</time><i /><span><strong>Triagem concluída</strong>Demanda encaminhada para {ticket.department}.</span></li><li><time>09:18</time><i /><span><strong>Responsável definido</strong>{ticket.assigneeName ?? "Equipe do setor"} assumiu o atendimento.</span></li><li><time>11:07</time><i /><span><strong>Execução atualizada</strong>Status atual: {ticket.status}.</span></li></ol></article><div className="ticket-ownership"><div><small>Responsável principal</small><strong><span className="mini-avatar">{ticket.assigneeInitials ?? "--"}</span>{ticket.assigneeName ?? "A definir"}</strong></div><div><small>Colaboradores</small><strong><span className="avatar-stack"><i>AK</i><i>MC</i><i>+2</i></span>4 participantes</strong></div><div><small>Aprovador</small><strong><ShieldCheck size={14} /> Responsável pelo setor</strong></div></div><div className="ticket-detail-grid"><article className="ticket-checklist"><header><div><h3>Checklist de execução</h3><p>{checklist.filter((item) => item.done).length} de {checklist.length} etapas concluídas</p></div><span>{Math.round(checklist.filter((item) => item.done).length / checklist.length * 100)}%</span></header>{checklist.map((item) => <label key={item.id} className={item.done ? "done" : ""}><input type="checkbox" checked={item.done} disabled={!access.edit} onChange={() => setChecklist((current) => current.map((entry) => entry.id === item.id ? { ...entry, done: !entry.done } : entry))} /><span>{item.label}</span></label>)}{access.edit && <button onClick={() => { setChecklist((current) => [...current, { id: `custom-${current.length + 1}`, label: `Nova etapa ${current.length + 1}`, done: false }]); setFeedback("Nova etapa adicionada ao checklist."); }}><Plus size={13} /> Adicionar etapa</button>}</article><article className="ticket-movement"><h3>Encaminhar para outro setor</h3><p>O setor de origem e todo o histórico serão preservados.</p><select aria-label="Setor de destino" disabled={!access.edit} value={forwardDepartment} onChange={(event) => setForwardDepartment(event.target.value)}><option value="">Selecione o setor de destino</option>{OFFICES.filter((office) => office.name !== ticket.department).map((office) => <option key={office.id}>{office.name}</option>)}</select><textarea aria-label="Motivo do encaminhamento" disabled={!access.edit} placeholder={access.edit ? "Justificativa do encaminhamento..." : "Alteração bloqueada pelo perfil"} />{access.edit && <button className="button secondary" disabled={!forwardDepartment} onClick={() => { setFeedback(`Encaminhamento preparado para ${forwardDepartment}.`); setForwardDepartment(""); }}>Registrar encaminhamento</button>}{feedback && <small className="ticket-inline-feedback"><Check size={11} /> {feedback}</small>}</article></div><article className="ticket-conversation"><div className="ticket-conversation-tabs"><button className={tab === "mensagens" ? "active" : ""} onClick={() => setTab("mensagens")}>Mensagens do chamado</button><button className={tab === "interno" ? "active" : ""} onClick={() => setTab("interno")}><LockKeyholeIcon /> Anotações internas</button></div><div className="ticket-note-feed">{tab === "mensagens" ? <><p><strong>Solicitante</strong><span>A solicitação foi registrada com endereço e fotografias do local.</span><small>13 ago., 08:42</small></p><p><strong>{ticket.assigneeName ?? "Equipe responsável"}</strong><span>A análise inicial foi realizada e o atendimento segue o prazo indicado.</span><small>13 ago., 11:18</small></p></> : <><p className="internal-note"><strong>Nota restrita ao setor</strong><span>Verificar disponibilidade da equipe antes de confirmar a data ao solicitante.</span><small>Somente integrantes autorizados podem visualizar</small></p></>} </div>{access.edit && <div className="ticket-note-compose"><input aria-label={tab === "interno" ? "Adicionar anotação interna" : "Escrever mensagem do chamado"} value={note} onChange={(event) => setNote(event.target.value)} placeholder={tab === "interno" ? "Adicionar anotação interna..." : "Escrever atualização para os participantes..."} /><button disabled={!note.trim()} onClick={() => { setFeedback(tab === "interno" ? "Anotação interna registrada." : "Mensagem registrada no chamado."); setNote(""); }}><Send size={14} /></button></div>}</article><footer className="ticket-detail-footer">{access.edit && <label>Etapa atual<select value={ticket.status} onChange={(event) => onStatus(event.target.value as TicketStatus)}>{statuses.map((status) => <option key={status}>{status}</option>)}</select></label>}<button className="button secondary" onClick={onClose}>Fechar</button>{access.edit && <button className="button primary" onClick={() => { onStatus("Concluído"); setFeedback("Chamado concluído e pesquisa de satisfação liberada."); }}><CheckCircle2 size={15} /> Concluir atendimento</button>}</footer></div></section></div>;
+  return <div className="modal-backdrop" role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget) onClose(); }}><section className="modal ticket-detail-modal" role="dialog" aria-modal="true" aria-labelledby="ticket-detail-title"><header><div><p className="eyebrow">{ticket.protocol} · {ticket.requester}</p><h2 id="ticket-detail-title">{ticket.title}</h2></div><button type="button" onClick={onClose} aria-label="Fechar"><X size={18} /></button></header><div className="ticket-detail-body"><div className="ticket-detail-meta"><StatusPill status={ticket.status} /><span className={`priority-label ${ticket.priority.toLowerCase().replace("é", "e")}`}>{ticket.priority}</span><span><Clock3 size={13} /> SLA: {formatDue(ticket.dueDate)}</span>{!access.edit && <span className="read-only-chip"><ShieldCheck size={11} /> Somente consulta</span>}</div><p className="ticket-detail-description">{ticket.description}</p><div className="ticket-address-card"><span><MapPin size={16} /></span><div><small>Endereço registrado</small><strong>{ticket.address || "Endereço não informado"}</strong><p>{ticket.neighborhood ? `${ticket.neighborhood} · Várzea da Palma/MG` : "Bairro não informado"}</p></div></div><div className="ticket-sla-meter"><strong>SLA operacional</strong><span><i style={{ width: `${ticket.status === "Concluído" ? 100 : ticket.priority === "Urgente" ? 82 : ticket.priority === "Alta" ? 66 : 48}%` }} /></span><em>{formatDue(ticket.dueDate)}</em></div><article className="ticket-timeline"><h3>Linha do tempo do chamado</h3><ol><li><time>08:42</time><i /><span><strong>Chamado registrado</strong>Solicitação recebida e protocolo gerado.</span></li><li><time>09:03</time><i /><span><strong>Triagem concluída</strong>Demanda encaminhada para {ticket.department}.</span></li><li><time>09:18</time><i /><span><strong>Responsável definido</strong>{ticket.assigneeName ?? "Equipe do setor"} assumiu o atendimento.</span></li><li><time>11:07</time><i /><span><strong>Execução atualizada</strong>Status atual: {ticket.status}.</span></li></ol></article><div className="ticket-ownership"><div><small>Responsável principal</small><strong><span className="mini-avatar">{ticket.assigneeInitials ?? "--"}</span>{ticket.assigneeName ?? "A definir"}</strong></div><div><small>Colaboradores</small><strong><span className="avatar-stack"><i>AK</i><i>MC</i><i>+2</i></span>4 participantes</strong></div><div><small>Aprovador</small><strong><ShieldCheck size={14} /> Responsável pelo setor</strong></div></div><div className="ticket-detail-grid"><article className="ticket-checklist"><header><div><h3>Checklist de execução</h3><p>{checklist.filter((item) => item.done).length} de {checklist.length} etapas concluídas</p></div><span>{Math.round(checklist.filter((item) => item.done).length / checklist.length * 100)}%</span></header>{checklist.map((item) => <label key={item.id} className={item.done ? "done" : ""}><input type="checkbox" checked={item.done} disabled={!access.edit} onChange={() => setChecklist((current) => current.map((entry) => entry.id === item.id ? { ...entry, done: !entry.done } : entry))} /><span>{item.label}</span></label>)}{access.edit && <button onClick={() => { setChecklist((current) => [...current, { id: `custom-${current.length + 1}`, label: `Nova etapa ${current.length + 1}`, done: false }]); setFeedback("Nova etapa adicionada ao checklist."); }}><Plus size={13} /> Adicionar etapa</button>}</article><article className="ticket-movement"><h3>Encaminhar para outro setor</h3><p>O setor de origem e todo o histórico serão preservados.</p><select aria-label="Setor de destino" disabled={!access.edit} value={forwardDepartment} onChange={(event) => setForwardDepartment(event.target.value)}><option value="">Selecione o setor de destino</option>{OFFICES.filter((office) => office.name !== ticket.department).map((office) => <option key={office.id}>{office.name}</option>)}</select><textarea aria-label="Motivo do encaminhamento" disabled={!access.edit} placeholder={access.edit ? "Justificativa do encaminhamento..." : "Alteração bloqueada pelo perfil"} />{access.edit && <button className="button secondary" disabled={!forwardDepartment} onClick={() => { setFeedback(`Encaminhamento preparado para ${forwardDepartment}.`); setForwardDepartment(""); }}>Registrar encaminhamento</button>}{feedback && <small className="ticket-inline-feedback"><Check size={11} /> {feedback}</small>}</article></div><article className="ticket-conversation"><div className="ticket-conversation-tabs"><button className={tab === "mensagens" ? "active" : ""} onClick={() => setTab("mensagens")}>Mensagens do chamado</button><button className={tab === "interno" ? "active" : ""} onClick={() => setTab("interno")}><LockKeyholeIcon /> Anotações internas</button></div><div className="ticket-note-feed">{tab === "mensagens" ? <><p><strong>Solicitante</strong><span>A solicitação foi registrada com endereço e fotografias do local.</span><small>13 ago., 08:42</small></p><p><strong>{ticket.assigneeName ?? "Equipe responsável"}</strong><span>A análise inicial foi realizada e o atendimento segue o prazo indicado.</span><small>13 ago., 11:18</small></p></> : <><p className="internal-note"><strong>Nota restrita ao setor</strong><span>Verificar disponibilidade da equipe antes de confirmar a data ao solicitante.</span><small>Somente integrantes autorizados podem visualizar</small></p></>} </div>{access.edit && <div className="ticket-note-compose"><input aria-label={tab === "interno" ? "Adicionar anotação interna" : "Escrever mensagem do chamado"} value={note} onChange={(event) => setNote(event.target.value)} placeholder={tab === "interno" ? "Adicionar anotação interna..." : "Escrever atualização para os participantes..."} /><button disabled={!note.trim()} onClick={() => { setFeedback(tab === "interno" ? "Anotação interna registrada." : "Mensagem registrada no chamado."); setNote(""); }}><Send size={14} /></button></div>}</article><footer className="ticket-detail-footer">{access.edit && <label>Etapa atual<select value={ticket.status} onChange={(event) => onStatus(event.target.value as TicketStatus)}>{statuses.map((status) => <option key={status}>{status}</option>)}</select></label>}<button className="button secondary" onClick={onClose}>Fechar</button>{access.edit && <button className="button primary" onClick={() => { onStatus("Concluído"); setFeedback("Chamado concluído e pesquisa de satisfação liberada."); }}><CheckCircle2 size={15} /> Concluir atendimento</button>}</footer></div></section></div>;
 }
 
 function LockKeyholeIcon() { return <ShieldCheck size={13} />; }
@@ -1412,7 +1502,7 @@ function TicketModal({ users, onClose, onCreate }: { users: User[]; onClose: () 
         <label className="field full"><span>Modelo da solicitação</span><select name="template" defaultValue="Solicitação geral"><option>Solicitação geral</option><option>Manutenção de veículo</option><option>Solicitação de material</option><option>Reparo em iluminação</option><option>Suporte de informática</option><option>Produção de arte e comunicação</option><option>Agendamento de espaço</option><option>Solicitação de transporte</option><option>Compra ou contratação</option><option>Vistoria técnica</option></select><small className="field-hint">O modelo define checklist, documentos obrigatórios e prazo padrão.</small></label>
         <label className="field full"><span>Título do chamado *</span><input name="title" required placeholder="Ex.: Reparo da iluminação da avenida" autoFocus /></label>
         <label className="field full"><span>Descrição</span><textarea name="description" placeholder="Inclua contexto, entregáveis, local e observações..." /></label>
-        <NeighborhoodMapField neighborhood={neighborhood} address={address} onNeighborhoodChange={setNeighborhood} onAddressChange={setAddress} />
+        <AddressRegistrationField neighborhood={neighborhood} address={address} onNeighborhoodChange={setNeighborhood} onAddressChange={setAddress} />
         <label className="field"><span>Secretaria responsável *</span><select name="department" required value={department} onChange={(event) => setDepartment(event.target.value)}><option value="" disabled>Selecione</option>{OFFICE_CATEGORIES.map((group) => <optgroup label={group} key={group}>{OFFICES.filter((office) => office.category === group).map((office) => <option key={office.id}>{office.name}</option>)}</optgroup>)}</select></label>
         <label className="field"><span>Responsável principal</span><select name="assigneeId" defaultValue="" disabled={!department}><option value="">{department ? "A definir" : "Selecione primeiro o setor"}</option>{eligibleUsers.map((user) => <option key={user.id} value={user.id}>{user.fullName}</option>)}</select></label>
         <label className="field"><span>Prioridade</span><select name="priority" defaultValue="Média"><option>Urgente</option><option>Alta</option><option>Média</option><option>Baixa</option></select></label>
@@ -1532,6 +1622,18 @@ function normalizeText(value: string) { return value.normalize("NFD").replace(/[
 function isExecutiveAccess(user: User) { const role = normalizeText(user.role).replaceAll(" ", "-"); return role === "prefeito" || role === "vice-prefeito"; }
 function isSectorManager(user: User) { return !normalizeText(user.role).includes("funcionario"); }
 function makeInitials(fullName: string) { const names = fullName.trim().split(/\s+/).filter(Boolean); return `${names[0]?.[0] ?? ""}${names.length > 1 ? names[names.length - 1]?.[0] ?? "" : names[0]?.[1] ?? ""}`.toUpperCase(); }
+function isMayor(user: User) { return normalizeText(user.role).trim() === "prefeito"; }
+function directParticipants(conversationId: string) { return conversationId.split("::").filter(Boolean); }
+function messageVisibleToUser(message: Message, userId: string, groups: Group[]) {
+  if (message.conversationType === "direct") return directParticipants(message.conversationId).includes(userId);
+  return Boolean(groups.find((group) => group.id === message.conversationId)?.memberUserIds?.includes(userId));
+}
+function messageTouchesDepartment(message: Message, department: string, users: User[], groups: Group[]) {
+  if (message.conversationType === "direct") return directParticipants(message.conversationId).some((userId) => users.some((user) => user.id === userId && sameDepartment(user.department, department)));
+  const group = groups.find((item) => item.id === message.conversationId);
+  return Boolean(group?.memberUserIds?.some((userId) => users.some((user) => user.id === userId && sameDepartment(user.department, department))));
+}
+
 function directConversationId(firstUserId: string, secondUserId: string) { return [firstUserId, secondUserId].sort().join("::"); }
 function fileBadge(name: string) { const extension = name.split(".").pop()?.toUpperCase() ?? "DOC"; return extension.slice(0, 4); }
 function makeId() { return globalThis.crypto?.randomUUID?.() ?? `demo-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`; }

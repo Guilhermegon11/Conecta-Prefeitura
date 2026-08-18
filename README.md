@@ -118,7 +118,7 @@ Esta versão inclui uma camada de evolução do produto sem remover o modo demon
 - **central de aprovações** e decisões auditáveis;
 - **construtor de formulários** para rotinas setoriais;
 - **operação mobile/PWA** para equipes de campo;
-- **mapa operacional por camadas**;
+- **registro estruturado de bairro e endereço**;
 - **notificações inteligentes** e regras de escalonamento;
 - **gestão documental** com versionamento;
 - **escopo de permissões** por usuário/setor e acesso temporário;
