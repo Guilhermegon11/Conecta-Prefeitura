@@ -10,6 +10,9 @@ import {
   Check,
   CheckCircle2,
   ChevronRight,
+  CalendarDays,
+  TrendingUp,
+  ArrowUpRight,
   ClipboardCheck,
   Clock3,
   CloudOff,
@@ -30,6 +33,9 @@ import {
   Smartphone,
   Target,
   UsersRound,
+  Wrench,
+  CalendarClock,
+  FileCheck2,
   X,
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
@@ -177,6 +183,36 @@ function toneFor(status:string) {
   return "info";
 }
 
+
+const MAP_POINT_POSITIONS: Record<string,{x:number;y:number}> = {
+  "UBS Norte":{x:20,y:74},
+  "Centro":{x:51,y:54},
+  "Barra do Guaicuí":{x:77,y:75},
+  "Planalto":{x:26,y:33},
+  "Pinlar I":{x:34,y:69},
+  "Rua São Pedro":{x:57,y:68},
+  "Estrada Ribeirinha":{x:81,y:36},
+  "Sede da Subprefeitura":{x:46,y:56},
+  "Praça Central":{x:55,y:46},
+  "Rua Dr. Ensch":{x:31,y:59},
+  "Bairro Planalto":{x:24,y:30},
+  "Paço Municipal":{x:50,y:50},
+  "Almoxarifado Central":{x:42,y:40},
+  "Secretaria de Educação":{x:60,y:61},
+  "Zona Norte":{x:26,y:26},
+  "Comunidade Lagoa":{x:69,y:31},
+  "Acesso Norte":{x:62,y:24},
+  "Estação Ferroviária":{x:83,y:61},
+  "Casa da Cultura":{x:57,y:48},
+  "Auditório Municipal":{x:53,y:40},
+  "Escola Central":{x:48,y:45},
+  "Acesso à comunidade Ribeirinha":{x:81,y:34},
+};
+
+function mapPointPosition(label:string,index:number) {
+  return MAP_POINT_POSITIONS[label] ?? [{x:24,y:34},{x:52,y:52},{x:78,y:70},{x:39,y:66}][index % 4];
+}
+
 export function SectorWorkspaceSection({department,userName,userRole,departments,notify}:{department:string;userName:string;userRole:string;departments:string[];notify:Notify}) {
   const access=useCurrentPermission();
   const profile=profileFor(department);
@@ -189,12 +225,42 @@ export function SectorWorkspaceSection({department,userName,userRole,departments
   const [statusFilter,setStatusFilter]=useState("Todos os status");
   const [layer,setLayer]=useState("Todas as camadas");
   const [selectedPoint,setSelectedPoint]=useState(profile.mapPoints[0]);
+  const [periodFilter,setPeriodFilter]=useState<"Hoje"|"Semana"|"Mês">("Hoje");
+  const [priorityFilter,setPriorityFilter]=useState<"Todas"|"Críticas"|"Em andamento">("Todas");
   const [referrals,setReferrals]=useState<Array<[string,string,string]>>([["Secretaria de Administração e Finanças","Solicitação de apoio administrativo","Somente dados necessários"],["Secretaria de Comunicação e Eventos","Divulgação de ação do setor","Informações institucionais"]]);
   const [hydrated,setHydrated]=useState(false);
   const selectedPointMapLink=`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(`${selectedPoint[0]}, Várzea da Palma, MG`)}`;
   const storageKey=`prefeitura-conecta:sector:${department}`;
 
   const visibleRecords=useMemo(()=>records.filter(item=>item.join(" ").toLowerCase().includes(query.toLowerCase())&&(statusFilter==="Todos os status"||item[2].toLowerCase().includes(statusFilter.toLowerCase()))),[records,query,statusFilter]);
+  const centralCards=useMemo(()=>records.slice(0,3).map(([title,detail,status],index)=>({
+    title,
+    detail,
+    status,
+    time:["Hoje · 09:00","Hoje · 14:00","Amanhã · 08:30"][index] ?? "Hoje",
+    action:["Abrir agenda","Acompanhar","Ver responsável"][index] ?? "Abrir"
+  })),[records]);
+  const quickModules=profile.modules.slice(0,3);
+  const routineModules=profile.modules.slice(3);
+  const heroHighlights=[
+    {label:"Pendências críticas",value:String(records.filter(item=>toneFor(item[2])!=="success").length)},
+    {label:"Compromissos no mapa",value:String(profile.mapPoints.length)},
+    {label:"Encaminhamentos ativos",value:String(referrals.length)},
+  ];
+  const mapCommitments=useMemo(()=>profile.mapPoints.map((point,index)=>{
+    const position=mapPointPosition(point[0],index);
+    const related=records[index];
+    return {
+      point,
+      x:position.x,
+      y:position.y,
+      title:related?.[0] ?? point[1],
+      detail:related?.[1] ?? point[1],
+      status:related?.[2] ?? point[2],
+      note:`${point[0]} · ${related?.[1] ?? point[1]}`,
+    };
+  }),[profile.mapPoints,records]);
+  const selectedCommitment=useMemo(()=>mapCommitments.find(item=>item.point[0]===selectedPoint[0]) ?? mapCommitments[0], [mapCommitments,selectedPoint]);
 
   useEffect(()=>{
     const timer=window.setTimeout(()=>{
@@ -218,16 +284,26 @@ export function SectorWorkspaceSection({department,userName,userRole,departments
   function createReferral(event:FormEvent<HTMLFormElement>){event.preventDefault();if(!access.register)return;const form=new FormData(event.currentTarget);const destination=String(form.get("destination"));const subject=String(form.get("subject"));const scope=String(form.get("scope"));setReferrals(current=>[[destination,subject,scope],...current]);event.currentTarget.reset();notify(`Encaminhamento preparado para ${destination} com compartilhamento controlado.`);}
 
   return <section className="sector-workspace">
-    <article className="sector-hero">
+    <article className="sector-hero sector-hero-v2 sector-hero-compact">
       <span className="sector-hero-icon"><Building2 size={26}/></span>
-      <div><p className="eyebrow">ÁREA ESPECÍFICA DO SETOR</p><h2>{profile.title}</h2><p>{profile.mission}</p><small><ShieldCheck size={13}/>{department} · {userRole} · acesso conforme o perfil</small></div>
+      <div className="sector-hero-copy">
+        <p className="eyebrow">ÁREA ESPECÍFICA DO SETOR</p>
+        <h2>{profile.title}</h2>
+        <p>{profile.mission}</p>
+        <div className="sector-context-row">
+          <span><ShieldCheck size={13}/>{department}</span>
+          <span><UsersRound size={13}/>{userRole}</span>
+          <span><CalendarDays size={13}/>Painel atualizado hoje</span>
+        </div>
+        <div className="sector-hero-highlights">{heroHighlights.map(item=><div key={item.label}><strong>{item.value}</strong><small>{item.label}</small></div>)}</div>
+      </div>
       <div className="sector-hero-actions">{access.register?<><button className="button secondary" onClick={()=>setFieldModal(true)}><Navigation size={15}/> Registrar atividade externa</button><button className="button primary" onClick={()=>openRecord()}><Plus size={15}/> Cadastrar {profile.recordLabel}</button></>:<span className="sector-access-badge"><LockKeyhole size={14}/>Perfil de consulta</span>}</div>
     </article>
 
-    <nav className="sector-tabs" aria-label="Navegação da área do setor">{(Object.keys(TAB_META) as WorkspaceTab[]).map(item=>{const Icon=TAB_META[item].icon;return <button key={item} className={tab===item?"active":""} onClick={()=>setTab(item)}><Icon size={16}/><span>{TAB_META[item].label}</span></button>})}</nav>
+    <nav className="sector-tabs sector-tabs-v2" aria-label="Navegação da área do setor">{(Object.keys(TAB_META) as WorkspaceTab[]).map(item=>{const Icon=TAB_META[item].icon;const badge=item==="Encaminhamentos"?referrals.length:item==="Equipes de campo"?profile.teams.length:item==="Mapa municipal"?profile.mapPoints.length:0;return <button key={item} className={tab===item?"active":""} onClick={()=>setTab(item)}><Icon size={16}/><span>{TAB_META[item].label}</span>{badge>0&&<b>{badge}</b>}</button>})}</nav>
 
-    <div className="sector-command-bar">
-      <div><span className="sector-live-dot"/><span><strong>Central do dia</strong><small>{records.length} registros · {referrals.length} encaminhamentos acompanhados</small></span></div>
+    <div className="sector-command-bar sector-command-bar-v2">
+      <div className="sector-command-summary"><span className="sector-live-dot"/><span><strong>Central do dia</strong><small>{records.length} registros ativos · {referrals.length} encaminhamentos acompanhados</small></span><i>{periodFilter}</i></div>
       <nav aria-label="Atalhos operacionais">
         <button onClick={()=>setTab("Cadastros e formulários")}><FileText size={15}/><span>Consultar registros</span></button>
         <button onClick={()=>setTab("Equipes de campo")}><Navigation size={15}/><span>Ver equipes</span></button>
@@ -238,14 +314,41 @@ export function SectorWorkspaceSection({department,userName,userRole,departments
     {!access.edit&&<div className="sector-readonly-banner"><ShieldCheck size={16}/><span><strong>Acesso controlado</strong> Você pode consultar esta área. Ações de registro e alteração dependem da permissão definida pelo secretário.</span></div>}
 
     {tab==="Painel setorial"&&<>
-      <div className="sector-metrics">{profile.metrics.map(([label,value,detail],index)=><article className="panel" key={label}><span className={["teal","blue","amber","green"][index]}>{[<Activity key="a" size={19}/>,<Clock3 key="b" size={19}/>,<AlertTriangle key="c" size={19}/>,<CheckCircle2 key="d" size={19}/>][index]}</span><div><small>{label}</small><strong>{value}</strong><p>{detail}</p></div></article>)}</div>
-      <article className="panel sector-flow-panel"><header><div><p className="eyebrow">FLUXO OPERACIONAL</p><h3>Andamento dos serviços do setor</h3></div><button onClick={()=>setTab("Cadastros e formulários")}>Ver todos <ChevronRight size={13}/></button></header><div>{[["Recebidos",12,"info"],["Em execução",8,"warning"],["Em revisão",4,"teal"],["Concluídos",18,"success"]].map(([label,value,tone])=><button key={String(label)} onClick={()=>setTab("Cadastros e formulários")}><i className={String(tone)}/><span><strong>{value}</strong><small>{label}</small></span><ChevronRight size={14}/></button>)}</div></article>
-      <div className="sector-overview-grid"><article className="panel sector-modules"><header><div><h3>Ferramentas de {profile.title.toLowerCase()}</h3><p>Recursos disponíveis somente para este contexto setorial.</p></div><Layers3 size={18}/></header><div>{profile.modules.map((module,index)=><button key={module} onClick={()=>{setTab("Cadastros e formulários");notify(`${module}: registros e formulários disponíveis.`)}}><span>{index+1}</span><strong>{module}</strong><ChevronRight size={14}/></button>)}</div></article><aside className="sector-side-stack"><article className="panel sector-priority"><header><AlertTriangle size={17}/><span><strong>Prioridades do setor</strong><small>Atualizadas hoje</small></span></header>{records.slice(0,3).map(([title,detail,status])=><button key={title} onClick={()=>setTab("Cadastros e formulários")}><span><strong>{title}</strong><small>{detail}</small></span><i className={toneFor(status)}>{status}</i></button>)}</article><article className="panel sector-privacy"><LockKeyhole size={18}/><div><strong>Proteção e finalidade</strong><p>{profile.privacy}</p></div></article></aside></div>
+      <article className="panel sector-day-panel">
+        <header>
+          <div>
+            <p className="eyebrow">CENTRAL DO DIA</p>
+            <h3>Prioridades, agenda e pendências imediatas</h3>
+            <span>{centralCards.length} prioridades acompanhadas · {referrals.length} encaminhamentos com retorno esperado</span>
+          </div>
+          <div className="sector-day-filters">
+            <div className="sector-chip-group">{(["Hoje","Semana","Mês"] as const).map(item=><button key={item} className={periodFilter===item?"active":""} onClick={()=>setPeriodFilter(item)}>{item}</button>)}</div>
+            <div className="sector-chip-group">{(["Todas","Críticas","Em andamento"] as const).map(item=><button key={item} className={priorityFilter===item?"active":""} onClick={()=>setPriorityFilter(item)}>{item}</button>)}</div>
+          </div>
+        </header>
+        <div className="sector-day-grid">{centralCards.filter(card=>priorityFilter==="Todas"||priorityFilter==="Críticas"?toneFor(card.status)!=="success":card.status.toLowerCase().includes("andamento")||card.status.toLowerCase().includes("execução")).map(card=><button key={card.title} className="sector-day-card" onClick={()=>setTab("Cadastros e formulários")}><span className="sector-day-time"><CalendarClock size={14}/>{card.time}</span><strong>{card.title}</strong><p>{card.detail}</p><footer><i className={toneFor(card.status)}>{card.status}</i><span>{card.action} <ArrowRight size={13}/></span></footer></button>)}</div>
+      </article>
+
+      <div className="sector-metrics sector-metrics-v2">{profile.metrics.map(([label,value,detail],index)=>{const progress=[78,91,63,86][index]??75;return <article className="panel" key={label}><div className="sector-metric-top"><span className={["teal","blue","amber","green"][index]}>{[<Activity key="a" size={19}/>,<Clock3 key="b" size={19}/>,<AlertTriangle key="c" size={19}/>,<CheckCircle2 key="d" size={19}/>][index]}</span><span className="sector-metric-trend"><TrendingUp size={12}/>{index===2?"atenção":"estável"}</span></div><div className="sector-metric-copy"><small>{label}</small><strong>{value}</strong><p>{detail}</p></div><div className="sector-metric-progress"><i style={{width:`${progress}%`}}/></div></article>})}</div>
+
+      <article className="panel sector-flow-panel sector-flow-v2"><header><div><p className="eyebrow">FLUXO OPERACIONAL</p><h3>Andamento dos serviços do setor</h3><span>42 movimentações acompanhadas neste ciclo</span></div><button onClick={()=>setTab("Cadastros e formulários")}>Abrir registros <ArrowUpRight size={13}/></button></header><div>{[["Recebidos",12,"info","29%"],["Em triagem",5,"warning","12%"],["Em execução",8,"teal","19%"],["Concluídos",18,"success","42%"]].map(([label,value,tone,share],index)=><button key={String(label)} onClick={()=>setTab("Cadastros e formulários")}><div className={`sector-flow-step ${String(tone)}`}><span>{index+1}</span></div><span><strong>{value}</strong><small>{label}</small><em>{share} do fluxo</em></span><ChevronRight size={14}/></button>)}</div></article>
+
+      <div className="sector-overview-grid sector-overview-v2">
+        <div className="sector-operation-stack">
+          <article className="panel sector-modules sector-modules-v2"><header><div><p className="eyebrow">AÇÕES RÁPIDAS</p><h3>O que a equipe mais usa agora</h3><p>Atalhos diretos para registrar, acompanhar e executar.</p></div><Layers3 size={18}/></header><div>{quickModules.map((module,index)=>{const icons=[CalendarClock,UsersRound,Wrench];const ModuleIcon=icons[index%icons.length];return <button key={module} onClick={()=>{setTab("Cadastros e formulários");notify(`${module}: registros e formulários disponíveis.`)}}><span className="sector-module-icon"><ModuleIcon size={15}/></span><span className="sector-module-copy"><strong>{module}</strong><small>{index===0?"Atalho principal do setor":"Abrir rotina operacional"}</small></span><ArrowUpRight size={14}/></button>})}</div></article>
+          <article className="panel sector-routines-card"><header><div><p className="eyebrow">ROTINAS DO SETOR</p><h3>Gestão e acompanhamento contínuo</h3></div><FileCheck2 size={18}/></header><div>{routineModules.map((module,index)=>{const icons=[FileCheck2,ClipboardCheck,Target];const ModuleIcon=icons[index%icons.length];return <button key={module} onClick={()=>notify(`${module}: visão operacional aberta.`)}><span className="sector-module-icon"><ModuleIcon size={15}/></span><span className="sector-module-copy"><strong>{module}</strong><small>Indicadores, histórico e responsáveis</small></span><ChevronRight size={14}/></button>})}</div></article>
+        </div>
+
+        <aside className="sector-side-stack sector-side-stack-v2">
+          <article className="panel sector-priority sector-priority-v2"><header><div className="sector-priority-title"><span><AlertTriangle size={17}/></span><div><strong>Prioridades do setor</strong><small>Itens que exigem acompanhamento</small></div></div><button onClick={()=>setTab("Cadastros e formulários")}>Ver todas</button></header>{records.slice(0,4).map(([title,detail,status],index)=><button key={title} onClick={()=>setTab("Cadastros e formulários")}><span className="sector-priority-rank">{String(index+1).padStart(2,"0")}</span><span className="sector-priority-copy"><strong>{title}</strong><small>{detail}</small><em>Responsável: {index===0?userName:profile.teams[index%profile.teams.length]?.[0] ?? "Equipe setorial"}</em></span><span className="sector-priority-meta"><i className={toneFor(status)}>{status}</i><small>{index===0?"Prazo hoje":"Acompanhar nesta semana"}</small><ChevronRight size={14}/></span></button>)}</article>
+          <article className="panel sector-privacy sector-privacy-v2"><span><LockKeyhole size={17}/></span><div><strong>Dados protegidos por perfil</strong><p>{profile.privacy}</p><button onClick={()=>notify("Política de acesso e finalidade consultada.")}>Ver regras de acesso <ChevronRight size={12}/></button></div></article>
+        </aside>
+      </div>
     </>}
 
     {tab==="Cadastros e formulários"&&<div className="sector-record-layout"><aside className="panel sector-form-catalog"><header><BookOpenCheck size={19}/><div><h3>Formulários do setor</h3><p>Campos e checklists adaptados à atividade.</p></div></header>{profile.forms.map((form,index)=><button key={form} onClick={()=>openRecord(form)}><span>{String(index+1).padStart(2,"0")}</span><strong>{form}</strong><ChevronRight size={13}/></button>)}</aside><article className="panel sector-records"><div className="module-toolbar"><label className="module-search"><Search size={15}/><input aria-label="Buscar nos registros do setor" value={query} onChange={event=>setQuery(event.target.value)} placeholder="Buscar registros específicos..."/></label><select aria-label="Filtrar registros" value={statusFilter} onChange={event=>setStatusFilter(event.target.value)}><option>Todos os status</option><option>Prioridade</option><option>Em andamento</option><option>Em análise</option><option>Agendado</option><option>Concluído</option></select>{access.register&&<button className="button primary" onClick={()=>openRecord()}><Plus size={15}/> Novo registro</button>}</div><div className="sector-record-list">{visibleRecords.map(([title,detail,status],index)=><button key={`${title}-${index}`} onClick={()=>notify(`Ficha de “${title}” aberta com histórico, documentos e responsáveis.`)}><span className="sector-record-icon"><FileText size={16}/></span><span><strong>{title}</strong><small>{detail}</small></span><i className={toneFor(status)}>{status}</i><ChevronRight size={14}/></button>)}{visibleRecords.length===0&&<div className="sector-empty"><Search size={22}/><strong>Nenhum registro encontrado</strong><p>Revise a busca ou selecione outro status.</p></div>}</div></article></div>}
 
-    {tab==="Mapa municipal"&&<div className="sector-map-layout"><article className="panel sector-map-panel"><header><div><span className="map-source-label"><MapPin size={13}/>Várzea da Palma · Minas Gerais</span><h3>Mapa municipal real</h3><p>Base cartográfica centralizada nas coordenadas enviadas: −17.5989135, −44.7331539.</p></div><div className="map-header-actions"><select aria-label="Registros exibidos no mapa" value={layer} onChange={event=>setLayer(event.target.value)}><option>Todas as camadas</option>{profile.mapLayers.map(item=><option key={item}>{item}</option>)}</select><a className="button secondary" href={MUNICIPAL_MAP_LINK} target="_blank" rel="noreferrer"><ExternalLink size={13}/>Abrir no Google Maps</a></div></header><div className="sector-map-canvas real-map"><iframe title="Mapa real de Várzea da Palma, Minas Gerais" src={MUNICIPAL_MAP_EMBED} loading="lazy" referrerPolicy="no-referrer-when-downgrade" allowFullScreen/></div><div className="map-operational-points"><div><h4>Pontos operacionais de {department}</h4><p>Registros de demonstração. O endereço oficial deverá ser informado para posicionamento preciso.</p></div><div>{profile.mapPoints.map((point,index)=><button aria-label={`Selecionar ${point[0]}: ${point[1]}`} key={point[0]} className={selectedPoint[0]===point[0]?"selected":""} onClick={()=>setSelectedPoint(point)}><span>{index+1}</span><span><strong>{point[0]}</strong><small>{point[1]}</small></span><i className={toneFor(point[2])}>{point[2]}</i></button>)}</div></div><footer><span className="map-real-note"><ShieldCheck size={13}/>Mapa real; registros setoriais ainda são simulados no protótipo.</span><span><i className="layer-1"/>Camada ativa: {layer}</span></footer></article><aside className="panel map-detail-card"><span className="map-detail-icon"><MapPin size={22}/></span><p className="eyebrow">REGISTRO SELECIONADO</p><h3>{selectedPoint[0]}</h3><p>{selectedPoint[1]}</p><i className={toneFor(selectedPoint[2])}>{selectedPoint[2]}</i><dl><div><dt>Setor responsável</dt><dd>{department}</dd></div><div><dt>Município</dt><dd>Várzea da Palma, Minas Gerais</dd></div><div><dt>Georreferenciamento</dt><dd>Endereço oficial pendente de cadastro</dd></div></dl><a className="button primary" href={selectedPointMapLink} target="_blank" rel="noreferrer"><ExternalLink size={14}/>Pesquisar localização</a><button className="button secondary" onClick={()=>notify(`Ficha territorial de ${selectedPoint[0]} aberta.`)}>Abrir ficha territorial</button></aside></div>}
+    {tab==="Mapa municipal"&&<div className="sector-map-layout"><article className="panel sector-map-panel"><header><div><span className="map-source-label"><MapPin size={13}/>Várzea da Palma · Minas Gerais</span><h3>Mapa municipal real</h3><p>Os compromissos e registros do setor aparecem sobre o mapa para facilitar a leitura territorial.</p></div><div className="map-header-actions"><select aria-label="Registros exibidos no mapa" value={layer} onChange={event=>setLayer(event.target.value)}><option>Todas as camadas</option>{profile.mapLayers.map(item=><option key={item}>{item}</option>)}</select><a className="button secondary" href={MUNICIPAL_MAP_LINK} target="_blank" rel="noreferrer"><ExternalLink size={13}/>Abrir no Google Maps</a></div></header><div className="sector-map-canvas real-map"><iframe title="Mapa real de Várzea da Palma, Minas Gerais" src={MUNICIPAL_MAP_EMBED} loading="lazy" referrerPolicy="no-referrer-when-downgrade" allowFullScreen/><div className="map-overlay-note"><MapPin size={13}/>Compromissos no território</div>{mapCommitments.map((commitment,index)=><button aria-label={`Selecionar compromisso em ${commitment.point[0]}`} key={commitment.point[0]} className={`map-commitment-marker ${selectedPoint[0]===commitment.point[0]?"active":""}`} style={{left:`${commitment.x}%`,top:`${commitment.y}%`}} onClick={()=>setSelectedPoint(commitment.point)}><span>{index+1}</span><strong>{commitment.point[0]}</strong><small>{commitment.title}</small></button>)}</div><div className="map-operational-points"><div><h4>Compromissos localizados de {department}</h4><p>Os cartões abaixo também estão posicionados sobre o mapa conforme o território de atuação.</p></div><div>{mapCommitments.map((commitment,index)=><button aria-label={`Selecionar ${commitment.point[0]}: ${commitment.title}`} key={commitment.point[0]} className={selectedPoint[0]===commitment.point[0]?"selected":""} onClick={()=>setSelectedPoint(commitment.point)}><span>{index+1}</span><span><strong>{commitment.point[0]}</strong><small>{commitment.title}</small></span><i className={toneFor(commitment.status)}>{commitment.status}</i></button>)}</div></div><footer><span className="map-real-note"><ShieldCheck size={13}/>Mapa real com compromissos setoriais posicionados no protótipo.</span><span><i className="layer-1"/>Camada ativa: {layer}</span></footer></article><aside className="panel map-detail-card"><span className="map-detail-icon"><MapPin size={22}/></span><p className="eyebrow">COMPROMISSO SELECIONADO</p><h3>{selectedCommitment?.title ?? selectedPoint[0]}</h3><p>{selectedCommitment?.detail ?? selectedPoint[1]}</p><i className={toneFor(selectedCommitment?.status ?? selectedPoint[2])}>{selectedCommitment?.status ?? selectedPoint[2]}</i><dl><div><dt>Local</dt><dd>{selectedPoint[0]}</dd></div><div><dt>Setor responsável</dt><dd>{department}</dd></div><div><dt>Município</dt><dd>Várzea da Palma, Minas Gerais</dd></div><div><dt>Georreferenciamento</dt><dd>Posicionamento visual aplicado ao compromisso</dd></div></dl><div className="map-related-summary"><strong>Resumo operacional</strong><small>{selectedCommitment?.note ?? `${selectedPoint[0]} · ${selectedPoint[1]}`}</small></div><a className="button primary" href={selectedPointMapLink} target="_blank" rel="noreferrer"><ExternalLink size={14}/>Pesquisar localização</a><button className="button secondary" onClick={()=>notify(`Ficha territorial de ${selectedPoint[0]} aberta.`)}>Abrir ficha territorial</button></aside></div>}
 
     {tab==="Equipes de campo"&&<><article className="field-app-banner"><span><Smartphone size={24}/></span><div><p className="eyebrow">APLICATIVO DE CAMPO</p><h3>Registro móvel com funcionamento temporariamente offline</h3><p>Localização, fotos, checklist, horário, materiais, assinatura e observações são sincronizados quando houver conexão.</p></div><span className="offline-badge"><CloudOff size={14}/>Modo offline disponível no protótipo</span>{access.register&&<button className="button primary" onClick={()=>setFieldModal(true)}>Nova atividade de campo</button>}</article><div className="field-team-grid">{profile.teams.map(([team,size,status],index)=><article className="panel" key={team}><header><span>{index+1}</span><i className={toneFor(status)}>{status}</i></header><h3>{team}</h3><p><UsersRound size={14}/>{size}</p><div className="team-progress"><span><i style={{width:`${[74,92,61][index]}%`}}/></span><small>{["3 atividades hoje","Rota atualizada","2 pendências"][index]}</small></div><button onClick={()=>access.register?setFieldModal(true):notify(`Agenda e histórico da equipe “${team}” abertos para consulta.`)}>{access.register?"Registrar atividade":"Consultar atividades"} <ArrowRight size={13}/></button></article>)}</div></>}
 

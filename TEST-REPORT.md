@@ -75,3 +75,17 @@ Alterações:
 - O tipo `PayloadLike` foi removido do código.
 
 Sinal de que o deploy está usando esta versão: o log/erro, caso cite a chamada, deve mostrar `{ userId: payload.userId }`, não `payload` como segundo argumento.
+
+## Atualização — Área do Setor v2
+
+- Refinada hierarquia do hero e contexto do setor.
+- Navegação e central operacional compactadas.
+- Cards de indicadores ganharam leitura de tendência e progresso.
+- Fluxo operacional ganhou etapas, participação no fluxo e CTA mais claro.
+- Ferramentas setoriais receberam ícones e descrições operacionais.
+- Prioridades ganharam ranking, status e leitura mais rápida.
+- Bloco de proteção de dados foi simplificado e ganhou acesso às regras.
+- Layout responsivo revisado para 1024px, 820px e 560px.
+- `app/sector-workspaces.tsx`: validação de sintaxe via TypeScript transpileModule — OK.
+- `app/globals.css`: balanceamento estrutural de chaves — OK.
+- Build completo não executado neste ambiente porque as dependências não estão instaladas localmente e o acesso ao registry não está disponível.
