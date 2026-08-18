@@ -184,33 +184,46 @@ function toneFor(status:string) {
 }
 
 
-const MAP_POINT_POSITIONS: Record<string,{x:number;y:number}> = {
-  "UBS Norte":{x:20,y:74},
-  "Centro":{x:51,y:54},
-  "Barra do Guaicuí":{x:77,y:75},
-  "Planalto":{x:26,y:33},
-  "Pinlar I":{x:34,y:69},
-  "Rua São Pedro":{x:57,y:68},
-  "Estrada Ribeirinha":{x:81,y:36},
-  "Sede da Subprefeitura":{x:46,y:56},
-  "Praça Central":{x:55,y:46},
-  "Rua Dr. Ensch":{x:31,y:59},
-  "Bairro Planalto":{x:24,y:30},
-  "Paço Municipal":{x:50,y:50},
-  "Almoxarifado Central":{x:42,y:40},
-  "Secretaria de Educação":{x:60,y:61},
-  "Zona Norte":{x:26,y:26},
-  "Comunidade Lagoa":{x:69,y:31},
-  "Acesso Norte":{x:62,y:24},
-  "Estação Ferroviária":{x:83,y:61},
-  "Casa da Cultura":{x:57,y:48},
-  "Auditório Municipal":{x:53,y:40},
-  "Escola Central":{x:48,y:45},
-  "Acesso à comunidade Ribeirinha":{x:81,y:34},
+const STREET_COORDINATES: Record<string,{x:number;y:number}> = {
+  "Av. Rio Branco":{x:46,y:52},
+  "R. Pará":{x:69,y:34},
+  "R. Cláudio Manoel da Costa":{x:50,y:73},
+  "R. Novo Era":{x:32,y:40},
+  "R. Duque de Caxias":{x:53,y:31},
+  "R. Turmalinas":{x:77,y:45},
+  "Av. Castelo Branco":{x:63,y:25},
+  "R. Pirapora":{x:55,y:18},
+  "R. Ouro Branco":{x:37,y:84},
+  "R. Santa Luzia":{x:64,y:60},
+  "R. Cláudio Manoel":{x:50,y:72},
+  "Av. Brasil":{x:55,y:44},
 };
 
-function mapPointPosition(label:string,index:number) {
-  return MAP_POINT_POSITIONS[label] ?? [{x:24,y:34},{x:52,y:52},{x:78,y:70},{x:39,y:66}][index % 4];
+const DEFAULT_STREETS = ["Av. Rio Branco", "R. Pará", "R. Cláudio Manoel da Costa"];
+
+const DEPARTMENT_STREETS: Record<string,string[]> = {
+  "Gabinete do Prefeito":["R. Pará","Av. Rio Branco","R. Cláudio Manoel da Costa"],
+  "Secretaria de Governo":["Av. Rio Branco","R. Pará","R. Turmalinas"],
+  "Secretaria de Infraestrutura":["R. Cláudio Manoel da Costa","R. Novo Era","Av. Rio Branco"],
+  "Secretaria de Saúde":["Av. Rio Branco","R. Santa Luzia","R. Novo Era"],
+  "Secretaria de Educação":["R. Cláudio Manoel da Costa","R. Pará","Av. Brasil"],
+  "Secretaria de Comunicação e Eventos":["Av. Rio Branco","R. Santa Luzia","Av. Castelo Branco"],
+  "Secretaria Municipal de Desenvolvimento Econômico, Agricultura e Meio Ambiente":["R. Pirapora","Av. Rio Branco","R. Pará"],
+  "Secretaria de Cultura e Turismo":["Av. Rio Branco","R. Santa Luzia","Av. Castelo Branco"],
+  "Subprefeitura de Barra do Guaicuí":["R. Pará","R. Cláudio Manoel da Costa","Av. Rio Branco"],
+};
+
+function streetPosition(street:string,index:number) {
+  return STREET_COORDINATES[street] ?? [{x:42,y:50},{x:63,y:35},{x:52,y:72}][index % 3];
+}
+
+function extractStreet(...values:string[]) {
+  const pattern = /(?:Rua|R\.|Avenida|Av\.)\s+[A-Za-zÀ-ÿ0-9.\-\s]+/i;
+  for (const value of values) {
+    const match = value.match(pattern);
+    if (match) return match[0].split("·")[0].trim();
+  }
+  return null;
 }
 
 export function SectorWorkspaceSection({department,userName,userRole,departments,notify}:{department:string;userName:string;userRole:string;departments:string[];notify:Notify}) {
@@ -223,13 +236,12 @@ export function SectorWorkspaceSection({department,userName,userRole,departments
   const [selectedForm,setSelectedForm]=useState(profile.forms[0]);
   const [query,setQuery]=useState("");
   const [statusFilter,setStatusFilter]=useState("Todos os status");
-  const [layer,setLayer]=useState("Todas as camadas");
-  const [selectedPoint,setSelectedPoint]=useState(profile.mapPoints[0]);
+  const [layer,setLayer]=useState("Chamados do setor");
+  const [selectedMapTicketIndex,setSelectedMapTicketIndex]=useState(0);
   const [periodFilter,setPeriodFilter]=useState<"Hoje"|"Semana"|"Mês">("Hoje");
   const [priorityFilter,setPriorityFilter]=useState<"Todas"|"Críticas"|"Em andamento">("Todas");
   const [referrals,setReferrals]=useState<Array<[string,string,string]>>([["Secretaria de Administração e Finanças","Solicitação de apoio administrativo","Somente dados necessários"],["Secretaria de Comunicação e Eventos","Divulgação de ação do setor","Informações institucionais"]]);
   const [hydrated,setHydrated]=useState(false);
-  const selectedPointMapLink=`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(`${selectedPoint[0]}, Várzea da Palma, MG`)}`;
   const storageKey=`prefeitura-conecta:sector:${department}`;
 
   const visibleRecords=useMemo(()=>records.filter(item=>item.join(" ").toLowerCase().includes(query.toLowerCase())&&(statusFilter==="Todos os status"||item[2].toLowerCase().includes(statusFilter.toLowerCase()))),[records,query,statusFilter]);
@@ -242,25 +254,28 @@ export function SectorWorkspaceSection({department,userName,userRole,departments
   })),[records]);
   const quickModules=profile.modules.slice(0,3);
   const routineModules=profile.modules.slice(3);
+  const departmentStreets = DEPARTMENT_STREETS[department] ?? DEFAULT_STREETS;
   const heroHighlights=[
     {label:"Pendências críticas",value:String(records.filter(item=>toneFor(item[2])!=="success").length)},
-    {label:"Compromissos no mapa",value:String(profile.mapPoints.length)},
+    {label:"Chamados no mapa",value:String(records.slice(0,6).length)},
     {label:"Encaminhamentos ativos",value:String(referrals.length)},
   ];
-  const mapCommitments=useMemo(()=>profile.mapPoints.map((point,index)=>{
-    const position=mapPointPosition(point[0],index);
-    const related=records[index];
+  const mapTickets=useMemo(()=>records.slice(0,6).map((record,index)=>{
+    const street = extractStreet(record[0], record[1]) ?? departmentStreets[index] ?? DEFAULT_STREETS[index] ?? DEFAULT_STREETS[0];
+    const position=streetPosition(street,index);
     return {
-      point,
+      id:`${street}-${record[0]}-${index}`,
+      street,
       x:position.x,
       y:position.y,
-      title:related?.[0] ?? point[1],
-      detail:related?.[1] ?? point[1],
-      status:related?.[2] ?? point[2],
-      note:`${point[0]} · ${related?.[1] ?? point[1]}`,
+      title:record[0],
+      detail:record[1],
+      status:record[2],
+      note:`${street} · ${record[1]}`,
     };
-  }),[profile.mapPoints,records]);
-  const selectedCommitment=useMemo(()=>mapCommitments.find(item=>item.point[0]===selectedPoint[0]) ?? mapCommitments[0], [mapCommitments,selectedPoint]);
+  }),[records,departmentStreets]);
+  const selectedMapTicket=mapTickets[selectedMapTicketIndex] ?? mapTickets[0];
+  const selectedPointMapLink=`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(`${selectedMapTicket?.street ?? "Av. Rio Branco"}, Várzea da Palma, MG`)}`;
 
   useEffect(()=>{
     const timer=window.setTimeout(()=>{
@@ -277,6 +292,10 @@ export function SectorWorkspaceSection({department,userName,userRole,departments
     if(!hydrated)return;
     try {localStorage.setItem(storageKey,JSON.stringify({records,referrals}));} catch { /* A demonstração segue funcional sem persistência. */ }
   },[hydrated,records,referrals,storageKey]);
+
+  useEffect(()=>{
+    if(selectedMapTicketIndex >= mapTickets.length) setSelectedMapTicketIndex(0);
+  },[selectedMapTicketIndex,mapTickets.length]);
 
   function openRecord(form=profile.forms[0]){if(!access.register){notify("Seu perfil possui acesso de consulta nesta área.");return;}setSelectedForm(form);setRecordModal(true);}
   function createRecord(event:FormEvent<HTMLFormElement>){event.preventDefault();if(!access.register)return;const form=new FormData(event.currentTarget);const item:RecordRow=[String(form.get("primary")),`${String(form.get("secondary"))} · ${String(form.get("notes"))||"Registro criado pela equipe"}`,"Cadastrado"];setRecords(current=>[item,...current]);setRecordModal(false);notify(`${profile.recordLabel[0].toUpperCase()+profile.recordLabel.slice(1)} cadastrado na área de ${department}.`);}
@@ -300,7 +319,7 @@ export function SectorWorkspaceSection({department,userName,userRole,departments
       <div className="sector-hero-actions">{access.register?<><button className="button secondary" onClick={()=>setFieldModal(true)}><Navigation size={15}/> Registrar atividade externa</button><button className="button primary" onClick={()=>openRecord()}><Plus size={15}/> Cadastrar {profile.recordLabel}</button></>:<span className="sector-access-badge"><LockKeyhole size={14}/>Perfil de consulta</span>}</div>
     </article>
 
-    <nav className="sector-tabs sector-tabs-v2" aria-label="Navegação da área do setor">{(Object.keys(TAB_META) as WorkspaceTab[]).map(item=>{const Icon=TAB_META[item].icon;const badge=item==="Encaminhamentos"?referrals.length:item==="Equipes de campo"?profile.teams.length:item==="Mapa municipal"?profile.mapPoints.length:0;return <button key={item} className={tab===item?"active":""} onClick={()=>setTab(item)}><Icon size={16}/><span>{TAB_META[item].label}</span>{badge>0&&<b>{badge}</b>}</button>})}</nav>
+    <nav className="sector-tabs sector-tabs-v2" aria-label="Navegação da área do setor">{(Object.keys(TAB_META) as WorkspaceTab[]).map(item=>{const Icon=TAB_META[item].icon;const badge=item==="Encaminhamentos"?referrals.length:item==="Equipes de campo"?profile.teams.length:item==="Mapa municipal"?records.slice(0,6).length:0;return <button key={item} className={tab===item?"active":""} onClick={()=>setTab(item)}><Icon size={16}/><span>{TAB_META[item].label}</span>{badge>0&&<b>{badge}</b>}</button>})}</nav>
 
     <div className="sector-command-bar sector-command-bar-v2">
       <div className="sector-command-summary"><span className="sector-live-dot"/><span><strong>Central do dia</strong><small>{records.length} registros ativos · {referrals.length} encaminhamentos acompanhados</small></span><i>{periodFilter}</i></div>
@@ -348,7 +367,7 @@ export function SectorWorkspaceSection({department,userName,userRole,departments
 
     {tab==="Cadastros e formulários"&&<div className="sector-record-layout"><aside className="panel sector-form-catalog"><header><BookOpenCheck size={19}/><div><h3>Formulários do setor</h3><p>Campos e checklists adaptados à atividade.</p></div></header>{profile.forms.map((form,index)=><button key={form} onClick={()=>openRecord(form)}><span>{String(index+1).padStart(2,"0")}</span><strong>{form}</strong><ChevronRight size={13}/></button>)}</aside><article className="panel sector-records"><div className="module-toolbar"><label className="module-search"><Search size={15}/><input aria-label="Buscar nos registros do setor" value={query} onChange={event=>setQuery(event.target.value)} placeholder="Buscar registros específicos..."/></label><select aria-label="Filtrar registros" value={statusFilter} onChange={event=>setStatusFilter(event.target.value)}><option>Todos os status</option><option>Prioridade</option><option>Em andamento</option><option>Em análise</option><option>Agendado</option><option>Concluído</option></select>{access.register&&<button className="button primary" onClick={()=>openRecord()}><Plus size={15}/> Novo registro</button>}</div><div className="sector-record-list">{visibleRecords.map(([title,detail,status],index)=><button key={`${title}-${index}`} onClick={()=>notify(`Ficha de “${title}” aberta com histórico, documentos e responsáveis.`)}><span className="sector-record-icon"><FileText size={16}/></span><span><strong>{title}</strong><small>{detail}</small></span><i className={toneFor(status)}>{status}</i><ChevronRight size={14}/></button>)}{visibleRecords.length===0&&<div className="sector-empty"><Search size={22}/><strong>Nenhum registro encontrado</strong><p>Revise a busca ou selecione outro status.</p></div>}</div></article></div>}
 
-    {tab==="Mapa municipal"&&<div className="sector-map-layout"><article className="panel sector-map-panel"><header><div><span className="map-source-label"><MapPin size={13}/>Várzea da Palma · Minas Gerais</span><h3>Mapa municipal real</h3><p>Os compromissos e registros do setor aparecem sobre o mapa para facilitar a leitura territorial.</p></div><div className="map-header-actions"><select aria-label="Registros exibidos no mapa" value={layer} onChange={event=>setLayer(event.target.value)}><option>Todas as camadas</option>{profile.mapLayers.map(item=><option key={item}>{item}</option>)}</select><a className="button secondary" href={MUNICIPAL_MAP_LINK} target="_blank" rel="noreferrer"><ExternalLink size={13}/>Abrir no Google Maps</a></div></header><div className="sector-map-canvas real-map"><iframe title="Mapa real de Várzea da Palma, Minas Gerais" src={MUNICIPAL_MAP_EMBED} loading="lazy" referrerPolicy="no-referrer-when-downgrade" allowFullScreen/><div className="map-overlay-note"><MapPin size={13}/>Compromissos no território</div>{mapCommitments.map((commitment,index)=><button aria-label={`Selecionar compromisso em ${commitment.point[0]}`} key={commitment.point[0]} className={`map-commitment-marker ${selectedPoint[0]===commitment.point[0]?"active":""}`} style={{left:`${commitment.x}%`,top:`${commitment.y}%`}} onClick={()=>setSelectedPoint(commitment.point)}><span>{index+1}</span><strong>{commitment.point[0]}</strong><small>{commitment.title}</small></button>)}</div><div className="map-operational-points"><div><h4>Compromissos localizados de {department}</h4><p>Os cartões abaixo também estão posicionados sobre o mapa conforme o território de atuação.</p></div><div>{mapCommitments.map((commitment,index)=><button aria-label={`Selecionar ${commitment.point[0]}: ${commitment.title}`} key={commitment.point[0]} className={selectedPoint[0]===commitment.point[0]?"selected":""} onClick={()=>setSelectedPoint(commitment.point)}><span>{index+1}</span><span><strong>{commitment.point[0]}</strong><small>{commitment.title}</small></span><i className={toneFor(commitment.status)}>{commitment.status}</i></button>)}</div></div><footer><span className="map-real-note"><ShieldCheck size={13}/>Mapa real com compromissos setoriais posicionados no protótipo.</span><span><i className="layer-1"/>Camada ativa: {layer}</span></footer></article><aside className="panel map-detail-card"><span className="map-detail-icon"><MapPin size={22}/></span><p className="eyebrow">COMPROMISSO SELECIONADO</p><h3>{selectedCommitment?.title ?? selectedPoint[0]}</h3><p>{selectedCommitment?.detail ?? selectedPoint[1]}</p><i className={toneFor(selectedCommitment?.status ?? selectedPoint[2])}>{selectedCommitment?.status ?? selectedPoint[2]}</i><dl><div><dt>Local</dt><dd>{selectedPoint[0]}</dd></div><div><dt>Setor responsável</dt><dd>{department}</dd></div><div><dt>Município</dt><dd>Várzea da Palma, Minas Gerais</dd></div><div><dt>Georreferenciamento</dt><dd>Posicionamento visual aplicado ao compromisso</dd></div></dl><div className="map-related-summary"><strong>Resumo operacional</strong><small>{selectedCommitment?.note ?? `${selectedPoint[0]} · ${selectedPoint[1]}`}</small></div><a className="button primary" href={selectedPointMapLink} target="_blank" rel="noreferrer"><ExternalLink size={14}/>Pesquisar localização</a><button className="button secondary" onClick={()=>notify(`Ficha territorial de ${selectedPoint[0]} aberta.`)}>Abrir ficha territorial</button></aside></div>}
+    {tab==="Mapa municipal"&&<div className="sector-map-layout"><article className="panel sector-map-panel"><header><div><span className="map-source-label"><MapPin size={13}/>Várzea da Palma · Minas Gerais</span><h3>Chamados no mapa</h3><p>Os marcadores seguem a rua vinculada ao chamado, para aproximar a visualização do endereço real no mapa.</p></div><div className="map-header-actions"><select aria-label="Registros exibidos no mapa" value={layer} onChange={event=>setLayer(event.target.value)}><option>Chamados do setor</option></select><a className="button secondary" href={MUNICIPAL_MAP_LINK} target="_blank" rel="noreferrer"><ExternalLink size={13}/>Abrir no Google Maps</a></div></header><div className="sector-map-canvas real-map"><iframe title="Mapa real de Várzea da Palma, Minas Gerais" src={MUNICIPAL_MAP_EMBED} loading="lazy" referrerPolicy="no-referrer-when-downgrade" allowFullScreen/><div className="map-overlay-note"><MapPin size={13}/>Somente chamados</div>{mapTickets.map((ticket,index)=><button aria-label={`Selecionar chamado ${ticket.title} na ${ticket.street}`} key={ticket.id} className={`map-commitment-marker ${selectedMapTicketIndex===index?"active":""}`} style={{left:`${ticket.x}%`,top:`${ticket.y}%`}} onClick={()=>setSelectedMapTicketIndex(index)}><span>{index+1}</span><strong>{ticket.street}</strong><small>{ticket.title}</small></button>)}</div><div className="map-operational-points"><div><h4>Chamados localizados por rua</h4><p>Os marcadores abaixo usam a rua do chamado como referência visual dentro do mapa municipal.</p></div><div>{mapTickets.map((ticket,index)=><button aria-label={`Selecionar chamado ${ticket.title}`} key={ticket.id} className={selectedMapTicketIndex===index?"selected":""} onClick={()=>setSelectedMapTicketIndex(index)}><span>{index+1}</span><span><strong>{ticket.street}</strong><small>{ticket.title}</small></span><i className={toneFor(ticket.status)}>{ticket.status}</i></button>)}</div></div><footer><span className="map-real-note"><ShieldCheck size={13}/>Visualização aproximada por rua, usando o endereço do chamado como referência.</span><span><i className="layer-1"/>Camada ativa: Chamados do setor</span></footer></article><aside className="panel map-detail-card"><span className="map-detail-icon"><MapPin size={22}/></span><p className="eyebrow">CHAMADO SELECIONADO</p><h3>{selectedMapTicket?.title ?? "Chamado do setor"}</h3><p>{selectedMapTicket?.detail ?? "Sem detalhamento disponível."}</p><i className={toneFor(selectedMapTicket?.status ?? "Em análise")}>{selectedMapTicket?.status ?? "Em análise"}</i><dl><div><dt>Rua de referência</dt><dd>{selectedMapTicket?.street ?? "Av. Rio Branco"}</dd></div><div><dt>Setor responsável</dt><dd>{department}</dd></div><div><dt>Município</dt><dd>Várzea da Palma, Minas Gerais</dd></div><div><dt>Georreferenciamento</dt><dd>Sincronizado pela rua informada no chamado</dd></div></dl><div className="map-related-summary"><strong>Resumo do chamado</strong><small>{selectedMapTicket?.note ?? "Sem dados."}</small></div><a className="button primary" href={selectedPointMapLink} target="_blank" rel="noreferrer"><ExternalLink size={14}/>Pesquisar esta rua</a><button className="button secondary" onClick={()=>notify(`Ficha do chamado “${selectedMapTicket?.title ?? "Chamado"}” aberta.`)}>Abrir ficha do chamado</button></aside></div>}
 
     {tab==="Equipes de campo"&&<><article className="field-app-banner"><span><Smartphone size={24}/></span><div><p className="eyebrow">APLICATIVO DE CAMPO</p><h3>Registro móvel com funcionamento temporariamente offline</h3><p>Localização, fotos, checklist, horário, materiais, assinatura e observações são sincronizados quando houver conexão.</p></div><span className="offline-badge"><CloudOff size={14}/>Modo offline disponível no protótipo</span>{access.register&&<button className="button primary" onClick={()=>setFieldModal(true)}>Nova atividade de campo</button>}</article><div className="field-team-grid">{profile.teams.map(([team,size,status],index)=><article className="panel" key={team}><header><span>{index+1}</span><i className={toneFor(status)}>{status}</i></header><h3>{team}</h3><p><UsersRound size={14}/>{size}</p><div className="team-progress"><span><i style={{width:`${[74,92,61][index]}%`}}/></span><small>{["3 atividades hoje","Rota atualizada","2 pendências"][index]}</small></div><button onClick={()=>access.register?setFieldModal(true):notify(`Agenda e histórico da equipe “${team}” abertos para consulta.`)}>{access.register?"Registrar atividade":"Consultar atividades"} <ArrowRight size={13}/></button></article>)}</div></>}
 
