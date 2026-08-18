@@ -59,3 +59,77 @@ export const auditLogs = sqliteTable("audit_logs", {
   entityType: text("entity_type").notNull(), entityId: text("entity_id").notNull(), detail: text("detail").notNull(),
   createdAt: text("created_at").notNull(),
 }, (table) => [index("audit_created_at_idx").on(table.createdAt)]);
+
+// Estruturas da evolução operacional. Mantidas separadas dos dados de demonstração
+// para permitir ativação gradual em produção sem quebrar o cenário atual.
+export const processes = sqliteTable("processes", {
+  id: text("id").primaryKey(),
+  protocol: text("protocol").notNull().unique(),
+  subject: text("subject").notNull(),
+  interested: text("interested").notNull().default(""),
+  originDepartment: text("origin_department").notNull(),
+  currentDepartment: text("current_department").notNull(),
+  currentOwnerId: text("current_owner_id").references(() => users.id),
+  status: text("status").notNull().default("Autuação"),
+  accessLevel: text("access_level").notNull().default("Interno"),
+  dueDate: text("due_date"),
+  createdBy: text("created_by").notNull().references(() => users.id),
+  createdAt: text("created_at").notNull(),
+  updatedAt: text("updated_at").notNull(),
+}, (table) => [index("processes_department_idx").on(table.currentDepartment), index("processes_status_idx").on(table.status)]);
+
+export const processMovements = sqliteTable("process_movements", {
+  id: text("id").primaryKey(),
+  processId: text("process_id").notNull().references(() => processes.id),
+  fromDepartment: text("from_department"),
+  toDepartment: text("to_department").notNull(),
+  actorId: text("actor_id").notNull().references(() => users.id),
+  action: text("action").notNull(),
+  note: text("note").notNull().default(""),
+  createdAt: text("created_at").notNull(),
+}, (table) => [index("process_movements_process_idx").on(table.processId, table.createdAt)]);
+
+export const workflowTemplates = sqliteTable("workflow_templates", {
+  id: text("id").primaryKey(),
+  name: text("name").notNull(),
+  department: text("department").notNull(),
+  definitionJson: text("definition_json").notNull(),
+  active: integer("active", { mode: "boolean" }).notNull().default(true),
+  createdBy: text("created_by").notNull().references(() => users.id),
+  createdAt: text("created_at").notNull(),
+  updatedAt: text("updated_at").notNull(),
+}, (table) => [index("workflow_templates_department_idx").on(table.department)]);
+
+export const customForms = sqliteTable("custom_forms", {
+  id: text("id").primaryKey(),
+  name: text("name").notNull(),
+  department: text("department").notNull(),
+  schemaJson: text("schema_json").notNull(),
+  submitAction: text("submit_action").notNull().default("create_ticket"),
+  active: integer("active", { mode: "boolean" }).notNull().default(true),
+  createdBy: text("created_by").notNull().references(() => users.id),
+  createdAt: text("created_at").notNull(),
+  updatedAt: text("updated_at").notNull(),
+}, (table) => [index("custom_forms_department_idx").on(table.department)]);
+
+export const documentVersions = sqliteTable("document_versions", {
+  id: text("id").primaryKey(),
+  documentId: text("document_id").notNull().references(() => documents.id),
+  version: integer("version").notNull(),
+  storageKey: text("storage_key").notNull(),
+  note: text("note").notNull().default(""),
+  createdBy: text("created_by").notNull().references(() => users.id),
+  createdAt: text("created_at").notNull(),
+}, (table) => [index("document_versions_document_idx").on(table.documentId, table.version)]);
+
+export const permissionScopes = sqliteTable("permission_scopes", {
+  id: text("id").primaryKey(),
+  userId: text("user_id").notNull().references(() => users.id),
+  department: text("department").notNull(),
+  scope: text("scope").notNull().default("department"),
+  allowedDepartmentsJson: text("allowed_departments_json").notNull().default("[]"),
+  startsAt: text("starts_at"),
+  endsAt: text("ends_at"),
+  createdBy: text("created_by").notNull().references(() => users.id),
+  createdAt: text("created_at").notNull(),
+}, (table) => [index("permission_scopes_user_idx").on(table.userId, table.department)]);

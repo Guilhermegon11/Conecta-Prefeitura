@@ -1,11 +1,12 @@
 import { getRuntimeBindings } from "../../../db/runtime";
+import { AuthorizationError, resolveViewerId } from "../../server-authorization";
 
 export const dynamic = "force-dynamic";
 
 export async function GET(request: Request) {
   try {
     const db = getRuntimeBindings().DB;
-    const currentUserId = new URL(request.url).searchParams.get("userId") || "u-ana";
+    const currentUserId = await resolveViewerId(request);
     const viewer = await db.prepare("SELECT id, department FROM users WHERE id = ?").bind(currentUserId).first<{ id: string; department: string }>();
     if (!viewer) return Response.json({ error: "Usuário não encontrado" }, { status: 404 });
     const directPattern = `%::${currentUserId}::%`;
@@ -109,6 +110,7 @@ export async function GET(request: Request) {
 
     return Response.json({ users: users.results, tickets: tickets.results, groups: groups.results, groupMemberships: groupMemberships.results, messages: messages.results, documents: documents.results, events: events.results, audit: audit.results, notifications: notifications.results, invitations: invitations.results });
   } catch (error) {
+    if (error instanceof AuthorizationError) return Response.json({ error: error.message }, { status: error.status });
     return Response.json({ error: error instanceof Error ? error.message : "Falha ao carregar dados" }, { status: 503 });
   }
 }

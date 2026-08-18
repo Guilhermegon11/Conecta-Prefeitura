@@ -106,3 +106,34 @@ The timeout defaults can be overridden for a controlled canary with `SITES_INSTA
 
 - [vinext Documentation](https://github.com/cloudflare/vinext)
 - [Drizzle D1 Guide](https://orm.drizzle.team/docs/get-started/d1-new)
+
+## Evolução operacional — agosto de 2026
+
+Esta versão inclui uma camada de evolução do produto sem remover o modo demonstrativo existente:
+
+- **Meu Dia** com prioridades, SLA e agenda operacional;
+- **visão executiva** para prefeito/vice com riscos e carga por secretaria;
+- **Chamados 2.0** com SLA visual, checklist e linha do tempo;
+- **Processos Digitais** com modelos de fluxo e base de dados para tramitação;
+- **central de aprovações** e decisões auditáveis;
+- **construtor de formulários** para rotinas setoriais;
+- **operação mobile/PWA** para equipes de campo;
+- **mapa operacional por camadas**;
+- **notificações inteligentes** e regras de escalonamento;
+- **gestão documental** com versionamento;
+- **escopo de permissões** por usuário/setor e acesso temporário;
+- novas tabelas Drizzle em `drizzle/0005_operational_evolution.sql`.
+
+### Tipografia
+
+A interface usa a pilha CSS `"Helvena", "Helvetica Neue", Helvetica, Arial, sans-serif`. O projeto não incorpora arquivos binários da fonte Helvena. Caso a família esteja instalada ou seja carregada por uma fonte licenciada no ambiente de produção, ela será usada automaticamente; caso contrário, o navegador aplica os fallbacks.
+
+### Autenticação de produção
+
+O modo demonstração continua permitindo a troca de usuário local. Para impedir que uma operação real confie no `userId` enviado pelo navegador, defina:
+
+```bash
+PREFEITURA_PRODUCTION_AUTH=true
+```
+
+Nesse modo, `app/server-authorization.ts` resolve o usuário a partir do cabeçalho de identidade autenticada e as rotas de ação ignoram o identificador enviado pelo cliente. Antes de usar em uma prefeitura real, conecte esse mecanismo ao provedor de identidade adotado pelo município e aplique a mesma política a novas APIs.

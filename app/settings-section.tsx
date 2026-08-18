@@ -31,6 +31,7 @@ import {
   type PermissionAction,
   type StaffProfileId,
 } from "./access-control";
+import { PermissionScopePanel } from "./enhanced-features";
 
 type Employee = { id: string; fullName: string; email: string; initials: string; role: string; accountStatus?: string };
 type SettingsTab = "permissions" | "employees" | "experience";
@@ -171,6 +172,8 @@ export function SettingsSection({
           <footer><button className="button secondary" onClick={resetProfile}><RefreshCcw size={14} /> Restaurar perfil</button><span>{dirty ? "Existem alterações ainda não salvas" : "Configuração sincronizada nesta demonstração"}</span><button className="button primary" onClick={save} disabled={!dirty}><Save size={14} /> Salvar permissões</button></footer>
         </article>
       </div>}
+
+      {tab === "permissions" && <PermissionScopePanel notify={notify} />}
 
       {tab === "employees" && <div className="employee-permission-layout">
         <article className="panel employee-assignment-panel">

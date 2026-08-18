@@ -1,17 +1,19 @@
 import { getRuntimeBindings } from "../../../db/runtime";
+import { AuthorizationError, resolveActorId } from "../../server-authorization";
 
 type ActionPayload = {
   action?: "create_ticket" | "update_ticket" | "send_message" | "create_group" | "respond_invitation" | "mark_notification" | "mark_all_notifications" | "create_event" | "invite_employee" | "resend_employee_invite";
   [key: string]: unknown;
 };
 
-const DEMO_USER_ID = "u-ana";
 const db = () => getRuntimeBindings().DB;
 
 export async function POST(request: Request) {
   try {
     const payload = (await request.json()) as ActionPayload;
     if (!payload.action) return Response.json({ error: "Ação obrigatória" }, { status: 400 });
+    // Em produção, o ator é derivado da sessão no servidor; o userId do cliente é ignorado.
+    payload.userId = await resolveActorId(request, payload);
 
     switch (payload.action) {
       case "create_ticket": return createTicket(payload);
@@ -27,12 +29,13 @@ export async function POST(request: Request) {
       default: return Response.json({ error: "Ação não reconhecida" }, { status: 400 });
     }
   } catch (error) {
+    if (error instanceof AuthorizationError) return Response.json({ error: error.message }, { status: error.status });
     return Response.json({ error: error instanceof Error ? error.message : "Falha ao registrar ação" }, { status: 500 });
   }
 }
 
 async function inviteEmployee(payload: ActionPayload) {
-  const actorId = String(payload.userId ?? DEMO_USER_ID);
+  const actorId = String(payload.userId);
   const fullName = String(payload.fullName ?? "").trim();
   const email = String(payload.email ?? "").trim().toLowerCase();
   if (fullName.length < 3 || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
@@ -67,7 +70,7 @@ async function inviteEmployee(payload: ActionPayload) {
 }
 
 async function resendEmployeeInvite(payload: ActionPayload) {
-  const actorId = String(payload.userId ?? DEMO_USER_ID);
+  const actorId = String(payload.userId);
   const employeeId = String(payload.employeeId ?? "");
   if (!employeeId) return Response.json({ error: "Funcionário obrigatório" }, { status: 400 });
   const database = db();
@@ -97,7 +100,7 @@ function makeInitials(fullName: string) {
 }
 
 async function createEvent(payload: ActionPayload) {
-  const actorId = String(payload.userId ?? DEMO_USER_ID);
+  const actorId = String(payload.userId);
   const title = String(payload.title ?? "").trim();
   const startsAt = String(payload.startsAt ?? "").trim();
   if (!title || !startsAt || Number.isNaN(Date.parse(startsAt))) {
@@ -132,7 +135,7 @@ async function createEvent(payload: ActionPayload) {
 }
 
 async function createTicket(payload: ActionPayload) {
-  const actorId = String(payload.userId ?? DEMO_USER_ID);
+  const actorId = String(payload.userId);
   const title = String(payload.title ?? "").trim();
   const department = String(payload.department ?? "").trim();
   if (!title || !department) return Response.json({ error: "Título e secretaria são obrigatórios" }, { status: 400 });
@@ -171,7 +174,7 @@ async function createTicket(payload: ActionPayload) {
 }
 
 async function updateTicket(payload: ActionPayload) {
-  const actorId = String(payload.userId ?? DEMO_USER_ID);
+  const actorId = String(payload.userId);
   const id = String(payload.id ?? "");
   const status = String(payload.status ?? "");
   const allowed = ["Recebido", "Em análise", "Aguardando aprovação", "Em execução", "Aguardando resposta", "Concluído", "Cancelado"];
@@ -190,7 +193,7 @@ async function updateTicket(payload: ActionPayload) {
 }
 
 async function sendMessage(payload: ActionPayload) {
-  const actorId = String(payload.userId ?? DEMO_USER_ID);
+  const actorId = String(payload.userId);
   const conversationType = String(payload.conversationType ?? "direct");
   const conversationId = String(payload.conversationId ?? "");
   const body = String(payload.body ?? "").trim();
@@ -236,7 +239,7 @@ async function createGroup(payload: ActionPayload) {
   const name = String(payload.name ?? "").trim();
   const memberIds = Array.isArray(payload.memberIds) ? payload.memberIds.map(String) : [];
   if (!name) return Response.json({ error: "Nome do grupo é obrigatório" }, { status: 400 });
-  const actorId = String(payload.userId ?? DEMO_USER_ID);
+  const actorId = String(payload.userId);
   const id = String(payload.id ?? crypto.randomUUID());
   const now = new Date().toISOString();
   const uniqueMembers = Array.from(new Set([actorId, ...memberIds]));
@@ -258,7 +261,7 @@ async function createGroup(payload: ActionPayload) {
 
 async function respondInvitation(payload: ActionPayload) {
   const groupId = String(payload.groupId ?? "");
-  const userId = String(payload.userId ?? DEMO_USER_ID);
+  const userId = String(payload.userId);
   const response = String(payload.response ?? "");
   if (!groupId || !["aceito", "recusado"].includes(response)) return Response.json({ error: "Convite ou resposta inválida" }, { status: 400 });
   const now = new Date().toISOString();
@@ -279,7 +282,7 @@ async function respondInvitation(payload: ActionPayload) {
 
 async function markNotification(payload: ActionPayload) {
   const id = String(payload.id ?? "");
-  const userId = String(payload.userId ?? DEMO_USER_ID);
+  const userId = String(payload.userId);
   if (!id) return Response.json({ error: "Notificação obrigatória" }, { status: 400 });
   const readAt = new Date().toISOString();
   await db().prepare("UPDATE notifications SET read_at = COALESCE(read_at, ?) WHERE id = ? AND user_id = ?").bind(readAt, id, userId).run();
@@ -287,7 +290,7 @@ async function markNotification(payload: ActionPayload) {
 }
 
 async function markAllNotifications(payload: ActionPayload) {
-  const userId = String(payload.userId ?? DEMO_USER_ID);
+  const userId = String(payload.userId);
   const readAt = new Date().toISOString();
   await db().prepare("UPDATE notifications SET read_at = COALESCE(read_at, ?) WHERE user_id = ?").bind(readAt, userId).run();
   return Response.json({ userId, readAt });
