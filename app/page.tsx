@@ -69,7 +69,6 @@ import {
   DocumentGovernancePanel,
   FormBuilderPanel,
   OperationalCommandCenter,
-  OperationalMapPanel,
   SmartNotificationRules,
 } from "./enhanced-features";
 import { DemoBanner, GlobalSearchPanel, GuidedDemo, playNotificationChime, useNotificationChime } from "./demo-experience";
@@ -847,7 +846,7 @@ export default function Home() {
           {!canManageEmployees && <div className="employee-access-scope"><ShieldCheck size={16} /><span><strong>Acesso como funcionário</strong><small>{currentPermission.register ? "Pode registrar" : "Somente consulta"} · {currentPermission.edit ? "Pode alterar neste módulo" : "Alterações bloqueadas pelo secretário"}</small></span><button onClick={() => setActiveNav("Central de Ajuda")}>Entender permissões</button></div>}
 
           {activeNav === "Visão geral" && <Dashboard tickets={filteredTickets} allTickets={ticketData} audit={privateAudit} executive={executiveAccess} department={activeDepartment} userName={currentUser.fullName} onNavigate={setActiveNav} />}
-          {activeNav === "Área do Setor" && <><SectorWorkspaceSection key={activeDepartment} department={activeDepartment} userName={currentUser.fullName} userRole={currentUser.role} departments={allDepartments} notify={notify} /><FormBuilderPanel notify={notify} /><OperationalMapPanel department={activeDepartment} notify={notify} /></>}
+          {activeNav === "Área do Setor" && <><SectorWorkspaceSection key={activeDepartment} department={activeDepartment} userName={currentUser.fullName} userRole={currentUser.role} departments={allDepartments} tickets={privateTickets} notify={notify} /><FormBuilderPanel notify={notify} /></>}
           {activeNav === "Fluxos e Anotações" && <SectorNotesSection key={activeDepartment} department={activeDepartment} userName={currentUser.fullName} team={sectorUsers.map((user) => ({ id: user.id, name: user.fullName, role: user.role }))} notify={notify} />}
           {activeNav === "Chamados" && <TicketsSection tickets={filteredTickets} department={activeDepartment} onStatus={updateStatus} onNew={() => setTicketModal(true)} />}
           {activeNav === "Comunicação" && <CommunicationSection currentUser={currentUser} users={activeUsers} groups={accessibleGroups} messages={privateMessages} tickets={privateTickets} onSend={sendMessage} onSendAttachment={sendChatAttachment} onNewGroup={() => setGroupModal(true)} onTicketStatus={updateStatus} />}

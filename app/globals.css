@@ -1936,3 +1936,18 @@ img, video, canvas, iframe { max-width: 100%; }
   .ticket-list-mode > button .municipal-status,.ticket-list-mode > button .due { grid-column:2;justify-self:start; }
   .interaction-action-body { grid-template-columns:1fr; }
 }
+
+/* Mapa de chamados com marcadores geográficos reais */
+.native-ticket-map { position:relative; }
+.google-ticket-map { width:100%; height:100%; min-height:440px; }
+.map-geocode-status { position:absolute; left:50%; top:18px; z-index:4; display:flex; align-items:center; gap:7px; padding:8px 11px; border:1px solid #d9e5e1; border-radius:999px; transform:translateX(-50%); color:#315d56; background:rgba(255,255,255,.96); box-shadow:0 8px 20px rgba(40,62,57,.12); font-size:11px; font-weight:750; }
+.map-geocode-status.error { color:#954a43; border-color:#ead0cc; background:#fff8f7; }
+.map-no-address { display:grid; min-height:320px; place-items:center; align-content:center; gap:8px; padding:30px; color:#76878c; background:#f7faf9; text-align:center; }
+.map-no-address strong { color:#40555c; font-size:14px; }
+.map-no-address p { max-width:430px; margin:0; font-size:11px; line-height:1.5; }
+@media (max-width:720px){.google-ticket-map{min-height:360px}.map-geocode-status{max-width:86%;white-space:normal;text-align:center}}
+.ticket-leaflet-icon { background:transparent!important; border:0!important; }
+.ticket-leaflet-icon > span { display:grid; width:30px; height:30px; place-items:center; border:3px solid #fff; border-radius:50% 50% 50% 8px; transform:rotate(-45deg); color:#fff; background:#157e71; box-shadow:0 5px 14px rgba(31,66,59,.3); font-size:10px; font-weight:850; }
+.ticket-leaflet-icon > span::first-letter { transform:rotate(45deg); }
+.native-ticket-map .leaflet-container { width:100%; height:100%; font-family:inherit; }
+.native-ticket-map .leaflet-tooltip { border:1px solid #dbe5e2; border-radius:8px; color:#3e5359; box-shadow:0 8px 18px rgba(37,61,56,.12); font-size:11px; }

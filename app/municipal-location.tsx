@@ -31,9 +31,9 @@ export function NeighborhoodMapField({ neighborhood, address, onNeighborhoodChan
   return <section className="location-map-field">
     <div className="location-inputs">
       <label className="field"><span>Bairro *</span><select name="neighborhood" required={required} value={neighborhood} onChange={(event) => onNeighborhoodChange(event.target.value)}><option value="" disabled>Selecione o bairro</option>{MUNICIPAL_NEIGHBORHOODS.map((item) => <option key={item}>{item}</option>)}</select></label>
-      <label className="field"><span>Endereço ou ponto de referência</span><input name="address" value={address} onChange={(event) => onAddressChange(event.target.value)} placeholder="Ex.: Rua, número ou equipamento público" /></label>
+      <label className="field"><span>Rua / endereço *</span><input name="address" required={required} value={address} onChange={(event) => onAddressChange(event.target.value)} placeholder="Ex.: Rua Cláudio Manoel da Costa, 1000" /></label>
     </div>
     <NeighborhoodMapPreview neighborhood={neighborhood} address={address} />
-    <p className="location-accuracy-note"><MapPin size={12} />Ao selecionar o bairro, o mapa mostra sua área aproximada. Informe rua e número para refinar a localização do atendimento.</p>
+    <p className="location-accuracy-note"><MapPin size={12} />Informe a rua do chamado. Ela será usada para geocodificar e fixar o chamado corretamente no mapa municipal.</p>
   </section>;
 }
