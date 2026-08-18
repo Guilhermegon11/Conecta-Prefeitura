@@ -50,15 +50,9 @@ npm ci
 npm run build:vercel
 ```
 
-## Observação sobre Helvena
+## Tipografia original restaurada
 
-A aplicação foi configurada com a seguinte pilha tipográfica:
-
-```css
-font-family: "Helvena", "Helvetica Neue", Helvetica, Arial, sans-serif;
-```
-
-Nenhum arquivo binário de fonte foi incorporado ao projeto. Para renderização efetiva em Helvena em todos os dispositivos, use uma licença/arquivo oficial da família no ambiente de produção e configure o carregamento correspondente.
+A fonte principal voltou a ser **Geist Sans**, exatamente como no projeto original, via `var(--font-geist-sans)`.
 
 ## Correção Vercel — 18/08/2026
 

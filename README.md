@@ -126,7 +126,7 @@ Esta versão inclui uma camada de evolução do produto sem remover o modo demon
 
 ### Tipografia
 
-A interface usa a pilha CSS `"Helvena", "Helvetica Neue", Helvetica, Arial, sans-serif`. O projeto não incorpora arquivos binários da fonte Helvena. Caso a família esteja instalada ou seja carregada por uma fonte licenciada no ambiente de produção, ela será usada automaticamente; caso contrário, o navegador aplica os fallbacks.
+A interface voltou à tipografia original do projeto, usando **Geist Sans** carregada por `next/font/google`, com `Arial`, `Helvetica` e `sans-serif` como fallbacks.
 
 ### Autenticação de produção
 
