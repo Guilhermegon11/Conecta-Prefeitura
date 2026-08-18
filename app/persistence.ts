@@ -10,14 +10,20 @@ export function persistenceKey(...parts: Array<string | number>) {
 
 export async function loadPersistentValue<T>(key: string): Promise<T | null> {
   const response = await fetch(`/api/persistence?key=${encodeURIComponent(key)}`, { cache: "no-store" });
-  if (!response.ok) throw new Error((await response.json().catch(() => null))?.error || "Falha ao carregar dados.");
+  if (!response.ok) {
+    const errorBody = (await response.json().catch(() => null)) as { error?: string } | null;
+    throw new Error(errorBody?.error ?? "Falha ao carregar dados.");
+  }
   const payload = await response.json() as { found: boolean; value: T | null };
   return payload.found ? payload.value : null;
 }
 
 export async function savePersistentValue<T>(key: string, value: T) {
   const response = await fetch("/api/persistence", { method: "PUT", headers: { "content-type": "application/json" }, body: JSON.stringify({ key, value }) });
-  if (!response.ok) throw new Error((await response.json().catch(() => null))?.error || "Falha ao salvar dados.");
+  if (!response.ok) {
+    const errorBody = (await response.json().catch(() => null)) as { error?: string } | null;
+    throw new Error(errorBody?.error ?? "Falha ao salvar dados.");
+  }
   return response.json() as Promise<{ ok: true; updatedAt?: string }>;
 }
 
