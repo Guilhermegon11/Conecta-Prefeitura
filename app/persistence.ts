@@ -1,10 +1,11 @@
 "use client";
 
 import { Dispatch, SetStateAction, useEffect, useRef, useState } from "react";
+import { flushOfflineQueue, queuePersistentWrite } from "./offline-sync";
 
 export type PersistenceStatus = "carregando" | "salvando" | "salvo" | "offline";
 
-const saveChains = new Map<string, Promise<{ ok: true; updatedAt?: string }>>();
+const saveChains = new Map<string, Promise<{ ok: true; updatedAt?: string; queued?: boolean }>>();
 
 export function persistenceKey(...parts: Array<string | number>) {
   return parts.map((part) => String(part).normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "")).filter(Boolean).join(":");
@@ -38,28 +39,38 @@ export async function loadPersistentValue<T>(key: string): Promise<T | null> {
   return payload.found ? payload.value : null;
 }
 
-export function savePersistentValue<T>(key: string, value: T): Promise<{ ok: true; updatedAt?: string }> {
-  // Escrita local imediata: evita perder alterações quando a página é atualizada
-  // antes da conclusão da gravação remota.
+export function savePersistentValue<T>(key: string, value: T): Promise<{ ok: true; updatedAt?: string; queued?: boolean }> {
+  // Escrita local imediata: o usuário continua trabalhando mesmo sem internet.
   cachePersistentValue(key, value);
 
-  // Serializa gravações da mesma chave. Isso evita que uma requisição antiga,
-  // mais lenta, termine depois de uma nova e sobrescreva o estado mais recente.
   const previous = saveChains.get(key) ?? Promise.resolve({ ok: true as const });
   const next = previous.catch(() => ({ ok: true as const })).then(async () => {
-    const response = await fetch("/api/persistence", {
-      method: "PUT",
-      headers: { "content-type": "application/json" },
-      body: JSON.stringify({ key, value }),
-      credentials: "same-origin",
-      keepalive: true,
-      cache: "no-store",
-    });
-    if (!response.ok) {
-      const errorBody = (await response.json().catch(() => null)) as { error?: string } | null;
-      throw new Error(errorBody?.error ?? "Falha ao salvar dados.");
+    // Se o navegador já sabe que está offline, evita esperar timeout de rede.
+    if (typeof navigator !== "undefined" && !navigator.onLine) {
+      await queuePersistentWrite(key, value);
+      return { ok: true as const, queued: true };
     }
-    return response.json() as Promise<{ ok: true; updatedAt?: string }>;
+    try {
+      const response = await fetch("/api/persistence", {
+        method: "PUT",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ key, value }),
+        credentials: "same-origin",
+        keepalive: true,
+        cache: "no-store",
+      });
+      if (!response.ok) {
+        const errorBody = (await response.json().catch(() => null)) as { error?: string } | null;
+        throw new Error(errorBody?.error ?? "Falha ao salvar dados.");
+      }
+      // Um PUT bem-sucedido é uma boa oportunidade para escoar alterações antigas.
+      void flushOfflineQueue().catch(() => undefined);
+      return await response.json() as { ok: true; updatedAt?: string };
+    } catch (error) {
+      await queuePersistentWrite(key, value);
+      // A gravação está preservada no dispositivo; sinalizamos queued sem perder o estado.
+      return { ok: true as const, queued: true };
+    }
   });
   saveChains.set(key, next);
   void next.finally(() => { if (saveChains.get(key) === next) saveChains.delete(key); }).catch(() => undefined);
@@ -107,12 +118,12 @@ export function usePersistentState<T>(key: string, initialValue: T): [T, Dispatc
     setStatus("salvando");
     // Sem debounce longo: a chamada começa imediatamente e `keepalive` permite
     // que o navegador conclua a requisição mesmo durante uma atualização da página.
-    void savePersistentValue(key, value).then(() => setStatus("salvo")).catch(() => setStatus("offline"));
+    void savePersistentValue(key, value).then((result) => setStatus(result.queued ? "offline" : "salvo")).catch(() => setStatus("offline"));
   }, [key, ready, value]);
 
   useEffect(() => {
     if (status !== "offline" || !ready) return;
-    const timer = window.setInterval(() => { void savePersistentValue(key, latestValue.current).then(() => setStatus("salvo")).catch(() => undefined); }, 8000);
+    const timer = window.setInterval(() => { void savePersistentValue(key, latestValue.current).then((result) => setStatus(result.queued ? "offline" : "salvo")).catch(() => undefined); }, 8000);
     return () => window.clearInterval(timer);
   }, [key, ready, status]);
 

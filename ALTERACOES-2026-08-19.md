@@ -91,3 +91,17 @@ Esta versão consolida o sistema como uma plataforma integrada de gestão munici
 - Ações do cabeçalho reduzidas por contexto: “Novo chamado” somente em Início/Demandas e exportação somente em módulos de gestão/relatório.
 - Banners globais repetitivos de visão executiva/permissão removidos da área de conteúdo; controles e regras continuam ativos no topo/configurações.
 - 589 declarações explícitas de fonte abaixo de 12 px foram elevadas; não restam tamanhos CSS explícitos inferiores a 12 px.
+
+## v4.5 — Offline First
+- PWA reforçada com pré-cache das rotas principais e assets do Next.js.
+- IndexedDB para fila offline persistente.
+- Sincronização automática, manual e Background Sync quando suportado.
+- Persistência administrativa guarda alterações localmente durante indisponibilidade do Supabase/Vercel.
+- Acesso administrativo offline em dispositivo previamente autenticado por até 24h.
+- Logout offline bloqueia acesso local e agenda logout remoto.
+- Agente Municipal com interpretador operacional local quando a Groq fica inacessível.
+- `/avaliar` aceita manifestações e anexos offline, com referência temporária OFF-... e protocolo oficial após sincronização.
+- `/acompanhar` usa cache local para protocolos já consultados e aceita avaliação offline em fila.
+- Upload de documentos e anexos do chat entra em fila quando a conexão cai.
+- Barra global de conectividade, fila pendente, botão de sincronização e instalação PWA.
+- Ícones PWA 192x192 e 512x512 adicionados.

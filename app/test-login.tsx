@@ -1,6 +1,6 @@
 "use client";
 
-import { FormEvent, useState } from "react";
+import { FormEvent, useEffect, useState } from "react";
 import { Landmark, LockKeyhole, LogIn, ShieldCheck, Smartphone, UserRound } from "lucide-react";
 
 type LoginResult = { ok?: boolean; error?: string; twoFactorRequired?: boolean; phone?: string; smsConfigured?: boolean };
@@ -13,6 +13,8 @@ export function TestLoginScreen({ onAuthenticated }: { onAuthenticated: () => vo
   const [phone, setPhone] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
+  const [online, setOnline] = useState(true);
+  useEffect(() => { const refresh=()=>setOnline(navigator.onLine); refresh(); window.addEventListener("online",refresh); window.addEventListener("offline",refresh); return()=>{window.removeEventListener("online",refresh);window.removeEventListener("offline",refresh);}; }, []);
 
   async function submitCredentials(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -43,16 +45,17 @@ export function TestLoginScreen({ onAuthenticated }: { onAuthenticated: () => vo
     <section className="login-panel">
       <div className="login-brand"><span><Landmark size={24} /></span><div><strong>Prefeitura Conecta</strong><small>Gestão Integrada</small></div></div>
       <div className="login-copy"><p className="eyebrow">ACESSO ADMINISTRATIVO</p><h1>{step === "credentials" ? "Entrar no sistema" : "Confirmar código SMS"}</h1><p>{step === "credentials" ? "Área restrita para servidores, secretários e Gabinete do Prefeito." : `Enviamos um código de verificação para ${phone}.`}</p></div>
+      {!online && <p className="login-error">Sem internet. O primeiro login neste dispositivo exige conexão. Depois de um login válido, o aparelho poderá reabrir o sistema offline por até 24 horas.</p>}
       {step === "credentials" ? <form className="login-form" onSubmit={submitCredentials}>
         <label><span>Usuário</span><div><UserRound size={17} /><input value={username} onChange={(event) => setUsername(event.target.value)} autoComplete="username" required autoFocus /></div></label>
         <label><span>Senha</span><div><LockKeyhole size={17} /><input type="password" value={password} onChange={(event) => setPassword(event.target.value)} autoComplete="current-password" required /></div></label>
         {error && <p className="login-error">{error}</p>}
-        <button className="login-submit" disabled={busy}>{busy ? "Entrando..." : <><LogIn size={17} /> Entrar</>}</button>
+        <button className="login-submit" disabled={busy || !online}>{busy ? "Entrando..." : <><LogIn size={17} /> Entrar</>}</button>
         <div className="test-access-note"><ShieldCheck size={16} /><span><strong>Acesso de teste</strong><small>Usuário: admin · Senha: admin</small></span></div>
       </form> : <form className="login-form" onSubmit={submitCode}>
         <label><span>Código de verificação</span><div><Smartphone size={17} /><input className="otp-input" inputMode="numeric" autoComplete="one-time-code" value={code} onChange={(event) => setCode(event.target.value.replace(/\D/g, "").slice(0, 10))} placeholder="000000" required autoFocus /></div></label>
         {error && <p className="login-error">{error}</p>}
-        <button className="login-submit" disabled={busy}>{busy ? "Verificando..." : <><ShieldCheck size={17} /> Confirmar e entrar</>}</button>
+        <button className="login-submit" disabled={busy || !online}>{busy ? "Verificando..." : <><ShieldCheck size={17} /> Confirmar e entrar</>}</button>
         <button className="login-back" type="button" onClick={() => { setStep("credentials"); setCode(""); setError(""); }}>Voltar ao login</button>
       </form>}
       <footer><LockKeyhole size={13} /> Sessão administrativa protegida por cookie HttpOnly.</footer>

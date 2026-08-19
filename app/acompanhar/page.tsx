@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { FormEvent, useState } from "react";
+import { cacheCitizenTracking, loadCachedCitizenTracking, queueJsonRequest, resolveOfflineCitizenProtocol } from "../offline-sync";
 import { ArrowRight, CheckCircle2, Clock3, FileSearch, Landmark, MessageSquareText, Send, ShieldCheck, Star } from "lucide-react";
 
 type Tracking = {
@@ -19,25 +20,56 @@ export default function AcompanharPage() {
   async function search(event: FormEvent) {
     event.preventDefault(); setBusy(true); setError(""); setItem(null); setEvaluated(false);
     try {
-      const response = await fetch("/api/citizen-tracking", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ protocol, accessCode }) });
-      const payload = await response.json().catch(() => null) as { feedback?: Tracking; error?: string } | null;
-      if (!response.ok || !payload?.feedback) throw new Error(payload?.error || "Não foi possível localizar o protocolo.");
-      setItem(payload.feedback);
+      let requestedProtocol = protocol.trim().toUpperCase(); let requestedAccessCode = accessCode.trim();
+      if (requestedProtocol.startsWith("OFF-")) {
+        const receipt = await resolveOfflineCitizenProtocol(requestedProtocol);
+        if (!receipt) throw new Error("Não encontrei essa referência offline neste dispositivo.");
+        if (receipt.status !== "synced" || !receipt.protocol || !receipt.accessCode) throw new Error("Esta manifestação ainda está aguardando conexão para receber o protocolo oficial.");
+        requestedProtocol = receipt.protocol; requestedAccessCode = receipt.accessCode; setProtocol(receipt.protocol); setAccessCode(receipt.accessCode);
+      }
+      if (!navigator.onLine) {
+        const cached = await loadCachedCitizenTracking(requestedProtocol, requestedAccessCode) as Tracking | null;
+        if (!cached) throw new Error("Sem internet. Este protocolo ainda não possui uma consulta salva neste dispositivo.");
+        setItem(cached); return;
+      }
+      try {
+        const response = await fetch("/api/citizen-tracking", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ protocol: requestedProtocol, accessCode: requestedAccessCode }) });
+        const payload = await response.json().catch(() => null) as { feedback?: Tracking; error?: string } | null;
+        if (!response.ok || !payload?.feedback) throw new Error(payload?.error || "Não foi possível localizar o protocolo.");
+        setItem(payload.feedback); await cacheCitizenTracking(requestedProtocol, requestedAccessCode, payload.feedback);
+      } catch (networkError) {
+        if (!navigator.onLine || networkError instanceof TypeError) {
+          const cached = await loadCachedCitizenTracking(requestedProtocol, requestedAccessCode) as Tracking | null;
+          if (!cached) throw new Error("A conexão caiu e não há uma cópia anterior deste protocolo no aparelho.");
+          setItem(cached);
+        } else throw networkError;
+      }
     } catch (err) { setError(err instanceof Error ? err.message : "Não foi possível consultar o protocolo."); }
     finally { setBusy(false); }
   }
 
+
   async function evaluate(event: FormEvent<HTMLFormElement>) {
     event.preventDefault(); if (!rating || nps === null) { setError("Selecione a nota da solução e uma nota de 0 a 10."); return; }
     const form = new FormData(event.currentTarget); setBusy(true); setError("");
+    const body = { protocol, accessCode, rating, nps, comment: String(form.get("comment") ?? "") };
     try {
-      const response = await fetch("/api/citizen-tracking", { method: "PATCH", headers: { "content-type": "application/json" }, body: JSON.stringify({ protocol, accessCode, rating, nps, comment: String(form.get("comment") ?? "") }) });
-      const payload = await response.json().catch(() => null) as { feedback?: Tracking; error?: string } | null;
-      if (!response.ok || !payload?.feedback) throw new Error(payload?.error || "Não foi possível registrar sua avaliação.");
-      setItem(payload.feedback); setEvaluated(true);
+      if (!navigator.onLine) {
+        await queueJsonRequest("/api/citizen-tracking", "PATCH", body, `Avaliação do protocolo ${protocol}`); setEvaluated(true); setError("Avaliação guardada no aparelho. Ela será enviada automaticamente quando a conexão voltar."); return;
+      }
+      try {
+        const response = await fetch("/api/citizen-tracking", { method: "PATCH", headers: { "content-type": "application/json" }, body: JSON.stringify(body) });
+        const payload = await response.json().catch(() => null) as { feedback?: Tracking; error?: string } | null;
+        if (!response.ok || !payload?.feedback) throw new Error(payload?.error || "Não foi possível registrar sua avaliação.");
+        setItem(payload.feedback); setEvaluated(true); await cacheCitizenTracking(protocol, accessCode, payload.feedback);
+      } catch (networkError) {
+        if (!navigator.onLine || networkError instanceof TypeError) { await queueJsonRequest("/api/citizen-tracking", "PATCH", body, `Avaliação do protocolo ${protocol}`); setEvaluated(true); setError("A conexão caiu. A avaliação foi guardada e será sincronizada depois."); }
+        else throw networkError;
+      }
     } catch (err) { setError(err instanceof Error ? err.message : "Não foi possível registrar a avaliação."); }
     finally { setBusy(false); }
   }
+
 
   return <main className="tracking-shell">
     <header className="evaluation-topbar"><div className="evaluation-brand"><span><Landmark size={21}/></span><div><strong>Prefeitura Conecta</strong><small>Acompanhamento do Cidadão</small></div></div><div className="public-nav-links"><Link href="/avaliar">Nova manifestação</Link><Link href="/">Acesso administrativo</Link></div></header>

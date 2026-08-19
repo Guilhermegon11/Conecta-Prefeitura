@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { FormEvent, useState } from "react";
+import { queueCitizenFeedback } from "../offline-sync";
 import { CheckCircle2, HeartHandshake, Landmark, MessageSquareText, Send, ShieldCheck, Star } from "lucide-react";
 
 type FeedbackKind = "Reclamação" | "Elogio" | "Sugestão";
@@ -24,6 +25,7 @@ export default function AvaliarPage() {
   const [uploadWarning, setUploadWarning] = useState("");
   const [protocol, setProtocol] = useState("");
   const [accessCode, setAccessCode] = useState("");
+  const [offlineReceipt, setOfflineReceipt] = useState(false);
 
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -31,46 +33,38 @@ export default function AvaliarPage() {
     setBusy(true); setError(""); setUploadWarning("");
     const formElement = event.currentTarget;
     const form = new FormData(formElement);
+    const payload = {
+      kind, rating, subject: String(form.get("subject") ?? ""), message: String(form.get("message") ?? ""), name: String(form.get("name") ?? ""), contact: String(form.get("contact") ?? ""), neighborhood: String(form.get("neighborhood") ?? ""), website: String(form.get("website") ?? ""), anonymous, consent: form.get("consent") === "on",
+    };
+    const attachments = form.getAll("attachments").filter((item): item is File => item instanceof File && item.size > 0).slice(0, 3);
+    async function saveOffline() {
+      const queued = await queueCitizenFeedback(payload, attachments);
+      setProtocol(queued.localProtocol); setAccessCode(""); setOfflineReceipt(true);
+      setUploadWarning(attachments.length ? "Os anexos também foram guardados neste dispositivo e serão enviados quando a conexão voltar." : "");
+      formElement.reset(); setRating(0); setAnonymous(false); setKind("Reclamação");
+    }
     try {
-      const response = await fetch("/api/citizen-feedback", {
-        method: "POST",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify({
-          kind,
-          rating,
-          subject: String(form.get("subject") ?? ""),
-          message: String(form.get("message") ?? ""),
-          name: String(form.get("name") ?? ""),
-          contact: String(form.get("contact") ?? ""),
-          neighborhood: String(form.get("neighborhood") ?? ""),
-          website: String(form.get("website") ?? ""),
-          anonymous,
-          consent: form.get("consent") === "on",
-        }),
-      });
-      const payload = await response.json().catch(() => null) as FeedbackResponse | null;
-      if (!response.ok || !payload?.ok || !payload.protocol) throw new Error(publicErrorMessage(payload, response.status));
-      setProtocol(payload.protocol);
-      setAccessCode(payload.accessCode ?? "");
-      const attachments = form.getAll("attachments").filter((item): item is File => item instanceof File && item.size > 0).slice(0, 3);
-      if (attachments.length && payload.accessCode) {
+      if (!navigator.onLine) { await saveOffline(); return; }
+      const response = await fetch("/api/citizen-feedback", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(payload) });
+      const responsePayload = await response.json().catch(() => null) as FeedbackResponse | null;
+      if (!response.ok || !responsePayload?.ok || !responsePayload.protocol) throw new Error(publicErrorMessage(responsePayload, response.status));
+      setProtocol(responsePayload.protocol); setAccessCode(responsePayload.accessCode ?? ""); setOfflineReceipt(false);
+      if (attachments.length && responsePayload.accessCode) {
         let failed = 0;
         for (const file of attachments) {
-          const attachmentForm = new FormData();
-          attachmentForm.set("protocol", payload.protocol);
-          attachmentForm.set("accessCode", payload.accessCode);
-          attachmentForm.set("file", file);
-          const uploadResponse = await fetch("/api/citizen-feedback-attachment", { method: "POST", body: attachmentForm });
-          if (!uploadResponse.ok) failed += 1;
+          const attachmentForm = new FormData(); attachmentForm.set("protocol", responsePayload.protocol); attachmentForm.set("accessCode", responsePayload.accessCode); attachmentForm.set("file", file);
+          const uploadResponse = await fetch("/api/citizen-feedback-attachment", { method: "POST", body: attachmentForm }); if (!uploadResponse.ok) failed += 1;
         }
         if (failed) setUploadWarning(`${failed} anexo(s) não puderam ser enviado(s). A manifestação foi registrada normalmente.`);
       }
-      formElement.reset();
-      setRating(0); setAnonymous(false); setKind("Reclamação");
+      formElement.reset(); setRating(0); setAnonymous(false); setKind("Reclamação");
     } catch (submitError) {
-      setError(submitError instanceof Error ? submitError.message : "Não foi possível registrar sua manifestação.");
+      if (!navigator.onLine || submitError instanceof TypeError) {
+        try { await saveOffline(); } catch { setError("Não foi possível guardar a manifestação neste dispositivo."); }
+      } else setError(submitError instanceof Error ? submitError.message : "Não foi possível registrar sua manifestação.");
     } finally { setBusy(false); }
   }
+
 
   return <main className="evaluation-shell">
     <header className="evaluation-topbar">
@@ -93,8 +87,8 @@ export default function AvaliarPage() {
         </div>
 
         {protocol ? <div className="citizen-success">
-          <span><CheckCircle2 size={28} /></span><div><strong>Manifestação enviada com sucesso</strong><p>Guarde estes dados para acompanhar o atendimento:</p><div className="citizen-success-credentials"><div><small>Protocolo</small><code>{protocol}</code></div>{accessCode && <div><small>Código de acesso</small><code>{accessCode}</code></div>}</div><small>O registro foi encaminhado ao Gabinete do Prefeito.</small>{uploadWarning && <p className="evaluation-warning">{uploadWarning}</p>}<Link href="/acompanhar" className="citizen-track-cta">Acompanhar manifestação</Link></div>
-          <button type="button" onClick={() => { setProtocol(""); setAccessCode(""); }}>Enviar outra manifestação</button>
+          <span><CheckCircle2 size={28} /></span><div><strong>{offlineReceipt ? "Manifestação guardada para envio" : "Manifestação enviada com sucesso"}</strong><p>{offlineReceipt ? "Sem internet no momento. Guarde esta referência temporária; o sistema enviará automaticamente quando a conexão voltar." : "Guarde estes dados para acompanhar o atendimento:"}</p><div className="citizen-success-credentials"><div><small>{offlineReceipt ? "Referência offline" : "Protocolo"}</small><code>{protocol}</code></div>{accessCode && <div><small>Código de acesso</small><code>{accessCode}</code></div>}</div><small>{offlineReceipt ? "O protocolo oficial e o código de acesso serão gerados após a sincronização." : "O registro foi encaminhado ao Gabinete do Prefeito."}</small>{uploadWarning && <p className="evaluation-warning">{uploadWarning}</p>}{!offlineReceipt && <Link href="/acompanhar" className="citizen-track-cta">Acompanhar manifestação</Link>}</div>
+          <button type="button" onClick={() => { setProtocol(""); setAccessCode(""); setOfflineReceipt(false); }}>Enviar outra manifestação</button>
         </div> : <form className="citizen-public-form" onSubmit={submit}>
           <div className="citizen-kind-grid" role="group" aria-label="Tipo da manifestação">
             {(["Reclamação", "Elogio", "Sugestão"] as FeedbackKind[]).map((item) => <button type="button" key={item} className={kind === item ? "active" : ""} onClick={() => setKind(item)}><MessageSquareText size={15} />{item}</button>)}

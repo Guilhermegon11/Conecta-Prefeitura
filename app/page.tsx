@@ -85,6 +85,8 @@ import {
 } from "./access-control";
 import { PermissionProvider, useCurrentPermission } from "./permission-context";
 import { loadCachedPersistentValue, loadPersistentValue, savePersistentValue, usePersistentState } from "./persistence";
+import { clearOfflineSession, hasValidOfflineSession, rememberOfflineSession } from "./offline-auth";
+import { queueFormRequest } from "./offline-sync";
 import { LoginLoadingScreen, TestLoginScreen } from "./test-login";
 import { IntegratedManagementSection } from "./integrated-platform";
 import { OnboardingTour, QuickActionDock } from "./platform-experience";
@@ -378,8 +380,14 @@ export default function Home() {
     let cancelled = false;
     void fetch("/api/auth/session", { cache: "no-store" }).then(async (response) => {
       const payload = await response.json().catch(() => null) as { authenticated?: boolean } | null;
-      if (!cancelled) setAuthState(payload?.authenticated ? "authenticated" : "login");
-    }).catch(() => { if (!cancelled) setAuthState("login"); });
+      if (cancelled) return;
+      if (payload?.authenticated) { rememberOfflineSession(); setAuthState("authenticated"); }
+      else { clearOfflineSession(false); setAuthState("login"); }
+    }).catch(() => {
+      if (cancelled) return;
+      // Sem internet: somente um dispositivo autenticado anteriormente pode reabrir o sistema.
+      setAuthState(hasValidOfflineSession() ? "authenticated" : "login");
+    });
     return () => { cancelled = true; };
   }, []);
 
@@ -421,10 +429,17 @@ export default function Home() {
       setAppReady(true);
     }).catch(() => {
       if (cancelled) return;
+      const cachedExperience = loadCachedPersistentValue<{ soundEnabled?: boolean; motionEnabled?: boolean }>(EXPERIENCE_SETTINGS_KEY);
+      const cachedExecutive = loadCachedPersistentValue<{ enabled?: boolean }>(EXECUTIVE_COMMUNICATION_KEY);
+      const cachedPermissions = loadCachedPersistentValue<Record<string, DepartmentPermissionSettings>>(PERMISSION_SETTINGS_KEY);
       const cached = loadCachedPersistentValue<{
         ticketData?: Ticket[]; users?: User[]; groups?: Group[]; messages?: Message[]; documents?: DocumentItem[];
         events?: SectorEvent[]; audit?: AuditItem[]; notifications?: NotificationItem[]; invitations?: GroupInvitation[];
       }>(APP_STATE_KEY);
+      if (typeof cachedExperience?.soundEnabled === "boolean") setSoundEnabled(cachedExperience.soundEnabled);
+      if (typeof cachedExperience?.motionEnabled === "boolean") setMotionEnabled(cachedExperience.motionEnabled);
+      if (cachedExecutive) setExecutiveCommunicationAccess(cachedExecutive.enabled === true);
+      if (cachedPermissions) setPermissionConfigs(cachedPermissions);
       if (cached) {
         if (Array.isArray(cached.ticketData)) setTicketData(backfillTicketLocations(cached.ticketData));
         if (Array.isArray(cached.users)) setUsers(backfillExecutiveUsers(cached.users));
@@ -446,20 +461,20 @@ export default function Home() {
     if (authState !== "authenticated" || !appReady) return;
     const timer = window.setTimeout(() => {
       setPersistenceStatus("salvando");
-      void savePersistentValue(EXPERIENCE_SETTINGS_KEY, { soundEnabled, motionEnabled }).then(() => setPersistenceStatus("salvo")).catch(() => setPersistenceStatus("offline"));
+      void savePersistentValue(EXPERIENCE_SETTINGS_KEY, { soundEnabled, motionEnabled }).then((result) => setPersistenceStatus(result.queued ? "offline" : "salvo")).catch(() => setPersistenceStatus("offline"));
     }, 350);
     return () => window.clearTimeout(timer);
   }, [appReady, authState, motionEnabled, soundEnabled]);
 
   useEffect(() => {
     if (authState !== "authenticated" || !appReady) return;
-    const timer = window.setTimeout(() => { void savePersistentValue(EXECUTIVE_COMMUNICATION_KEY, { enabled: executiveCommunicationAccess }).catch(() => setPersistenceStatus("offline")); }, 350);
+    const timer = window.setTimeout(() => { void savePersistentValue(EXECUTIVE_COMMUNICATION_KEY, { enabled: executiveCommunicationAccess }).then((result) => { if (result.queued) setPersistenceStatus("offline"); }).catch(() => setPersistenceStatus("offline")); }, 350);
     return () => window.clearTimeout(timer);
   }, [appReady, authState, executiveCommunicationAccess]);
 
   useEffect(() => {
     if (authState !== "authenticated" || !appReady) return;
-    const timer = window.setTimeout(() => { void savePersistentValue(PERMISSION_SETTINGS_KEY, permissionConfigs).catch(() => setPersistenceStatus("offline")); }, 450);
+    const timer = window.setTimeout(() => { void savePersistentValue(PERMISSION_SETTINGS_KEY, permissionConfigs).then((result) => { if (result.queued) setPersistenceStatus("offline"); }).catch(() => setPersistenceStatus("offline")); }, 450);
     return () => window.clearTimeout(timer);
   }, [appReady, authState, permissionConfigs]);
 
@@ -467,7 +482,7 @@ export default function Home() {
     if (authState !== "authenticated" || !appReady) return;
     setPersistenceStatus("salvando");
     void savePersistentValue(APP_STATE_KEY, { ticketData, users, groups, messages, documents, events, audit, notifications, invitations })
-      .then(() => setPersistenceStatus("salvo"))
+      .then((result) => setPersistenceStatus(result.queued ? "offline" : "salvo"))
       .catch(() => setPersistenceStatus("offline"));
   }, [audit, appReady, authState, documents, events, groups, invitations, messages, notifications, ticketData, users]);
 
@@ -552,7 +567,8 @@ export default function Home() {
   }
 
   async function logout() {
-    try { await fetch("/api/auth/logout", { method: "POST" }); } finally { window.location.reload(); }
+    if (!navigator.onLine) { clearOfflineSession(true); window.location.reload(); return; }
+    try { await fetch("/api/auth/logout", { method: "POST" }); } finally { clearOfflineSession(false); window.location.reload(); }
   }
 
   async function createTicket(form: FormData) {
@@ -632,14 +648,16 @@ export default function Home() {
     setDocuments((current) => [item, ...current]);
     addAudit("documento_enviado", "documento", item.id, `${file.name} compartilhado com ${activeDepartment}`);
     notify("Arquivo compartilhado com todos do seu setor.");
-    const form = new FormData(); form.append("file", file); form.append("category", "Arquivo do setor"); form.append("userId", currentUser.id); form.append("ownerName", currentUser.fullName); form.append("department", activeDepartment);
+    const form = new FormData(); form.append("file", file); form.append("clientId", item.id); form.append("category", "Arquivo do setor"); form.append("userId", currentUser.id); form.append("ownerName", currentUser.fullName); form.append("department", activeDepartment);
     try {
+      if (!navigator.onLine) { await queueFormRequest("/api/files", "POST", form, `Arquivo ${file.name}`); notify("Sem internet: arquivo guardado neste dispositivo e colocado na fila de sincronização."); return; }
       const response = await fetch("/api/files", { method: "POST", body: form });
       const payload = await response.json().catch(() => null) as { id?: string; error?: string } | null;
       if (!response.ok || !payload?.id) throw new Error(payload?.error || "Não foi possível enviar o arquivo.");
       setDocuments((current) => current.map((doc) => doc.id === item.id ? { ...doc, id: payload.id! } : doc));
       notify("Arquivo salvo no Supabase e compartilhado com o setor.");
     } catch (error) {
+      if (!navigator.onLine || error instanceof TypeError) { await queueFormRequest("/api/files", "POST", form, `Arquivo ${file.name}`); notify("A conexão caiu: o arquivo foi preservado e será enviado automaticamente depois."); return; }
       setDocuments((current) => current.filter((doc) => doc.id !== item.id));
       notify(error instanceof Error ? error.message : "Não foi possível salvar o arquivo.");
     }
@@ -744,6 +762,8 @@ export default function Home() {
 
     const form = new FormData();
     form.append("file", file);
+    form.append("clientId", tempDocumentId);
+    form.append("clientMessageId", tempMessageId);
     form.append("category", "Documento do chat");
     form.append("userId", currentUser.id);
     form.append("ownerName", currentUser.fullName);
@@ -755,6 +775,7 @@ export default function Home() {
     if (context.body.trim()) form.append("messageBody", context.body.trim());
 
     try {
+      if (!navigator.onLine) { await queueFormRequest("/api/files", "POST", form, `Documento do chat ${file.name}`); notify("Sem internet: documento e mensagem ficaram na fila de sincronização."); return true; }
       const response = await fetch("/api/files", { method: "POST", body: form });
       if (!response.ok) throw new Error("Falha no envio");
       const saved = await response.json() as { id: string; message?: { id: string; createdAt: string } };
@@ -762,6 +783,7 @@ export default function Home() {
       setMessages((current) => current.map((item) => item.id === tempMessageId ? { ...item, id: saved.message?.id ?? item.id, attachmentId: saved.id, attachmentUrl: null, createdAt: saved.message?.createdAt ?? item.createdAt } : item));
       URL.revokeObjectURL(localUrl);
     } catch (error) {
+      if (!navigator.onLine || error instanceof TypeError) { await queueFormRequest("/api/files", "POST", form, `Documento do chat ${file.name}`); notify("A conexão caiu: documento e mensagem foram preservados para sincronização."); return true; }
       setDocuments((current) => current.filter((doc) => doc.id !== tempDocumentId));
       setMessages((current) => current.filter((item) => item.id !== tempMessageId));
       URL.revokeObjectURL(localUrl);
@@ -844,7 +866,7 @@ export default function Home() {
   }
 
   if (authState === "checking") return <LoginLoadingScreen />;
-  if (authState === "login") return <TestLoginScreen onAuthenticated={() => { setAppReady(false); setAuthState("authenticated"); }} />;
+  if (authState === "login") return <TestLoginScreen onAuthenticated={() => { rememberOfflineSession(); setAppReady(false); setAuthState("authenticated"); }} />;
 
   const heading = getHeading(activeNav);
   const headingTitle = activeNav === "Visão geral" ? `${greetingFor(clockNow)}, ${currentUser.fullName.split(" ")[0]}.` : activeNav === "Área do Setor" ? activeDepartment : heading.title;

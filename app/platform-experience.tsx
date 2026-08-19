@@ -1,16 +1,51 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { CalendarPlus, Check, ClipboardList, Landmark, Plus, Sparkles, Workflow, X } from "lucide-react";
+import { CalendarPlus, Check, CloudOff, CloudUpload, ClipboardList, Download, Landmark, Plus, Sparkles, Wifi, Workflow, X } from "lucide-react";
+import { flushOfflineQueue, getOfflinePendingCount, subscribeOfflineQueue } from "./offline-sync";
+import { flushPendingOfflineLogout } from "./offline-auth";
+
+type InstallPromptEvent = Event & { prompt: () => Promise<void>; userChoice: Promise<{ outcome: "accepted" | "dismissed" }> };
 
 export function PwaRegistrar() {
   useEffect(() => {
     if (!("serviceWorker" in navigator)) return;
-    const register = () => { void navigator.serviceWorker.register("/sw.js").catch(() => undefined); };
+    const register = () => {
+      void navigator.serviceWorker.register("/sw.js").then(() => {
+        // Aquece as rotas públicas e os assets enquanto há internet.
+        void fetch("/avaliar", { cache: "reload" }).catch(() => undefined);
+        void fetch("/acompanhar", { cache: "reload" }).catch(() => undefined);
+      }).catch(() => undefined);
+    };
+    const sync = () => { void flushPendingOfflineLogout().finally(() => flushOfflineQueue()).catch(() => undefined); };
+    window.addEventListener("online", sync);
     if (document.readyState === "complete") register(); else window.addEventListener("load", register, { once: true });
-    return () => window.removeEventListener("load", register);
+    if (navigator.onLine) sync();
+    return () => { window.removeEventListener("load", register); window.removeEventListener("online", sync); };
   }, []);
   return null;
+}
+
+export function OfflineStatusBar() {
+  const [online, setOnline] = useState(true);
+  const [pending, setPending] = useState(0);
+  const [syncing, setSyncing] = useState(false);
+  const [installPrompt, setInstallPrompt] = useState<InstallPromptEvent | null>(null);
+  useEffect(() => {
+    const refresh = () => { setOnline(navigator.onLine); void getOfflinePendingCount().then(setPending); };
+    const onInstall = (event: Event) => { event.preventDefault(); setInstallPrompt(event as InstallPromptEvent); };
+    refresh();
+    window.addEventListener("online", refresh); window.addEventListener("offline", refresh); window.addEventListener("beforeinstallprompt", onInstall);
+    const unsubscribe = subscribeOfflineQueue(refresh);
+    return () => { unsubscribe(); window.removeEventListener("online", refresh); window.removeEventListener("offline", refresh); window.removeEventListener("beforeinstallprompt", onInstall); };
+  }, []);
+  async function syncNow() { setSyncing(true); try { await flushOfflineQueue(); } finally { setSyncing(false); setPending(await getOfflinePendingCount()); } }
+  async function install() { if (!installPrompt) return; await installPrompt.prompt(); const choice = await installPrompt.userChoice; if (choice.outcome === "accepted") setInstallPrompt(null); }
+  if (online && pending === 0 && !installPrompt) return null;
+  return <div className={`offline-global-bar ${online ? "online" : "offline"}`} role="status">
+    <span className="offline-global-main">{online ? <Wifi size={15}/> : <CloudOff size={15}/>}<strong>{online ? (pending ? `${pending} alteração(ões) aguardando sincronização` : "Conectado") : "Modo offline ativo"}</strong><small>{online ? "Os dados locais serão enviados para o servidor." : "Você pode continuar trabalhando. As alterações ficam guardadas neste dispositivo."}</small></span>
+    <span className="offline-global-actions">{online && pending > 0 && <button type="button" onClick={() => void syncNow()} disabled={syncing}><CloudUpload size={14}/>{syncing ? "Sincronizando…" : "Sincronizar agora"}</button>}{installPrompt && <button type="button" onClick={() => void install()}><Download size={14}/>Instalar para uso offline</button>}</span>
+  </div>;
 }
 
 export function OnboardingTour({ userName, role, department, onNavigate }: { userName: string; role: string; department: string; onNavigate: (nav: string) => void }) {

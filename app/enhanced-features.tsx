@@ -35,10 +35,10 @@ export function OperationalCommandCenter({ tickets, allTickets, executive, depar
     </article>
 
     {executive && <div className="executive-kpis">
-      <article><span><ClipboardCheck size={18}/></span><div><small>Demandas abertas</small><strong>{executiveStats.active}</strong></div></article>
-      <article><span><AlertTriangle size={18}/></span><div><small>Em atraso</small><strong>{executiveStats.late}</strong></div></article>
-      <article><span><ShieldCheck size={18}/></span><div><small>Dentro do SLA</small><strong>{executiveStats.within}%</strong></div></article>
-      <article><span><UserCheck size={18}/></span><div><small>Aguardando decisão</small><strong>{allTickets.filter((t)=>t.status === "Aguardando aprovação").length}</strong></div></article>
+      <article className="info"><span><ClipboardCheck size={18}/></span><div><small>Demandas abertas</small><strong>{executiveStats.active}</strong></div></article>
+      <article className="danger"><span><AlertTriangle size={18}/></span><div><small>Em atraso</small><strong>{executiveStats.late}</strong></div></article>
+      <article className="success"><span><ShieldCheck size={18}/></span><div><small>Dentro do SLA</small><strong>{executiveStats.within}%</strong></div></article>
+      <article className="warning"><span><UserCheck size={18}/></span><div><small>Aguardando decisão</small><strong>{allTickets.filter((t)=>t.status === "Aguardando aprovação").length}</strong></div></article>
     </div>}
 
     <div className="command-grid">
