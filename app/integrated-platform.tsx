@@ -7,7 +7,7 @@ import {
   ListChecks, Map as MapIcon, MapPin, Network, Plus, RefreshCcw, Search, ServerCog, ShieldCheck, Sparkles, Star, Target, UsersRound,
   Wifi, WifiOff, Workflow, X,
 } from "lucide-react";
-import { persistenceKey, usePersistentState } from "./persistence";
+import { loadPersistentValue, persistenceKey, usePersistentState } from "./persistence";
 
 type Notify = (message: string) => void;
 type TicketInput = { id: string; protocol: string; title: string; description: string; department: string; status: string; priority: string; dueDate: string | null; neighborhood?: string; address?: string; requester: string };
@@ -90,6 +90,7 @@ export function IntegratedManagementSection({ department, currentUser, executive
   const [health, setHealth] = useState<HealthPayload | null>(null); const [online, setOnline] = useState(true); const [backupBusy, setBackupBusy] = useState(false);
 
   useEffect(()=>{ const sync=()=>setOnline(navigator.onLine); sync(); window.addEventListener("online",sync); window.addEventListener("offline",sync); return()=>{window.removeEventListener("online",sync);window.removeEventListener("offline",sync)}; },[]);
+  useEffect(()=>{ const refresh=(event:Event)=>{ const key=(event as CustomEvent<{key?:string}>).detail?.key; if(key==="integrated:tasks:v2")void loadPersistentValue<IntegratedTask[]>(key).then((value)=>value&&setTasks(value)).catch(()=>undefined); if(key==="integrated:projects:v2")void loadPersistentValue<Project[]>(key).then((value)=>value&&setProjects(value)).catch(()=>undefined); if(key==="integrated:goals:v2")void loadPersistentValue<Goal[]>(key).then((value)=>value&&setGoals(value)).catch(()=>undefined); if(key==="integrated:places:v2")void loadPersistentValue<PublicPlace[]>(key).then((value)=>value&&setPlaces(value)).catch(()=>undefined); }; window.addEventListener("municipal-agent-data-changed",refresh); return()=>window.removeEventListener("municipal-agent-data-changed",refresh); },[setGoals,setPlaces,setProjects,setTasks]);
   useEffect(()=>{ if(tab!=="Saúde do sistema")return; void fetch("/api/system-health",{cache:"no-store"}).then(r=>r.ok?r.json():null).then((p)=>{if(p)setHealth(p as HealthPayload)}).catch(()=>undefined); },[tab]);
 
   const scopedTasks = useMemo(()=>tasks.filter((task)=>executive || task.department===department || task.requesterDepartment===department),[department,executive,tasks]);

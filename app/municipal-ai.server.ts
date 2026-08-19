@@ -1,3 +1,4 @@
+import type { MunicipalAgentPayload, MunicipalAgentTurnResult, MunicipalAgentActionType } from "./municipal-agent-types";
 export type MunicipalAiUrgency = "Baixa" | "Normal" | "Alta" | "Crítica";
 export type MunicipalAiSource = "groq" | "regras";
 
@@ -72,3 +73,82 @@ export async function runMunicipalCopilot(input: { prompt: string; context?: unk
 const TICKET_SCHEMA: JsonSchema = { type: "object", properties: { title: { type: "string" }, description: { type: "string" }, department: { type: "string" }, priority: { type: "string", enum: ["Baixa", "Média", "Alta", "Urgente"] }, slaHours: { type: "integer", minimum: 1, maximum: 720 }, dueDays: { type: "integer", minimum: 0, maximum: 60 }, tags: { type: "array", items: { type: "string" } }, checklist: { type: "array", items: { type: "string" } } }, required: ["title", "description", "department", "priority", "slaHours", "dueDays", "tags", "checklist"], additionalProperties: false };
 export async function createTicketAiDraft(input: { title: string; description: string; neighborhood?: string; departments?: string[] }): Promise<TicketAiDraft> { const heuristic = heuristicMunicipalAnalysis(input.title, input.description, input.neighborhood || ""); const fallback: TicketAiDraft = { title: input.title.trim().slice(0, 180) || heuristic.summary.slice(0, 120), description: input.description.trim().slice(0, 2500) || heuristic.summary, department: heuristic.suggestedDepartment, priority: heuristic.urgency === "Crítica" ? "Urgente" : heuristic.urgency === "Alta" ? "Alta" : heuristic.urgency === "Baixa" ? "Baixa" : "Média", slaHours: heuristic.suggestedSlaHours || 72, dueDays: heuristic.urgency === "Crítica" ? 0 : heuristic.urgency === "Alta" ? 1 : 3, tags: heuristic.tags, checklist: heuristic.checklist || [], source: "regras" }; if (!hasMunicipalAiConfig()) return fallback; try { const departments = (input.departments?.length ? input.departments : DEPARTMENT_RULES.map((item) => item.department)).slice(0, 40); const text = await callGroq({ system: "Transforme o rascunho em um chamado municipal claro. Sugira setor, prioridade, SLA e checklist. Preserve o fato relatado; não crie detalhes inexistentes. Use exatamente um setor da lista.", user: `Título atual: ${input.title}\nDescrição atual: ${input.description}\nBairro: ${input.neighborhood || "não informado"}\nSetores válidos: ${departments.join("; ")}`, schema: { name: "municipal_ticket_draft", schema: TICKET_SCHEMA }, maxTokens: 1800 }); const parsed = text ? parseJsonLoose(text) : null; if (!parsed) return fallback; const priority = ["Baixa", "Média", "Alta", "Urgente"].includes(String(parsed.priority)) ? String(parsed.priority) as TicketAiDraft["priority"] : fallback.priority; return { title: typeof parsed.title === "string" ? parsed.title.slice(0, 180) : fallback.title, description: typeof parsed.description === "string" ? parsed.description.slice(0, 3000) : fallback.description, department: typeof parsed.department === "string" && departments.includes(parsed.department) ? parsed.department : fallback.department, priority, slaHours: typeof parsed.slaHours === "number" ? Math.max(1, Math.min(720, Math.round(parsed.slaHours))) : fallback.slaHours, dueDays: typeof parsed.dueDays === "number" ? Math.max(0, Math.min(60, Math.round(parsed.dueDays))) : fallback.dueDays, tags: asStringArray(parsed.tags, 10), checklist: asStringArray(parsed.checklist, 10), source: "groq" }; } catch { return fallback; } }
 export async function generateMunicipalDraft(input: { kind: string; text: string; context?: unknown }) { const text = input.text.trim().slice(0, 12000); const context = JSON.stringify(input.context ?? {}).slice(0, 18000); const fallback = text; if (!text || !hasMunicipalAiConfig()) return { text: fallback, source: "regras" as const }; const instructions: Record<string, string> = { improve_message: "Reescreva a mensagem para ficar objetiva, cordial e profissional. Preserve o sentido e não adicione promessas ou fatos.", citizen_response: "Crie uma minuta de resposta ao cidadão: clara, respeitosa, transparente e sem juridiquês. Não prometa prazo ou solução não presentes no contexto.", internal_note: "Reescreva como anotação interna objetiva, destacando ação, responsável e pendência quando houver.", event_agenda: "Transforme o texto em uma pauta de reunião curta com objetivo, tópicos, decisões e próximos passos.", checklist: "Transforme o texto em checklist operacional conciso, uma ação por linha.", project_brief: "Transforme o texto em resumo de projeto com objetivo, entregáveis, riscos, marcos e próximos passos.", document_summary: "Resuma o documento administrativo em tópicos: assunto, fatos, decisões, prazos, responsáveis e pendências.", public_copy: "Reescreva como comunicação institucional pública clara, acessível e sem linguagem partidária." }; try { const result = await callGroq({ system: instructions[input.kind] || instructions.improve_message, user: `${text}\n\nContexto adicional, se útil:\n${context}`, maxTokens: 1800 }); return { text: result?.slice(0, 6000) || fallback, source: result ? "groq" as const : "regras" as const }; } catch { return { text: fallback, source: "regras" as const }; } }
+
+
+const AGENT_ACTION_TYPES = ["none", "create_ticket", "create_task", "create_event", "send_internal_message", "update_ticket_status", "create_project", "create_goal", "create_place", "navigate"] as const;
+const AGENT_PAYLOAD_SCHEMA: JsonSchema = {
+  type: "object",
+  properties: {
+    title: { type: "string" }, description: { type: "string" }, department: { type: "string" }, priority: { type: "string" },
+    dueDate: { type: "string" }, dueAt: { type: "string" }, neighborhood: { type: "string" }, address: { type: "string" },
+    assignee: { type: "string" }, slaHours: { type: "integer", minimum: 0, maximum: 720 }, kind: { type: "string" },
+    startsAt: { type: "string" }, endsAt: { type: "string" }, location: { type: "string" }, targetDepartments: { type: "array", items: { type: "string" } },
+    ticketProtocol: { type: "string" }, status: { type: "string" }, owner: { type: "string" }, target: { type: "number" }, current: { type: "number" },
+    unit: { type: "string" }, placeType: { type: "string" }, tags: { type: "array", items: { type: "string" } }, navTarget: { type: "string" }
+  },
+  required: ["title","description","department","priority","dueDate","dueAt","neighborhood","address","assignee","slaHours","kind","startsAt","endsAt","location","targetDepartments","ticketProtocol","status","owner","target","current","unit","placeType","tags","navTarget"],
+  additionalProperties: false,
+};
+const AGENT_SCHEMA: JsonSchema = {
+  type: "object",
+  properties: {
+    reply: { type: "string" },
+    actionType: { type: "string", enum: [...AGENT_ACTION_TYPES] },
+    readyToExecute: { type: "boolean" },
+    requiresConfirmation: { type: "boolean" },
+    missingFields: { type: "array", items: { type: "string" } },
+    questions: { type: "array", items: { type: "string" } },
+    actionSummary: { type: "string" },
+    payload: AGENT_PAYLOAD_SCHEMA,
+  },
+  required: ["reply","actionType","readyToExecute","requiresConfirmation","missingFields","questions","actionSummary","payload"],
+  additionalProperties: false,
+};
+function emptyAgentPayload(): MunicipalAgentPayload { return { title:"",description:"",department:"",priority:"",dueDate:"",dueAt:"",neighborhood:"",address:"",assignee:"",slaHours:0,kind:"",startsAt:"",endsAt:"",location:"",targetDepartments:[],ticketProtocol:"",status:"",owner:"",target:0,current:0,unit:"",placeType:"",tags:[],navTarget:"" }; }
+function safeAgentPayload(value: unknown): MunicipalAgentPayload {
+  const source = value && typeof value === "object" ? value as Record<string, unknown> : {};
+  const text = (key: string, max=4000) => typeof source[key] === "string" ? String(source[key]).trim().slice(0,max) : "";
+  const number = (key: string) => typeof source[key] === "number" && Number.isFinite(source[key] as number) ? Number(source[key]) : 0;
+  return { title:text("title",240),description:text("description",8000),department:text("department",220),priority:text("priority",40),dueDate:text("dueDate",80),dueAt:text("dueAt",80),neighborhood:text("neighborhood",180),address:text("address",320),assignee:text("assignee",180),slaHours:Math.max(0,Math.min(720,Math.round(number("slaHours")))),kind:text("kind",80),startsAt:text("startsAt",80),endsAt:text("endsAt",80),location:text("location",320),targetDepartments:asStringArray(source.targetDepartments,30),ticketProtocol:text("ticketProtocol",80),status:text("status",80),owner:text("owner",180),target:number("target"),current:number("current"),unit:text("unit",80),placeType:text("placeType",100),tags:asStringArray(source.tags,12),navTarget:text("navTarget",120) };
+}
+function validAgentAction(value: unknown): MunicipalAgentActionType { return typeof value === "string" && (AGENT_ACTION_TYPES as readonly string[]).includes(value) ? value as MunicipalAgentActionType : "none"; }
+export async function runMunicipalAgent(input: { messages: Array<{ role: "user" | "assistant"; content: string }>; context?: unknown; departments?: string[] }): Promise<MunicipalAgentTurnResult> {
+  const messages = input.messages.slice(-24).map((m)=>({ role:m.role, content:String(m.content||"").trim().slice(0,6000) })).filter((m)=>m.content);
+  const fallback: MunicipalAgentTurnResult = { reply: hasMunicipalAiConfig() ? "Não consegui interpretar a ação com segurança. Reformule o pedido informando o que deseja criar ou alterar." : "A Groq ainda não está disponível neste ambiente. Configure GROQ_API_KEY para usar ações automáticas.", actionType:"none", readyToExecute:false, requiresConfirmation:false, missingFields:[], questions:[], actionSummary:"", payload:emptyAgentPayload(), source:"regras" };
+  if (!messages.length || !hasMunicipalAiConfig()) return fallback;
+  const departments = (input.departments || []).filter(Boolean).slice(0,60);
+  const serializedConversation = messages.map((m)=>`${m.role === "user" ? "USUÁRIO" : "ASSISTENTE"}: ${m.content}`).join("\n");
+  const serializedContext = JSON.stringify(input.context ?? {}).slice(0,28000);
+  try {
+    const text = await callGroq({
+      system: `Você também é um AGENTE OPERACIONAL do Prefeitura Conecta. Sua função é entender pedidos em linguagem natural, coletar os dados obrigatórios que faltarem e preparar UMA ação real do sistema.
+Ações disponíveis: create_ticket, create_task, create_event, send_internal_message, update_ticket_status, create_project, create_goal, create_place, navigate. Use none quando o usuário só estiver perguntando/analisando.
+Regras de execução:
+- Nunca diga que executou uma ação. Você apenas prepara a ação; o sistema executará depois da sua resposta.
+- Preserve dados já informados em turnos anteriores. Não repita perguntas respondidas.
+- Faça poucas perguntas por vez e, quando possível, agrupe todos os campos ainda necessários numa única resposta.
+- Para create_ticket, tenha ao menos título/assunto, descrição factual suficiente e setor. Se envolver visita, atendimento domiciliar, vistoria ou deslocamento, peça bairro e endereço/referência suficientes para a equipe encontrar o local. Nome da pessoa/família só deve ser pedido quando operacionalmente necessário; evite CPF e dados sensíveis.
+- Para create_task, tenha título, descrição e setor; responsável e prazo podem ser inferidos/deixados a definir se o pedido permitir.
+- Para create_event, tenha título, data/hora de início e pelo menos um setor destinatário; pergunte local quando a natureza do evento exigir.
+- Para send_internal_message, tenha o nome do destinatário em assignee e o texto exato/objetivo da mensagem em description. Só prepare envio quando o usuário pedir explicitamente para enviar/avisar alguém.
+- Para update_ticket_status, tenha protocolo e novo status e marque requiresConfirmation=true.
+- Para create_project, tenha título, setor e prazo. Para create_goal, título, setor, alvo, unidade e prazo. Para create_place, nome, tipo, bairro e endereço.
+- Para create_ticket/create_task/create_event/send_internal_message/create_project/create_goal/create_place, quando todos os dados operacionais necessários estiverem presentes, use readyToExecute=true e requiresConfirmation=false: o usuário já pediu explicitamente a criação e o sistema pode executar.
+- Se o pedido for ambíguo sobre criar ou só sugerir, não execute: faça uma pergunta de confirmação.
+- Nunca prepare exclusão, pagamento, transferência financeira, alteração de permissões, criação de usuário ou outra ação destrutiva/financeira. Explique que exige fluxo humano específico.
+- Use datas ISO quando conseguir resolver uma data informada. Contexto contém a data/hora atual.
+- department e targetDepartments devem usar exatamente nomes válidos quando a lista estiver disponível.
+- Ao escolher setor, use o contexto e a natureza do pedido. Visita familiar/assistência a família normalmente pertence à Secretaria de Desenvolvimento Social, salvo contexto contrário.
+- Se readyToExecute=false, reply deve conter as perguntas necessárias. Se readyToExecute=true, reply deve informar de forma curta que as informações estão completas e que o sistema fará o registro agora.
+- actionSummary deve ser uma frase curta que possa entrar no histórico de auditoria.`,
+      user: `CONVERSA ATÉ AGORA:\n${serializedConversation}\n\nCONTEXTO ATUAL DO SISTEMA:\n${serializedContext}\n\nSETORES VÁLIDOS:\n${departments.join("; ") || "não fornecidos"}`,
+      schema: { name:"municipal_operational_agent", schema:AGENT_SCHEMA }, maxTokens:3000, temperature:0.1,
+    });
+    const parsed = text ? parseJsonLoose(text) : null; if (!parsed) return fallback;
+    const actionType = validAgentAction(parsed.actionType); const payload = safeAgentPayload(parsed.payload);
+    const result: MunicipalAgentTurnResult = { reply:typeof parsed.reply === "string" ? parsed.reply.slice(0,6000) : fallback.reply, actionType, readyToExecute:Boolean(parsed.readyToExecute) && actionType !== "none", requiresConfirmation:Boolean(parsed.requiresConfirmation), missingFields:asStringArray(parsed.missingFields,12), questions:asStringArray(parsed.questions,10), actionSummary:typeof parsed.actionSummary === "string" ? parsed.actionSummary.slice(0,500) : "", payload, source:"groq" };
+    if (result.missingFields.length || result.questions.length) result.readyToExecute = false;
+    if (actionType === "none") { result.readyToExecute=false; result.requiresConfirmation=false; }
+    return result;
+  } catch { return fallback; }
+}

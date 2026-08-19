@@ -89,6 +89,7 @@ import { LoginLoadingScreen, TestLoginScreen } from "./test-login";
 import { IntegratedManagementSection } from "./integrated-platform";
 import { OnboardingTour, QuickActionDock } from "./platform-experience";
 import { DashboardAiBrief, MunicipalAiCopilot } from "./municipal-ai-copilot";
+import type { MunicipalAgentAction, MunicipalAgentExecutionResult } from "./municipal-agent-types";
 
 type TicketStatus = "Recebido" | "Em análise" | "Aguardando aprovação" | "Em execução" | "Aguardando resposta" | "Concluído" | "Cancelado";
 type Priority = "Urgente" | "Alta" | "Média" | "Baixa";
@@ -369,6 +370,7 @@ export default function Home() {
     : permissionFor(activeNav, canManageEmployees, currentUser.id, departmentPermissionSettings);
   const ticketPermission = permissionFor("Chamados", canManageEmployees, currentUser.id, departmentPermissionSettings);
   const eventPermission = permissionFor("Próximos Eventos", canManageEmployees, currentUser.id, departmentPermissionSettings);
+  const communicationPermission = permissionFor("Comunicação", canManageEmployees, currentUser.id, departmentPermissionSettings);
 
   useNotificationChime(unreadCount + (mayorAccess ? citizenFeedbackUnread : 0), soundEnabled);
 
@@ -569,6 +571,47 @@ export default function Home() {
     setTicketModal(false);
     setActiveNav("Chamados");
     notify(belongsToCurrentDepartment ? "Chamado criado e visível somente para o seu setor." : `Chamado encaminhado de forma privada para ${temporary.department}.`);
+    return temporary;
+  }
+
+  async function executeMunicipalAgentAction(action: MunicipalAgentAction): Promise<MunicipalAgentExecutionResult> {
+    const payload = action.payload;
+    const validDepartment = (name: string) => allDepartments.find((item) => sameDepartment(item, name)) || "";
+    if (action.type === "navigate") {
+      const navMap: Record<string, NavItem> = { "Início": "Visão geral", "Demandas": "Chamados", "Tarefas": "Central Integrada", "Agenda": "Próximos Eventos", "Gestão": "Central Integrada", "Configurações": "Configurações", "Chamados": "Chamados", "Atendimento ao Cidadão": "Atendimento ao Cidadão", "Central Integrada": "Central Integrada", "Próximos Eventos": "Próximos Eventos" };
+      const target = navMap[payload.navTarget] || navMap[payload.title]; if (!target) return { ok:false, message:"Não encontrei essa área na navegação disponível." }; setActiveNav(target); return { ok:true, message:`Abri a área “${payload.navTarget || payload.title}”.` };
+    }
+    if (action.type === "create_ticket") {
+      if (!ticketPermission.register) return { ok:false, message:"Seu perfil não possui permissão para criar chamados." };
+      const targetDepartment = validDepartment(payload.department) || activeDepartment;
+      const form = new FormData(); form.set("title", payload.title || "Solicitação registrada pela IA"); form.set("description", payload.description || action.summary); form.set("department", targetDepartment); form.set("priority", ["Urgente","Alta","Média","Baixa"].includes(payload.priority) ? payload.priority : "Média"); form.set("dueDate", payload.dueDate ? payload.dueDate.slice(0,10) : ""); form.set("neighborhood", payload.neighborhood); form.set("address", payload.address); if (payload.assignee) { const assignee = users.find((item)=>item.fullName.toLowerCase()===payload.assignee.toLowerCase() && sameDepartment(item.department,targetDepartment)); if (assignee) form.set("assigneeId", assignee.id); }
+      const created = await createTicket(form); if (!created) return { ok:false, message:"Não foi possível registrar o chamado." }; return { ok:true, message:`Chamado ${created.protocol} criado com sucesso e encaminhado para ${created.department}.`, entityId:created.id, protocol:created.protocol };
+    }
+    if (action.type === "send_internal_message") {
+      if (!payload.assignee.trim() || !payload.description.trim()) return { ok:false, message:"A IA ainda precisa do destinatário e do texto da mensagem antes de enviar." };
+      if (!communicationPermission.register) return { ok:false, message:"Seu perfil não possui permissão para enviar mensagens internas." };
+      const normalizedRecipient = normalizeText(payload.assignee); const matches = users.filter((item)=>item.id!==currentUser.id && (normalizeText(item.fullName)===normalizedRecipient || normalizeText(item.fullName).includes(normalizedRecipient) || normalizedRecipient.includes(normalizeText(item.fullName))));
+      if (matches.length !== 1) return { ok:false, message: matches.length ? `Encontrei mais de um servidor compatível com “${payload.assignee}”. Informe o nome completo no chat da IA.` : `Não encontrei o destinatário “${payload.assignee}” entre os usuários ativos.` };
+      const recipient=matches[0]; const now=new Date().toISOString(); const message:Message={id:makeId(),conversationType:"direct",conversationId:directConversationId(currentUser.id,recipient.id),senderId:currentUser.id,senderName:currentUser.fullName,senderInitials:currentUser.initials,body:payload.description,ticketId:payload.ticketProtocol ? ticketData.find((item)=>item.protocol.toLowerCase()===payload.ticketProtocol.toLowerCase())?.id ?? null : null,createdAt:now}; sendMessage(message,recipient.id); return {ok:true,message:`Mensagem enviada para ${recipient.fullName} (${recipient.department}).`,entityId:message.id};
+    }
+    if (action.type === "update_ticket_status") {
+      const ticket = ticketData.find((item)=>item.protocol.toLowerCase()===payload.ticketProtocol.toLowerCase()); if (!ticket) return { ok:false, message:`Não encontrei o chamado ${payload.ticketProtocol}.` }; const validStatus = statuses.find((status)=>status.toLowerCase()===payload.status.toLowerCase()); if (!validStatus) return { ok:false, message:"O novo status informado não é válido." }; if (!ticketPermission.edit || !sameDepartment(ticket.department, activeDepartment)) return { ok:false, message:"Seu perfil não possui autorização para alterar esse chamado no setor visualizado." }; updateStatus(ticket.id, validStatus); return { ok:true, message:`Chamado ${ticket.protocol} atualizado para “${validStatus}”.`, entityId:ticket.id, protocol:ticket.protocol };
+    }
+    if (action.type === "create_event") {
+      if (!payload.title.trim() || !payload.startsAt.trim()) return { ok:false, message:"A IA ainda precisa do título e da data/hora de início para publicar o evento." };
+      if (!eventPermission.register) return { ok:false, message:"Seu perfil não possui permissão para criar eventos." }; const targets=(payload.targetDepartments.length?payload.targetDepartments:[payload.department||activeDepartment]).map(validDepartment).filter(Boolean); if(!targets.length)return{ok:false,message:"Não foi possível identificar o setor que deve receber o evento."};
+      const form=new FormData(); form.set("title",payload.title);form.set("description",payload.description);form.set("location",payload.location);form.set("startsAt",payload.startsAt);form.set("endsAt",payload.endsAt);targets.forEach((target)=>form.append("targetDepartments",target)); const created=await saveEvent(form); return created?{ok:true,message:`Evento “${created.title}” publicado para ${targets.length} ${targets.length===1?"setor":"setores"}.`,entityId:created.id}:{ok:false,message:"Não foi possível publicar o evento."};
+    }
+    const persistentConfig = action.type === "create_task" ? { key:"integrated:tasks:v2", prefix:"task" } : action.type === "create_project" ? { key:"integrated:projects:v2", prefix:"project" } : action.type === "create_goal" ? { key:"integrated:goals:v2", prefix:"goal" } : action.type === "create_place" ? { key:"integrated:places:v2", prefix:"place" } : null;
+    if (persistentConfig) {
+      const current = await loadPersistentValue<Array<Record<string, unknown>>>(persistentConfig.key).catch(()=>loadCachedPersistentValue<Array<Record<string, unknown>>>(persistentConfig.key) || []) || []; const now=new Date().toISOString(); const entityId=`${persistentConfig.prefix}-${globalThis.crypto?.randomUUID?.() ?? Date.now()}`; let next:Record<string,unknown>;
+      if(action.type==="create_task"){if(!payload.title.trim()||!payload.description.trim())return{ok:false,message:"A IA ainda precisa do título e da descrição da tarefa."};const dueAt=payload.dueAt?new Date(payload.dueAt).toISOString():new Date(Date.now()+(payload.slaHours||48)*3600000).toISOString();next={id:entityId,title:payload.title,description:payload.description,kind:["Tarefa","Solicitação interna","Vistoria"].includes(payload.kind)?payload.kind:"Tarefa",requesterDepartment:activeDepartment,department:validDepartment(payload.department)||activeDepartment,assignee:payload.assignee||"Responsável a definir",priority:["Baixa","Normal","Alta","Urgente"].includes(payload.priority)?payload.priority:"Normal",status:"A fazer",dueAt,slaHours:payload.slaHours||48,createdAt:now,updatedAt:now,tags:payload.tags,comments:[],history:[{at:now,action:`Criada pelo Agente Municipal a pedido de ${currentUser.fullName}`} ]};}
+      else if(action.type==="create_project"){if(!payload.title.trim()||!payload.dueDate.trim())return{ok:false,message:"A IA ainda precisa do nome e do prazo do projeto."};next={id:entityId,title:payload.title,department:validDepartment(payload.department)||activeDepartment,owner:payload.owner||currentUser.fullName,status:"Planejamento",progress:0,dueDate:payload.dueDate.slice(0,10),stages:[{name:"Planejamento",done:false},{name:"Execução",done:false},{name:"Validação",done:false},{name:"Entrega",done:false}]};}
+      else if(action.type==="create_goal"){if(!payload.title.trim()||!payload.dueDate.trim()||payload.target<=0)return{ok:false,message:"A IA ainda precisa do nome, meta numérica e prazo."};next={id:entityId,title:payload.title,department:validDepartment(payload.department)||activeDepartment,current:Math.max(0,payload.current||0),target:Math.max(0.01,payload.target||1),unit:payload.unit||"%",dueDate:payload.dueDate.slice(0,10)};}
+      else {if(!payload.title.trim()||!payload.neighborhood.trim()||!payload.address.trim())return{ok:false,message:"A IA ainda precisa do nome, bairro e endereço do local público."};next={id:entityId,name:payload.title,type:payload.placeType||"Outro",neighborhood:payload.neighborhood,address:payload.address,status:"Operacional",lastMaintenance:now.slice(0,10),history:[`${new Date().toLocaleDateString("pt-BR")} — local cadastrado pelo Agente Municipal por ${currentUser.fullName}`]};}
+      await savePersistentValue(persistentConfig.key,[next,...current]); window.dispatchEvent(new CustomEvent("municipal-agent-data-changed",{detail:{key:persistentConfig.key}})); addAudit(`ia_${action.type}`,action.type,entityId,action.summary); if(action.type==="create_task")setActiveNav("Central Integrada"); return {ok:true,message:action.type==="create_task"?`Tarefa “${payload.title}” criada e encaminhada para ${String(next.department)}.`:action.type==="create_project"?`Projeto “${payload.title}” criado com sucesso.`:action.type==="create_goal"?`Meta “${payload.title}” cadastrada com sucesso.`:`Local público “${payload.title}” cadastrado com sucesso.`,entityId};
+    }
+    return { ok:false, message:"Essa ação ainda não possui executor automático no sistema." };
   }
 
   function updateStatus(id: string, status: TicketStatus) {
@@ -637,7 +680,7 @@ export default function Home() {
       addEventNotifications(updated, "atualizado");
       setEventModal(null);
       notify("Evento atualizado e agenda dos setores sincronizada.");
-      return;
+      return updated;
     }
     const temporary: SectorEvent = {
       id: makeId(), title: String(form.get("title") ?? "").trim(), description: String(form.get("description") ?? "").trim(),
@@ -650,6 +693,7 @@ export default function Home() {
     setEventModal(null);
     setActiveNav("Próximos Eventos");
     notify(`Evento publicado para ${targetDepartments.length} ${targetDepartments.length === 1 ? "setor" : "setores"}.`);
+    return temporary;
   }
 
   function deleteEvent(item: SectorEvent) {
@@ -979,7 +1023,7 @@ export default function Home() {
       {eventToDelete && <EventDeleteModal event={eventToDelete} onClose={() => setEventToDelete(null)} onConfirm={() => deleteEvent(eventToDelete)} />}
       {employeeModal && canManageEmployees && <EmployeeInviteModal department={activeDepartment} onClose={() => setEmployeeModal(false)} onInvite={inviteEmployee} />}
       {interactionModal && <div className="modal-backdrop" role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget) setInteractionModal(null); }}><section className="modal interaction-action-modal" role="dialog" aria-modal="true" aria-labelledby="interaction-action-title"><header><div><p className="eyebrow">FUNÇÃO DO SISTEMA</p><h2 id="interaction-action-title">{interactionModal.title}</h2></div><button type="button" aria-label="Fechar" onClick={() => setInteractionModal(null)}><X size={18} /></button></header><div className="interaction-action-body"><span className="interaction-action-icon"><ArrowUpRight size={22} /></span><div><strong>Recurso aberto</strong><p>{interactionModal.message}</p><small>Use esta janela para revisar a função e seguir para as orientações do módulo.</small></div></div><footer><button className="button secondary" onClick={() => setInteractionModal(null)}>Fechar</button><button className="button primary" onClick={() => { setInteractionModal(null); setActiveNav("Central de Ajuda"); }}>Ver orientações</button></footer></section></div>}
-      <MunicipalAiCopilot activeModule={activeNav} department={activeDepartment} user={{ fullName: currentUser.fullName, role: currentUser.role }} tickets={privateTickets} events={currentEvents} unreadNotifications={unreadCount + (mayorAccess ? citizenFeedbackUnread : 0)} />
+      <MunicipalAiCopilot activeModule={activeNav} department={activeDepartment} user={{ id: currentUser.id, fullName: currentUser.fullName, role: currentUser.role }} tickets={privateTickets} events={currentEvents} departments={allDepartments} unreadNotifications={unreadCount + (mayorAccess ? citizenFeedbackUnread : 0)} onExecuteAction={executeMunicipalAgentAction} />
       <OnboardingTour userName={currentUser.fullName} role={currentUser.role} department={activeDepartment} onNavigate={(nav) => setActiveNav(nav as NavItem)} />
       <QuickActionDock onNavigate={(nav) => setActiveNav(nav as NavItem)} onNewTicket={() => { setTicketModal(true); setActiveNav("Chamados"); }} onNewEvent={() => { setEventModal("new"); setActiveNav("Próximos Eventos"); }} />
       {toast && <div className="toast" role="status"><span><Check size={14} strokeWidth={2.5} /></span>{toast}</div>}
@@ -1632,7 +1676,7 @@ function TicketDetailModal({ ticket, onClose, onStatus }: { ticket: Ticket; onCl
 
 function LockKeyholeIcon() { return <ShieldCheck size={13} />; }
 
-function TicketModal({ users, onClose, onCreate }: { users: User[]; onClose: () => void; onCreate: (data: FormData) => void | Promise<void> }) {
+function TicketModal({ users, onClose, onCreate }: { users: User[]; onClose: () => void; onCreate: (data: FormData) => unknown | Promise<unknown> }) {
   const [department, setDepartment] = useState(""); const [neighborhood, setNeighborhood] = useState(""); const [address, setAddress] = useState(""); const [title, setTitle] = useState(""); const [description, setDescription] = useState(""); const [priority, setPriority] = useState<Priority>("Média"); const [dueDate, setDueDate] = useState(""); const [aiBusy, setAiBusy] = useState(false); const [aiHint, setAiHint] = useState("");
   const eligibleUsers = users.filter((user) => sameDepartment(user.department, department));
   function submit(event: FormEvent<HTMLFormElement>) { event.preventDefault(); void onCreate(new FormData(event.currentTarget)); }
@@ -1660,7 +1704,7 @@ function toDateTimeLocal(value?: string | null) {
   return `${part("year")}-${part("month")}-${part("day")}T${part("hour")}:${part("minute")}`;
 }
 
-function EventModal({ department, departments, event, onClose, onSave }: { department: string; departments: string[]; event?: SectorEvent; onClose: () => void; onSave: (data: FormData) => void | Promise<void> }) {
+function EventModal({ department, departments, event, onClose, onSave }: { department: string; departments: string[]; event?: SectorEvent; onClose: () => void; onSave: (data: FormData) => unknown | Promise<unknown> }) {
   const [startsAt, setStartsAt] = useState(() => toDateTimeLocal(event?.startsAt));
   const [selectedDepartments, setSelectedDepartments] = useState<string[]>(() => event?.targetDepartments?.length ? event.targetDepartments : [department]);
   const [selectionError, setSelectionError] = useState("");
