@@ -47,7 +47,7 @@ import { FieldOperationsPanel, WorkflowAutomationHub } from "./enhanced-features
 import { persistenceKey, usePersistentState } from "./persistence";
 
 type Notify = (message: string) => void;
-type CitizenTab = "Protocolos" | "Ouvidoria e e-SIC" | "Carta de serviços" | "Satisfação";
+type CitizenTab = "Protocolos" | "Ouvidoria e e-SIC" | "Carta de serviços" | "Direto ao Prefeito" | "Satisfação";
 type ProcessTab = "Processos" | "Despachos e pareceres" | "Documentos e versões" | "Assinaturas";
 type ManagementTab = "Frota" | "Patrimônio" | "Almoxarifado" | "Contratos" | "Obras e campo";
 
@@ -73,6 +73,28 @@ type ServiceItem = {
   documents: string;
   channel: string;
 };
+
+type PublicCitizenFeedback = {
+  id: string;
+  protocol: string;
+  kind: "Reclamação" | "Elogio" | "Sugestão";
+  rating: number;
+  subject: string;
+  message: string;
+  name: string;
+  contact: string;
+  neighborhood: string;
+  anonymous: boolean;
+  destination: "Gabinete do Prefeito";
+  status: "Novo" | "Em análise" | "Encaminhado" | "Respondido" | "Concluído";
+  mayorNote: string;
+  forwardedDepartment?: string;
+  history?: Array<{ at: string; action: string; detail: string }>;
+  createdAt: string;
+  updatedAt: string;
+  readAt: string | null;
+};
+
 
 type ProcessMovement = {
   id: string;
@@ -300,9 +322,93 @@ function ModalShell({ title, eyebrow, onClose, children }: { title: string; eyeb
   );
 }
 
-export function CitizenServiceSection({ department, notify }: { department: string; notify: Notify }) {
+function MayorCitizenInbox({ notify, departments }: { notify: Notify; departments: string[] }) {
+  const [items, setItems] = useState<PublicCitizenFeedback[]>([]);
+  const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
+  const [query, setQuery] = useState("");
+  const [status, setStatus] = useState("Todos");
+  const [note, setNote] = useState("");
+  const selected = items.find((item) => item.id === selectedId) ?? null;
+
+  async function load(silent = false) {
+    if (!silent) setLoading(true);
+    try {
+      const response = await fetch("/api/citizen-feedback", { cache: "no-store" });
+      const payload = await response.json().catch(() => null) as { feedback?: PublicCitizenFeedback[]; error?: string } | null;
+      if (!response.ok) throw new Error(payload?.error || "Não foi possível carregar as manifestações.");
+      setItems(payload?.feedback ?? []);
+      setError("");
+    } catch (loadError) {
+      setError(loadError instanceof Error ? loadError.message : "Não foi possível carregar as manifestações.");
+    } finally { if (!silent) setLoading(false); }
+  }
+
+  useEffect(() => {
+    void load();
+    const timer = window.setInterval(() => { void load(true); }, 20000);
+    return () => window.clearInterval(timer);
+  }, []);
+
+  useEffect(() => { setNote(selected?.mayorNote ?? ""); }, [selectedId, selected?.mayorNote]);
+
+  const filtered = useMemo(() => items.filter((item) => {
+    const matchesQuery = !query.trim() || [item.protocol, item.subject, item.message, item.name, item.neighborhood, item.kind].join(" ").toLowerCase().includes(query.trim().toLowerCase());
+    const matchesStatus = status === "Todos" || item.status === status;
+    return matchesQuery && matchesStatus;
+  }), [items, query, status]);
+
+  async function updateItem(item: PublicCitizenFeedback, changes: { status?: PublicCitizenFeedback["status"]; mayorNote?: string; forwardedDepartment?: string; markRead?: boolean }, message?: string) {
+    try {
+      const response = await fetch("/api/citizen-feedback", { method: "PATCH", headers: { "content-type": "application/json" }, body: JSON.stringify({ id: item.id, ...changes }) });
+      const payload = await response.json().catch(() => null) as { feedback?: PublicCitizenFeedback; error?: string } | null;
+      if (!response.ok || !payload?.feedback) throw new Error(payload?.error || "Não foi possível atualizar a manifestação.");
+      setItems((current) => current.map((entry) => entry.id === item.id ? payload.feedback! : entry));
+      if (message) notify(message);
+    } catch (updateError) { notify(updateError instanceof Error ? updateError.message : "Não foi possível atualizar a manifestação."); }
+  }
+
+  function openItem(item: PublicCitizenFeedback) {
+    setSelectedId(item.id);
+    if (!item.readAt) void updateItem(item, { markRead: true });
+  }
+
+  const unread = items.filter((item) => !item.readAt).length;
+  const complaints = items.filter((item) => item.kind === "Reclamação").length;
+  const average = items.length ? (items.reduce((sum, item) => sum + item.rating, 0) / items.length).toFixed(1) : "—";
+
+  return <div className="mayor-feedback-shell">
+    <div className="municipal-kpis">
+      <MetricCard icon={MessageSquareText} label="Direto ao Prefeito" value={String(items.length)} detail="Manifestações recebidas pelo portal público" tone="teal" />
+      <MetricCard icon={Clock3} label="Não lidas" value={String(unread)} detail="Aguardando abertura pelo Gabinete" tone="amber" />
+      <MetricCard icon={Star} label="Satisfação média" value={average} detail="Nota de 1 a 5 no canal público" tone="blue" />
+      <MetricCard icon={Landmark} label="Reclamações" value={String(complaints)} detail="Itens que podem exigir encaminhamento" tone="violet" />
+    </div>
+    <div className="mayor-feedback-layout">
+      <article className="panel mayor-feedback-list">
+        <header><div><p className="eyebrow">CAIXA DO GABINETE</p><h2>Manifestações do cidadão</h2><p>Atualização automática a cada 20 segundos.</p></div><button className="button secondary" onClick={() => void load()}><Search size={14} /> Atualizar</button></header>
+        <div className="module-toolbar"><label className="module-search"><Search size={15} /><input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Buscar protocolo, assunto ou cidadão..." /></label><select value={status} onChange={(event) => setStatus(event.target.value)}><option>Todos</option><option>Novo</option><option>Em análise</option><option>Encaminhado</option><option>Respondido</option><option>Concluído</option></select></div>
+        {loading ? <div className="citizen-sector-empty"><Clock3 size={22} /><strong>Carregando manifestações...</strong></div> : error ? <div className="citizen-sector-empty"><MessageSquareText size={22} /><strong>Não foi possível conectar ao canal público</strong><p>{error}</p></div> : <div className="mayor-feedback-items">{filtered.map((item) => <button key={item.id} className={`${selectedId === item.id ? "active" : ""} ${!item.readAt ? "unread" : ""}`} onClick={() => openItem(item)}><span className="mayor-feedback-kind">{item.kind}</span><span><strong>{item.subject}</strong><small>{item.protocol} · {new Date(item.createdAt).toLocaleString("pt-BR")} · {item.rating}/5 ★</small></span><StatusTag>{item.status}</StatusTag></button>)}{!filtered.length && <div className="citizen-sector-empty compact"><MessageSquareText size={20} /><strong>Nenhuma manifestação encontrada</strong><p>Os registros enviados pela página pública aparecerão aqui automaticamente.</p></div>}</div>}
+      </article>
+      <article className="panel mayor-feedback-detail">
+        {selected ? <><header><div><p className="eyebrow">{selected.protocol}</p><h2>{selected.subject}</h2><p>{selected.kind} · avaliação {selected.rating}/5</p></div><StatusTag>{selected.status}</StatusTag></header>
+          <div className="mayor-feedback-citizen"><span><UserRound size={17} /></span><div><strong>{selected.name}</strong><small>{selected.anonymous ? "Manifestação anônima" : selected.contact || "Sem contato informado"}{selected.neighborhood ? ` · ${selected.neighborhood}` : ""}</small></div></div>
+          <div className="mayor-feedback-message"><p>{selected.message}</p><small>Recebido em {new Date(selected.createdAt).toLocaleString("pt-BR")} · destino automático: {selected.destination}</small></div>
+          {!!selected.history?.length && <div className="mayor-feedback-history"><strong>Histórico do protocolo</strong>{[...selected.history].reverse().slice(0,5).map((entry, index) => <div key={`${entry.at}-${index}`}><span /><p><b>{entry.action}</b><small>{entry.detail} · {new Date(entry.at).toLocaleString("pt-BR")}</small></p></div>)}</div>}
+          <label className="field"><span>Status do atendimento</span><select value={selected.status} onChange={(event) => void updateItem(selected, { status: event.target.value as PublicCitizenFeedback["status"] }, "Status da manifestação atualizado.")}><option>Novo</option><option>Em análise</option><option>Encaminhado</option><option>Respondido</option><option>Concluído</option></select></label>
+          <label className="field"><span>Encaminhar para setor</span><select value={selected.forwardedDepartment ?? ""} onChange={(event) => { const target = event.target.value; void updateItem(selected, { forwardedDepartment: target, status: target ? "Encaminhado" : selected.status }, target ? `Manifestação encaminhada para ${target}.` : "Encaminhamento removido."); }}><option value="">Manter somente no Gabinete</option>{departments.filter((item) => item !== "Gabinete do Prefeito").map((item) => <option key={item}>{item}</option>)}</select></label>
+          <label className="field"><span>Anotação do Gabinete</span><textarea value={note} onChange={(event) => setNote(event.target.value)} placeholder="Registre providências, setor encaminhado ou retorno ao cidadão." /></label>
+          <div className="mayor-feedback-actions"><button className="button secondary" onClick={() => void updateItem(selected, { mayorNote: note }, "Anotação do Gabinete salva.")}><Save size={14} /> Salvar anotação</button><button className="button primary" onClick={() => void updateItem(selected, { status: "Concluído", mayorNote: note, markRead: true }, "Manifestação concluída.")}><CheckCircle2 size={14} /> Concluir</button></div>
+        </> : <div className="citizen-sector-empty"><Landmark size={26} /><strong>Selecione uma manifestação</strong><p>Abra um item da caixa do Gabinete para ler o relato, registrar providências e atualizar o status.</p></div>}
+      </article>
+    </div>
+  </div>;
+}
+
+export function CitizenServiceSection({ department, notify, isMayor = false, departments = [] }: { department: string; notify: Notify; isMayor?: boolean; departments?: string[] }) {
   const access = useCurrentPermission();
-  const [tab, setTab] = useState<CitizenTab>("Protocolos");
+  const [tab, setTab] = useState<CitizenTab>(isMayor ? "Direto ao Prefeito" : "Protocolos");
   const [query, setQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState("Todos os status");
   const initialProtocolsForDepartment = useMemo(() => INITIAL_PROTOCOLS.filter((item) => protocolBelongsToDepartment(item.department, department)), [department]);
@@ -311,6 +417,8 @@ export function CitizenServiceSection({ department, notify }: { department: stri
   const [selectedService, setSelectedService] = useState<ServiceItem | null>(null);
   const [serviceNeighborhood, setServiceNeighborhood] = useState("");
   const [serviceAddress, setServiceAddress] = useState("");
+
+  useEffect(() => { setTab(isMayor ? "Direto ao Prefeito" : "Protocolos"); }, [isMayor]);
 
   const sectorProtocols = useMemo(() => protocols.filter((item) => protocolBelongsToDepartment(item.department, department)), [protocols, department]);
   const visible = useMemo(() => sectorProtocols.filter((item) => {
@@ -361,7 +469,7 @@ export function CitizenServiceSection({ department, notify }: { department: stri
     <section className="municipal-module-shell">
       <small className={`module-sync-banner ${protocolSaveStatus}`}>{protocolSaveStatus === "salvando" ? "Salvando alterações…" : protocolSaveStatus === "offline" ? "Aguardando conexão com o servidor" : "Dados sincronizados"}</small>
       <div className="module-tabs wide-tabs" role="tablist" aria-label="Módulos de atendimento ao cidadão">
-        {(["Protocolos", "Ouvidoria e e-SIC", "Carta de serviços", "Satisfação"] as CitizenTab[]).map((item) => <button key={item} className={tab === item ? "active" : ""} onClick={() => setTab(item)}>{item}</button>)}
+        {(["Protocolos", "Ouvidoria e e-SIC", "Carta de serviços", ...(isMayor ? ["Direto ao Prefeito" as CitizenTab] : []), "Satisfação"] as CitizenTab[]).map((item) => <button key={item} className={tab === item ? "active" : ""} onClick={() => setTab(item)}>{item}</button>)}
       </div>
 
       {tab === "Protocolos" && <>
@@ -391,6 +499,8 @@ export function CitizenServiceSection({ department, notify }: { department: stri
       </>}
 
       {tab === "Carta de serviços" && <article className="panel service-catalog-panel"><div className="catalog-heading"><div><p className="eyebrow">SERVIÇOS AO CIDADÃO</p><h2>Carta de serviços municipal</h2><p>Informações claras sobre requisitos, canais e prazo esperado para cada atendimento.</p></div><label className="module-search"><Search size={15} /><input aria-label="Buscar serviço" placeholder="Buscar serviço..." /></label></div><div className="service-grid">{sectorServices.map((service) => <article key={service.title}><span><Landmark size={18} /></span><h3>{service.title}</h3><p>{department}</p><dl><div><dt>Prazo</dt><dd>{service.deadline}</dd></div><div><dt>Documentos</dt><dd>{service.documents}</dd></div><div><dt>Atendimento</dt><dd>{service.channel}</dd></div></dl><button onClick={() => access.register ? (setSelectedService(service), setServiceNeighborhood(""), setServiceAddress("")) : notify("Seu perfil pode consultar a Carta de Serviços, mas não registrar solicitações.")}>{access.register ? "Solicitar serviço" : "Ver orientações"} <ChevronRight size={13} /></button></article>)}{sectorServices.length === 0 && <div className="citizen-sector-empty service-empty"><Landmark size={22} /><strong>Nenhum serviço cadastrado para este setor</strong><p>A Carta de Serviços está filtrada pelo setor ativo: {department}.</p></div>}</div></article>}
+
+      {tab === "Direto ao Prefeito" && isMayor && <MayorCitizenInbox notify={notify} departments={departments} />}
 
       {tab === "Satisfação" && <div className="satisfaction-layout"><article className="panel satisfaction-score"><span><Star size={24} /></span><strong>4,7</strong><p>média de 184 avaliações em agosto</p><div>{[1,2,3,4,5].map((star) => <Star key={star} size={16} fill="currentColor" />)}</div></article><article className="panel satisfaction-breakdown"><h2>Qualidade percebida</h2>{[["Resultado do atendimento",92],["Clareza das informações",89],["Tempo de resposta",84],["Cordialidade",96]].map(([label,value]) => <div className="rating-row" key={String(label)}><span>{label}</span><div><i style={{width:`${value}%`}} /></div><strong>{value}%</strong></div>)}</article><article className="panel satisfaction-comments"><h2>Comentários recentes</h2><blockquote>“Recebi o número do protocolo e consegui acompanhar cada atualização.”<cite>Atendimento de iluminação · 12 ago.</cite></blockquote><blockquote>“A lista de documentos evitou uma segunda ida ao setor.”<cite>Matrícula escolar · 11 ago.</cite></blockquote></article></div>}
 

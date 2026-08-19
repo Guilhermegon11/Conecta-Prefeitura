@@ -130,8 +130,8 @@ const OFFICES: Office[] = [
 ];
 
 const USERS: User[] = [
-  { id: "u-prefeito", fullName: "Prefeito Municipal", email: "prefeito@varzeadapalma.mg.gov.br", department: "Gabinete do Prefeito", role: "Prefeito", initials: "PM" },
-  { id: "u-vice", fullName: "Vice-prefeito", email: "vice.prefeito@varzeadapalma.mg.gov.br", department: "Gabinete do Prefeito", role: "Vice-prefeito", initials: "VP" },
+  { id: "u-prefeito", fullName: "Rodrigo Aguiar Dalla Bernardina", email: "prefeito@varzeadapalma.mg.gov.br", department: "Gabinete do Prefeito", role: "Prefeito", initials: "RB" },
+  { id: "u-vice", fullName: "Jaime de Souza", email: "vice.prefeito@varzeadapalma.mg.gov.br", department: "Gabinete do Prefeito", role: "Vice-prefeito", initials: "JS" },
   { id: "u-ana", fullName: "Artur Paulo Fagundes Rabelo", email: "gabinete@varzeadapalma.mg.gov.br", department: "Secretaria de Governo", role: "Administrador", initials: "AR" },
   { id: "u-rafael", fullName: "Bruno Gonçalves da Fonseca", email: "obras@varzeadapalma.mg.gov.br", department: "Secretaria de Infraestrutura e Transporte", role: "Secretário", initials: "BF" },
   { id: "u-lucas", fullName: "Natália Cristina Pedrosa Cabral", email: "saude@varzeadapalma.mg.gov.br", department: "Secretaria de Saúde", role: "Secretária", initials: "NC" },
@@ -139,7 +139,6 @@ const USERS: User[] = [
   { id: "u-carla", fullName: "Jaime de Souza", email: "financas@varzeadapalma.mg.gov.br", department: "Secretaria de Administração e Finanças", role: "Secretário", initials: "JS" },
   { id: "u-felipe", fullName: "Lucas Fontinelli de Oliveira da Silva", email: "desenvolvimentoeconomico@varzeadapalma.mg.gov.br", department: "Secretaria Municipal de Desenvolvimento Econômico, Agricultura e Meio Ambiente", role: "Secretário", initials: "LS" },
   { id: "u-rosilene", fullName: "Rosilene Soares Souza Carvalho", email: "controladoria@varzeadapalma.mg.gov.br", department: "Controle Interno", role: "Controladora Interna", initials: "RC" },
-  { id: "u-rodrigo", fullName: "Rodrigo Aguiar Dalla Bernardina", email: "gabinete@varzeadapalma.mg.gov.br", department: "Gabinete do Prefeito", role: "Chefe de Gabinete", initials: "RB" },
   { id: "u-wharley", fullName: "Wharley Marques de Lima", email: "ascompalma@gmail.com", department: "Secretaria de Comunicação e Eventos", role: "Secretário", initials: "WL" },
   { id: "u-guilherme", fullName: "Guilherme Oliveira Fonseca", email: "smds@varzeadapalma.mg.gov.br", department: "Secretaria de Desenvolvimento Social", role: "Secretário", initials: "GF" },
   { id: "u-pedro", fullName: "Pedro Umberto Baeta Camargos", email: "cultura@varzeadapalma.mg.gov.br", department: "Secretaria de Cultura e Turismo", role: "Secretário", initials: "PC" },
@@ -298,6 +297,7 @@ export default function Home() {
   const [soundEnabled, setSoundEnabled] = useState(true);
   const [motionEnabled, setMotionEnabled] = useState(true);
   const [executiveCommunicationAccess, setExecutiveCommunicationAccess] = useState(false);
+  const [citizenFeedbackUnread, setCitizenFeedbackUnread] = useState(0);
   const [permissionConfigs, setPermissionConfigs] = useState<Record<string, DepartmentPermissionSettings>>({});
   const [appReady, setAppReady] = useState(false);
   const [persistenceStatus, setPersistenceStatus] = useState<"carregando" | "salvando" | "salvo" | "offline">("carregando");
@@ -364,7 +364,7 @@ export default function Home() {
   const ticketPermission = permissionFor("Chamados", canManageEmployees, currentUser.id, departmentPermissionSettings);
   const eventPermission = permissionFor("Próximos Eventos", canManageEmployees, currentUser.id, departmentPermissionSettings);
 
-  useNotificationChime(unreadCount, soundEnabled);
+  useNotificationChime(unreadCount + (mayorAccess ? citizenFeedbackUnread : 0), soundEnabled);
 
   useEffect(() => {
     let cancelled = false;
@@ -400,7 +400,7 @@ export default function Home() {
       if (savedPermissions) setPermissionConfigs(savedPermissions);
       if (stored) {
         if (Array.isArray(stored.ticketData)) setTicketData(backfillTicketLocations(stored.ticketData));
-        if (Array.isArray(stored.users)) setUsers(stored.users);
+        if (Array.isArray(stored.users)) setUsers(backfillExecutiveUsers(stored.users));
         if (Array.isArray(stored.groups)) setGroups(stored.groups);
         if (Array.isArray(stored.messages)) setMessages(stored.messages);
         if (Array.isArray(stored.documents)) setDocuments(stored.documents);
@@ -419,7 +419,7 @@ export default function Home() {
       }>(APP_STATE_KEY);
       if (cached) {
         if (Array.isArray(cached.ticketData)) setTicketData(backfillTicketLocations(cached.ticketData));
-        if (Array.isArray(cached.users)) setUsers(cached.users);
+        if (Array.isArray(cached.users)) setUsers(backfillExecutiveUsers(cached.users));
         if (Array.isArray(cached.groups)) setGroups(cached.groups);
         if (Array.isArray(cached.messages)) setMessages(cached.messages);
         if (Array.isArray(cached.documents)) setDocuments(cached.documents);
@@ -462,6 +462,21 @@ export default function Home() {
       .then(() => setPersistenceStatus("salvo"))
       .catch(() => setPersistenceStatus("offline"));
   }, [audit, appReady, authState, documents, events, groups, invitations, messages, notifications, ticketData, users]);
+
+  useEffect(() => {
+    if (authState !== "authenticated" || !mayorAccess) { setCitizenFeedbackUnread(0); return; }
+    let cancelled = false;
+    async function refreshCitizenFeedbackCount() {
+      try {
+        const response = await fetch("/api/citizen-feedback", { cache: "no-store" });
+        const payload = await response.json().catch(() => null) as { unread?: number } | null;
+        if (!cancelled && response.ok) setCitizenFeedbackUnread(Number(payload?.unread ?? 0));
+      } catch { /* mantém o último contador conhecido */ }
+    }
+    void refreshCitizenFeedbackCount();
+    const timer = window.setInterval(() => { void refreshCitizenFeedbackCount(); }, 20000);
+    return () => { cancelled = true; window.clearInterval(timer); };
+  }, [authState, mayorAccess, currentUserId]);
 
   useEffect(() => {
     if (currentPermission.view) return;
@@ -803,6 +818,7 @@ export default function Home() {
                 <span className="nav-icon" aria-hidden="true"><NavIcon size={18} strokeWidth={2} /></span>
                 <span>{item === "Visão geral" ? "Meu Dia" : item}</span>
                 {item === "Comunicação" && messageBadgeCount > 0 && <span className="nav-badge">{messageBadgeCount}</span>}
+                {item === "Atendimento ao Cidadão" && mayorAccess && citizenFeedbackUnread > 0 && <span className="nav-badge">{citizenFeedbackUnread}</span>}
                 {item === "Notificações" && unreadCount > 0 && <span className="nav-badge">{unreadCount}</span>}
                 {item === "Pendências" && pendingCount > 0 && <span className="nav-badge pending-badge">{pendingCount}</span>}
               </button>
@@ -813,8 +829,8 @@ export default function Home() {
           <div className="support-icon"><HelpCircle size={17} /></div>
           <div><strong>Precisa de ajuda?</strong><p>Acesse o guia da plataforma ou fale com o suporte.</p><button onClick={() => setActiveNav("Central de Ajuda")}>Central de ajuda <ArrowRight size={12} /></button></div>
         </div>
-        <div className="sidebar-profile">
-          <div className="avatar avatar-large">{currentUser.initials}</div>
+        <div className={`sidebar-profile ${executiveAccess ? "sidebar-profile-executive" : ""}`}>
+          <div className="profile-avatar-wrap"><div className="avatar avatar-large">{currentUser.initials}</div>{executiveAccess&&<span className="executive-avatar-badge"><Crown size={10}/></span>}</div>
           <div className="profile-copy"><strong>{currentUser.fullName}</strong><span>{executiveAccess ? `${currentUser.role} · acesso executivo` : currentUser.department}</span></div>
           <button className="icon-button" aria-label="Opções do perfil" onClick={() => setInteractionModal({ title: "Opções do perfil", message: `${currentUser.fullName} · ${currentUser.role} · ${currentUser.department}. Use o seletor “Visualizar como” para alternar perfis ou abra Configurações para revisar permissões e preferências.` })}><MoreHorizontal size={18} /></button>
         </div>
@@ -835,7 +851,7 @@ export default function Home() {
           {executiveAccess && <label className="executive-sector-switch"><span className="executive-switch-icon"><Crown size={17} /></span><span><small>PAINEL SETORIAL</small><select aria-label="Selecionar setor para a visão executiva" value={activeDepartment} onChange={(event) => setViewedDepartment(event.target.value)}>{allDepartments.map((department) => <option key={department}>{department}</option>)}</select></span></label>}
           <div className="top-actions">
             <span className={`persistence-status ${persistenceStatus}`} title="Persistência central do sistema"><i />{persistenceStatus === "carregando" ? "Conectando" : persistenceStatus === "salvando" ? "Salvando" : persistenceStatus === "offline" ? "Aguardando conexão" : "Salvo"}</span>
-            <button className="icon-button notification-button" aria-label={`Notificações${unreadCount ? `: ${unreadCount} novas` : ""}`} onClick={() => setActiveNav("Notificações")}><Bell size={18} />{unreadCount > 0 && <span />}</button>
+            <button className="icon-button notification-button" aria-label={`Notificações${unreadCount + (mayorAccess ? citizenFeedbackUnread : 0) ? `: ${unreadCount + (mayorAccess ? citizenFeedbackUnread : 0)} novas` : ""}`} onClick={() => setActiveNav(mayorAccess && citizenFeedbackUnread > 0 ? "Atendimento ao Cidadão" : "Notificações")}><Bell size={18} />{unreadCount + (mayorAccess ? citizenFeedbackUnread : 0) > 0 && <span />}</button>
             <button className="icon-button logout-button" aria-label="Sair do sistema" title="Sair" onClick={() => void logout()}><LogOut size={18} /></button>
             <label className="account-switch"><div className="avatar">{currentUser.initials}</div><span><small>VISUALIZAR COMO</small><select aria-label="Visualizar como usuário" value={currentUserId} onChange={(event) => switchUser(event.target.value)}>{activeUsers.map((user) => <option key={user.id} value={user.id}>{user.fullName} — {user.department}</option>)}</select></span></label>
           </div>
@@ -881,7 +897,7 @@ export default function Home() {
             : executiveCommunicationMonitor
               ? <ExecutiveCommunicationViewer department={activeDepartment} users={activeUsers} groups={accessibleGroups} messages={communicationMessages} />
               : <CommunicationSection currentUser={currentUser} users={activeUsers} groups={accessibleGroups} messages={communicationMessages} tickets={privateTickets} onSend={sendMessage} onSendAttachment={sendChatAttachment} onNewGroup={() => setGroupModal(true)} onTicketStatus={updateStatus} />)}
-          {activeNav === "Atendimento ao Cidadão" && <CitizenServiceSection department={activeDepartment} notify={notify} />}
+          {activeNav === "Atendimento ao Cidadão" && <CitizenServiceSection department={activeDepartment} notify={notify} isMayor={mayorAccess} departments={allDepartments} />}
           {activeNav === "Processos Digitais" && <ProcessesSection key={`${activeDepartment}-${currentUser.id}`} department={activeDepartment} currentUser={{ id: currentUser.id, fullName: currentUser.fullName, department: currentUser.department, role: currentUser.role }} users={activeUsers.map((user) => ({ id: user.id, fullName: user.fullName, department: user.department, role: user.role }))} departments={allDepartments} notify={notify} />}
           {activeNav === "Gestão Municipal" && <MunicipalManagementSection department={activeDepartment} notify={notify} />}
           {activeNav === "Indicadores" && <IndicatorsSection department={activeDepartment} notify={notify} />}
@@ -1655,6 +1671,16 @@ function normalizeTicketStatus(status: string): TicketStatus {
   return statuses.includes(status as TicketStatus) ? status as TicketStatus : "Recebido";
 }
 function normalizeText(value: string) { return value.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase(); }
+function backfillExecutiveUsers(items: User[]) {
+  return items
+    .filter((user) => user.id !== "u-rodrigo")
+    .map((user) => user.id === "u-prefeito"
+      ? { ...user, fullName: "Rodrigo Aguiar Dalla Bernardina", department: "Gabinete do Prefeito", role: "Prefeito", initials: "RB" }
+      : user.id === "u-vice"
+        ? { ...user, fullName: "Jaime de Souza", department: "Gabinete do Prefeito", role: "Vice-prefeito", initials: "JS" }
+        : user);
+}
+
 function isExecutiveAccess(user: User) { const role = normalizeText(user.role).replaceAll(" ", "-"); return role === "prefeito" || role === "vice-prefeito"; }
 function isSectorManager(user: User) { return !normalizeText(user.role).includes("funcionario"); }
 function makeInitials(fullName: string) { const names = fullName.trim().split(/\s+/).filter(Boolean); return `${names[0]?.[0] ?? ""}${names.length > 1 ? names[names.length - 1]?.[0] ?? "" : names[0]?.[1] ?? ""}`.toUpperCase(); }
