@@ -89,6 +89,6 @@ O canal do cidadão permanece separado do login:
 - `/avaliar` — reclamação, elogio ou sugestão, com protocolo, anexos e triagem inteligente;
 - `/acompanhar` — acompanhamento por protocolo + código de acesso, resposta oficial e avaliação pós-atendimento/NPS.
 
-A camada de IA faz resumo, classificação de categoria e secretaria, indicação de urgência, tags, ação sugerida, identificação de demandas semelhantes e relatórios executivos. Ela é **assistiva** e não substitui a validação do servidor público. Sem `OPENAI_API_KEY`, o sistema usa regras locais de contingência.
+A camada de IA faz resumo, classificação de categoria e secretaria, indicação de urgência, tags, ação sugerida, identificação de demandas semelhantes e relatórios executivos. Ela é **assistiva** e não substitui a validação do servidor público. Sem `GROQ_API_KEY`, o sistema usa regras locais de contingência.
 
 Veja `IMPLEMENTACAO-45-RECOMENDACOES.md` para o mapa completo das frentes implementadas e `README-VERCEL.md` para variáveis e deploy.

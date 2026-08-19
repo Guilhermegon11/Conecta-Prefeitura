@@ -32,4 +32,4 @@ Teste também:
 4. Volte a `/acompanhar`, confira a resposta, conclua o fluxo e registre a avaliação pós-atendimento.
 5. Em **Central Integrada → Saúde do sistema**, confirme Supabase, IA, PWA e automações.
 
-A IA é opcional e usa `OPENAI_API_KEY`. Os backups/relatórios agendados usam `CRON_SECRET`.
+A IA é opcional e usa `GROQ_API_KEY`. Os backups/relatórios agendados usam `CRON_SECRET`.

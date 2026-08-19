@@ -76,7 +76,7 @@ Esta versão consolida o sistema como uma plataforma integrada de gestão munici
 
 ## Variáveis novas/essenciais
 - Supabase: `SUPABASE_URL`/`NEXT_PUBLIC_SUPABASE_URL` + `SUPABASE_SECRET_KEY`/`SUPABASE_SERVICE_ROLE_KEY`.
-- IA: `OPENAI_API_KEY`; `OPENAI_MODEL` é opcional.
+- IA: `GROQ_API_KEY`; `GROQ_MODEL` é opcional.
 - Cron: `CRON_SECRET`.
 - Segurança: `AUTH_SESSION_SECRET` e, se usado, credenciais Twilio Verify.
 

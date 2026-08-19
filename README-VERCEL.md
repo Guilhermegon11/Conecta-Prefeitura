@@ -80,8 +80,8 @@ A Central Integrada possui uma camada de IA para:
 
 Configure no servidor:
 
-- `OPENAI_API_KEY`
-- `OPENAI_MODEL` (opcional; o projeto possui um valor padrão)
+- `GROQ_API_KEY`
+- `GROQ_MODEL` (opcional; o projeto possui um valor padrão)
 
 A IA é assistiva. O encaminhamento, a prioridade final e qualquer decisão continuam sob responsabilidade de um servidor autorizado. Nome, telefone e e-mail do cidadão não são necessários para a classificação automática do relato. Se a chave de IA não estiver configurada, o sistema continua funcionando com regras locais de contingência.
 

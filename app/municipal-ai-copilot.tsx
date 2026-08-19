@@ -1,0 +1,45 @@
+"use client";
+import { FormEvent, useMemo, useState } from "react";
+import { AlertTriangle, Bot, CheckCircle2, ChevronRight, LoaderCircle, MessageSquareText, Send, ShieldCheck, Sparkles, Target, X, Zap } from "lucide-react";
+
+type CopilotTicket = { protocol: string; title: string; description: string; department: string; status: string; priority: string; dueDate: string | null; neighborhood?: string };
+type CopilotEvent = { title: string; department: string; location: string; startsAt: string; endsAt?: string | null };
+type CopilotResult = { answer: string; headline: string; priority: "Baixa" | "Normal" | "Alta" | "Crítica"; recommendedActions: string[]; cautions: string[]; source: string };
+type Props = { activeModule: string; department: string; user: { fullName: string; role: string }; tickets: CopilotTicket[]; events: CopilotEvent[]; unreadNotifications?: number };
+
+const PRESETS = [
+  { mode: "prioritize", label: "Priorizar meu dia", icon: Target, prompt: "Analise o contexto desta tela e me diga o que eu deveria priorizar agora." },
+  { mode: "risk_scan", label: "Encontrar riscos", icon: AlertTriangle, prompt: "Procure atrasos, riscos, gargalos e itens que precisam de atenção humana no contexto atual." },
+  { mode: "action_plan", label: "Criar plano de ação", icon: Zap, prompt: "Transforme o contexto desta tela em um plano de ação objetivo e executável." },
+  { mode: "meeting", label: "Preparar reunião", icon: MessageSquareText, prompt: "Prepare uma pauta executiva curta com decisões, pendências e próximos passos a partir deste contexto." },
+] as const;
+function compactTicket(ticket: CopilotTicket) { return { protocol: ticket.protocol, title: ticket.title, description: ticket.description.slice(0, 650), department: ticket.department, status: ticket.status, priority: ticket.priority, dueDate: ticket.dueDate, neighborhood: ticket.neighborhood || "" }; }
+
+export function MunicipalAiCopilot({ activeModule, department, user, tickets, events, unreadNotifications = 0 }: Props) {
+  const [open, setOpen] = useState(false), [prompt, setPrompt] = useState(""), [busy, setBusy] = useState(false), [result, setResult] = useState<CopilotResult | null>(null), [error, setError] = useState(""), [configured, setConfigured] = useState<boolean | null>(null);
+  const context = useMemo(() => ({ currentScreen: activeModule, viewedDepartment: department, currentUser: { role: user.role }, summary: { visibleTickets: tickets.length, urgentTickets: tickets.filter((item) => item.priority === "Urgente" && !["Concluído", "Cancelado"].includes(item.status)).length, openTickets: tickets.filter((item) => !["Concluído", "Cancelado"].includes(item.status)).length, unreadNotifications, upcomingEvents: events.filter((event) => new Date(event.startsAt).getTime() >= Date.now()).slice(0, 10) }, visibleTickets: tickets.slice(0, 25).map(compactTicket) }), [activeModule, department, events, tickets, unreadNotifications, user.role]);
+  async function ask(rawPrompt: string, mode = "assistant") { const question = rawPrompt.trim(); if (!question || busy) return; setBusy(true); setError(""); try { const response = await fetch("/api/ai", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ operation: "copilot", prompt: question, mode, context }) }); const payload = await response.json() as { configured?: boolean; result?: CopilotResult; error?: string }; if (!response.ok || !payload.result) throw new Error(payload.error || "Não foi possível consultar o Copiloto Municipal."); setConfigured(Boolean(payload.configured)); setResult(payload.result); setPrompt(""); } catch (err) { setError(err instanceof Error ? err.message : "Falha ao consultar a IA."); } finally { setBusy(false); } }
+  function submit(event: FormEvent) { event.preventDefault(); void ask(prompt); }
+  return <>
+    <button className="municipal-ai-fab" type="button" onClick={() => setOpen(true)} aria-label="Abrir Copiloto Municipal com IA"><span><Sparkles size={17}/></span><strong>IA</strong><small>Copiloto</small></button>
+    {open && <div className="municipal-ai-overlay" role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget) setOpen(false); }}><aside className="municipal-ai-panel" role="dialog" aria-modal="true" aria-labelledby="municipal-ai-title">
+      <header><div className="municipal-ai-brand"><span><Bot size={21}/></span><div><small>GROQ · COPILOTO MUNICIPAL</small><h2 id="municipal-ai-title">Assistente da gestão</h2></div></div><button type="button" aria-label="Fechar Copiloto" onClick={() => setOpen(false)}><X size={19}/></button></header>
+      <div className="municipal-ai-context"><span><Sparkles size={14}/></span><div><strong>{activeModule}</strong><small>{department} · contexto desta tela</small></div></div>
+      <section className="municipal-ai-presets" aria-label="Ações rápidas de inteligência artificial">{PRESETS.map(({ mode, label, icon: Icon, prompt: presetPrompt }) => <button type="button" key={mode} disabled={busy} onClick={() => void ask(presetPrompt, mode)}><Icon size={15}/><span>{label}</span><ChevronRight size={13}/></button>)}</section>
+      <section className="municipal-ai-response" aria-live="polite">
+        {busy && <div className="municipal-ai-loading"><LoaderCircle className="spin" size={24}/><strong>Analisando o contexto...</strong><p>A IA está usando apenas os dados permitidos desta tela.</p></div>}
+        {!busy && error && <div className="municipal-ai-error"><AlertTriangle size={21}/><div><strong>Não foi possível concluir</strong><p>{error}</p></div></div>}
+        {!busy && !error && result && <><div className="municipal-ai-result-head"><span className={`municipal-ai-priority ${result.priority.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "")}`}>{result.priority}</span><small>{result.source === "groq" ? "Analisado pela Groq" : "Modo de contingência"}</small></div><h3>{result.headline}</h3><p className="municipal-ai-answer">{result.answer}</p>{result.recommendedActions.length > 0 && <div className="municipal-ai-actions-list"><strong>Próximas ações sugeridas</strong>{result.recommendedActions.map((item, index) => <div key={`${item}-${index}`}><CheckCircle2 size={14}/><span>{item}</span></div>)}</div>}{result.cautions.length > 0 && <div className="municipal-ai-cautions"><ShieldCheck size={15}/><div><strong>Validação humana</strong>{result.cautions.map((item, index) => <p key={`${item}-${index}`}>{item}</p>)}</div></div>}</>}
+        {!busy && !error && !result && <div className="municipal-ai-empty"><Bot size={30}/><strong>IA disponível em todo o sistema</strong><p>Pergunte sobre demandas, prioridades, riscos, reunião, texto administrativo ou próximos passos do módulo atual.</p></div>}
+      </section>
+      <form className="municipal-ai-composer" onSubmit={submit}><textarea value={prompt} onChange={(event) => setPrompt(event.target.value)} placeholder="Ex.: o que merece minha atenção hoje?" aria-label="Pergunta para o Copiloto Municipal" /><button type="submit" disabled={busy || !prompt.trim()} aria-label="Enviar pergunta para a IA">{busy ? <LoaderCircle className="spin" size={17}/> : <Send size={17}/>}</button></form>
+      <footer><ShieldCheck size={13}/><span>{configured === false ? "Configure GROQ_API_KEY na Vercel para ativar a IA generativa." : "A IA sugere; o servidor responsável valida e executa."}</span></footer>
+    </aside></div>}
+  </>;
+}
+
+export function DashboardAiBrief({ department, tickets }: { department: string; tickets: CopilotTicket[] }) {
+  const [open, setOpen] = useState(false), [busy, setBusy] = useState(false), [result, setResult] = useState<CopilotResult | null>(null);
+  async function generate() { setOpen(true); if (result || busy) return; setBusy(true); try { const response = await fetch("/api/ai", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ operation: "copilot", mode: "prioritize", prompt: "Gere um briefing executivo muito curto: o que merece atenção agora, qual o maior risco e quais são as três próximas ações.", context: { department, tickets: tickets.slice(0, 20).map(compactTicket) } }) }); const payload = await response.json() as { result?: CopilotResult }; if (response.ok && payload.result) setResult(payload.result); } finally { setBusy(false); } }
+  return <article className={`dashboard-ai-brief ${open ? "open" : ""}`}><button type="button" onClick={() => open ? setOpen(false) : void generate()}><span><Sparkles size={16}/></span><div><strong>Resumo inteligente</strong><small>Groq analisa o cenário quando você pedir</small></div><ChevronRight size={15}/></button>{open && <div className="dashboard-ai-brief-body">{busy ? <p><LoaderCircle className="spin" size={15}/> Preparando briefing...</p> : result ? <><strong>{result.headline}</strong><p>{result.answer}</p>{result.recommendedActions.slice(0,3).map((item, index)=><span key={`${item}-${index}`}><CheckCircle2 size={12}/>{item}</span>)}</> : <p>Não foi possível gerar o briefing agora.</p>}</div>}</article>;
+}

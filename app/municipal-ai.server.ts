@@ -1,16 +1,12 @@
 export type MunicipalAiUrgency = "Baixa" | "Normal" | "Alta" | "Crítica";
+export type MunicipalAiSource = "groq" | "regras";
 
 export type MunicipalAiAnalysis = {
-  summary: string;
-  category: string;
-  suggestedDepartment: string;
-  urgency: MunicipalAiUrgency;
-  urgencyReason: string;
-  tags: string[];
-  issueKey: string;
-  recommendedAction: string;
-  source: "openai" | "regras";
+  summary: string; category: string; suggestedDepartment: string; urgency: MunicipalAiUrgency; urgencyReason: string; tags: string[]; issueKey: string; recommendedAction: string; source: MunicipalAiSource;
+  confidence?: number; sentiment?: "Positivo" | "Neutro" | "Negativo"; suggestedSlaHours?: number; checklist?: string[];
 };
+export type MunicipalCopilotResult = { answer: string; headline: string; priority: "Baixa" | "Normal" | "Alta" | "Crítica"; recommendedActions: string[]; cautions: string[]; source: MunicipalAiSource };
+export type TicketAiDraft = { title: string; description: string; department: string; priority: "Baixa" | "Média" | "Alta" | "Urgente"; slaHours: number; dueDays: number; tags: string[]; checklist: string[]; source: MunicipalAiSource };
 
 const DEPARTMENT_RULES: Array<{ department: string; category: string; words: string[] }> = [
   { department: "Secretaria de Infraestrutura e Transporte", category: "Infraestrutura", words: ["buraco", "asfalto", "pavimenta", "poste", "lâmpada", "lampada", "iluminação", "iluminacao", "rua", "ponte", "drenagem", "alag", "transporte", "ônibus", "onibus", "estrada"] },
@@ -22,159 +18,57 @@ const DEPARTMENT_RULES: Array<{ department: string; category: string; words: str
   { department: "Secretaria de Comunicação e Eventos", category: "Comunicação e Eventos", words: ["evento", "divulgação", "divulgacao", "comunicação", "comunicacao", "cerimonial"] },
   { department: "Secretaria de Administração e Finanças", category: "Administração e Finanças", words: ["imposto", "iptu", "taxa", "alvará", "alvara", "pagamento", "licitação", "licitacao", "contrato", "financeiro"] },
 ];
-
 const CRITICAL_WORDS = ["risco de morte", "desabamento", "fio energizado", "poste energizado", "explosão", "explosao", "incêndio", "incendio", "acidente grave", "sangramento", "sem ambulância", "sem ambulancia"];
 const HIGH_WORDS = ["alagamento", "vazamento", "acidente", "falta de medicamento", "sem remédio", "sem remedio", "idoso", "criança", "crianca", "deficiente", "ameaça", "ameaca", "urgente", "perigo"];
+const AI_BASE_SYSTEM = `Você é o Copiloto Municipal do sistema Prefeitura Conecta, uma plataforma de gestão pública municipal brasileira.
+Regras obrigatórias:
+- Responda em português do Brasil, com linguagem objetiva, administrativa e clara.
+- Não invente fatos, números, responsáveis, prazos, leis ou decisões que não estejam no contexto.
+- Não substitua decisão humana, parecer jurídico, diagnóstico médico, decisão de segurança pública ou autorização administrativa.
+- Quando houver risco à vida, integridade física, crianças, idosos, medicamentos, infraestrutura crítica ou possível emergência, sinalize revisão humana imediata.
+- Evite repetir dados pessoais desnecessários. Trabalhe preferencialmente com protocolos, setores, cargos e contexto operacional.
+- Sugira ações, checklists, textos e prioridades, mas deixe claro quando algo depende de validação do servidor responsável.
+- Considere o princípio de minimização de dados e a LGPD.`;
 
-function normalize(value: string) {
-  return value.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().replace(/[^a-z0-9\s]/g, " ").replace(/\s+/g, " ").trim();
-}
-
-function containsTerm(text: string, rawTerm: string) {
-  const term = normalize(rawTerm);
-  if (!term) return false;
-  if (["pavimenta", "alag"].includes(term)) return text.split(" ").some((token) => token.startsWith(term));
-  return ` ${text} `.includes(` ${term} `);
-}
-
-function compactSummary(subject: string, message: string) {
-  const clean = message.replace(/\s+/g, " ").trim();
-  if (!clean) return subject.trim().slice(0, 220);
-  const first = clean.split(/(?<=[.!?])\s+/)[0] || clean;
-  const combined = subject.trim() && !normalize(first).includes(normalize(subject)) ? `${subject.trim()}: ${first}` : first;
-  return combined.slice(0, 320);
-}
-
-export function hasMunicipalAiConfig() {
-  return Boolean(process.env.OPENAI_API_KEY);
-}
+function normalize(value: string) { return value.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().replace(/[^a-z0-9\s]/g, " ").replace(/\s+/g, " ").trim(); }
+function containsTerm(text: string, rawTerm: string) { const term = normalize(rawTerm); if (!term) return false; if (["pavimenta", "alag"].includes(term)) return text.split(" ").some((token) => token.startsWith(term)); return ` ${text} `.includes(` ${term} `); }
+function compactSummary(subject: string, message: string) { const clean = message.replace(/\s+/g, " ").trim(); if (!clean) return subject.trim().slice(0, 220); const first = clean.split(/(?<=[.!?])\s+/)[0] || clean; const combined = subject.trim() && !normalize(first).includes(normalize(subject)) ? `${subject.trim()}: ${first}` : first; return combined.slice(0, 320); }
+export function hasMunicipalAiConfig() { return Boolean(process.env.GROQ_API_KEY); }
+export function municipalAiProviderInfo() { return { provider: "Groq", configured: hasMunicipalAiConfig(), model: process.env.GROQ_MODEL || "openai/gpt-oss-20b", reportModel: process.env.GROQ_REPORT_MODEL || "openai/gpt-oss-120b" }; }
 
 export function heuristicMunicipalAnalysis(subject: string, message: string, neighborhood = ""): MunicipalAiAnalysis {
-  const text = normalize(`${subject} ${message} ${neighborhood}`);
-  const matched = DEPARTMENT_RULES
-    .map((rule) => ({ ...rule, score: rule.words.filter((word) => containsTerm(text, word)).length }))
-    .sort((a, b) => b.score - a.score)[0];
-  const category = matched?.score ? matched.category : "Atendimento geral";
-  const suggestedDepartment = matched?.score ? matched.department : "Gabinete do Prefeito";
-
-  let urgency: MunicipalAiUrgency = "Normal";
-  let urgencyReason = "Não foram identificados sinais claros de risco imediato.";
-  const critical = CRITICAL_WORDS.find((word) => containsTerm(text, word));
-  const high = HIGH_WORDS.find((word) => containsTerm(text, word));
-  if (critical) { urgency = "Crítica"; urgencyReason = `Expressão de risco detectada: “${critical}”. Requer triagem humana imediata.`; }
-  else if (high) { urgency = "Alta"; urgencyReason = `Possível situação prioritária identificada por “${high}”. Recomenda-se validação rápida.`; }
-  else if (/elogio|agrade|paraben/.test(text)) { urgency = "Baixa"; urgencyReason = "O conteúdo aparenta ser elogio ou agradecimento, sem risco operacional."; }
-
-  const candidateTags = [
-    ...DEPARTMENT_RULES.flatMap((rule) => rule.words.filter((word) => containsTerm(text, word)).slice(0, 4)),
-    neighborhood ? `bairro:${neighborhood}` : "",
-    urgency === "Crítica" ? "prioridade-crítica" : urgency === "Alta" ? "prioridade-alta" : "",
-  ].filter(Boolean);
-  const tags = Array.from(new Set(candidateTags.map((item) => item.toLowerCase()))).slice(0, 8);
-  const issueKey = [category, neighborhood || "sem-bairro", tags.find((tag) => !tag.startsWith("bairro:")) || subject].map(normalize).filter(Boolean).join("|").slice(0, 180);
-  return {
-    summary: compactSummary(subject, message), category, suggestedDepartment, urgency, urgencyReason, tags, issueKey,
-    recommendedAction: urgency === "Crítica" ? "Validar imediatamente, acionar o setor responsável e registrar a providência no protocolo." : urgency === "Alta" ? "Priorizar a triagem e encaminhar ao setor sugerido com prazo reduzido." : `Encaminhar para ${suggestedDepartment} e acompanhar dentro do SLA definido.`,
-    source: "regras",
-  };
+  const text = normalize(`${subject} ${message} ${neighborhood}`); const matched = DEPARTMENT_RULES.map((rule) => ({ ...rule, score: rule.words.filter((word) => containsTerm(text, word)).length })).sort((a, b) => b.score - a.score)[0];
+  const category = matched?.score ? matched.category : "Atendimento geral"; const suggestedDepartment = matched?.score ? matched.department : "Gabinete do Prefeito";
+  let urgency: MunicipalAiUrgency = "Normal"; let urgencyReason = "Não foram identificados sinais claros de risco imediato."; const critical = CRITICAL_WORDS.find((word) => containsTerm(text, word)); const high = HIGH_WORDS.find((word) => containsTerm(text, word));
+  if (critical) { urgency = "Crítica"; urgencyReason = `Expressão de risco detectada: “${critical}”. Requer triagem humana imediata.`; } else if (high) { urgency = "Alta"; urgencyReason = `Possível situação prioritária identificada por “${high}”. Recomenda-se validação rápida.`; } else if (/elogio|agrade|paraben/.test(text)) { urgency = "Baixa"; urgencyReason = "O conteúdo aparenta ser elogio ou agradecimento, sem risco operacional."; }
+  const candidateTags = [...DEPARTMENT_RULES.flatMap((rule) => rule.words.filter((word) => containsTerm(text, word)).slice(0, 4)), neighborhood ? `bairro:${neighborhood}` : "", urgency === "Crítica" ? "prioridade-crítica" : urgency === "Alta" ? "prioridade-alta" : ""].filter(Boolean);
+  const tags = Array.from(new Set(candidateTags.map((item) => item.toLowerCase()))).slice(0, 8); const issueKey = [category, neighborhood || "sem-bairro", tags.find((tag) => !tag.startsWith("bairro:")) || subject].map(normalize).filter(Boolean).join("|").slice(0, 180);
+  const checklist = urgency === "Crítica" ? ["Validar o risco com servidor responsável", "Acionar o setor competente", "Registrar providência e horário", "Atualizar o protocolo"] : ["Validar a classificação", `Encaminhar para ${suggestedDepartment}`, "Definir responsável e prazo", "Registrar atualização no protocolo"];
+  return { summary: compactSummary(subject, message), category, suggestedDepartment, urgency, urgencyReason, tags, issueKey, recommendedAction: urgency === "Crítica" ? "Validar imediatamente, acionar o setor responsável e registrar a providência no protocolo." : urgency === "Alta" ? "Priorizar a triagem e encaminhar ao setor sugerido com prazo reduzido." : `Encaminhar para ${suggestedDepartment} e acompanhar dentro do SLA definido.`, source: "regras", confidence: matched?.score ? Math.min(0.92, 0.5 + matched.score * 0.08) : 0.42, sentiment: /elogio|agrade|paraben/.test(text) ? "Positivo" : /reclama|problema|absurdo|ruim|demora/.test(text) ? "Negativo" : "Neutro", suggestedSlaHours: urgency === "Crítica" ? 2 : urgency === "Alta" ? 24 : urgency === "Baixa" ? 120 : 72, checklist };
 }
 
-function extractResponseText(payload: unknown): string {
-  if (!payload || typeof payload !== "object") return "";
-  const body = payload as { output_text?: unknown; output?: unknown };
-  if (typeof body.output_text === "string") return body.output_text;
-  if (!Array.isArray(body.output)) return "";
-  const parts: string[] = [];
-  for (const item of body.output) {
-    if (!item || typeof item !== "object") continue;
-    const content = (item as { content?: unknown }).content;
-    if (!Array.isArray(content)) continue;
-    for (const entry of content) {
-      if (!entry || typeof entry !== "object") continue;
-      const text = (entry as { text?: unknown }).text;
-      if (typeof text === "string") parts.push(text);
-    }
-  }
-  return parts.join("\n").trim();
+type GroqMessage = { role: "system" | "user" | "assistant"; content: string }; type JsonSchema = Record<string, unknown>;
+function extractGroqText(payload: unknown): string { if (!payload || typeof payload !== "object") return ""; const choices = (payload as { choices?: unknown }).choices; if (!Array.isArray(choices)) return ""; const first = choices[0]; if (!first || typeof first !== "object") return ""; const message = (first as { message?: unknown }).message; if (!message || typeof message !== "object") return ""; const content = (message as { content?: unknown }).content; return typeof content === "string" ? content.trim() : ""; }
+async function callGroq(params: { system: string; user: string; model?: string; temperature?: number; maxTokens?: number; schema?: { name: string; schema: JsonSchema } }) {
+  const apiKey = process.env.GROQ_API_KEY; if (!apiKey) return null; const model = params.model || process.env.GROQ_MODEL || "openai/gpt-oss-20b"; const messages: GroqMessage[] = [{ role: "system", content: `${AI_BASE_SYSTEM}\n\n${params.system}` }, { role: "user", content: params.user }];
+  const body: Record<string, unknown> = { model, messages, temperature: params.temperature ?? 0.2, max_completion_tokens: params.maxTokens ?? 1800, reasoning_effort: model.startsWith("openai/gpt-oss") ? "low" : undefined };
+  if (params.schema) body.response_format = { type: "json_schema", json_schema: { name: params.schema.name, strict: true, schema: params.schema.schema } }; Object.keys(body).forEach((key) => body[key] === undefined && delete body[key]);
+  const response = await fetch("https://api.groq.com/openai/v1/chat/completions", { method: "POST", headers: { "content-type": "application/json", authorization: `Bearer ${apiKey}` }, body: JSON.stringify(body), cache: "no-store" });
+  if (!response.ok) { const detail = (await response.text().catch(() => "")).slice(0, 500); throw new Error(`GROQ_${response.status}${detail ? `:${detail}` : ""}`); } return extractGroqText(await response.json());
 }
+function parseJsonLoose(text: string): Record<string, unknown> | null { const clean = text.trim().replace(/^```(?:json)?\s*/i, "").replace(/\s*```$/, ""); try { return JSON.parse(clean) as Record<string, unknown>; } catch {} const start = clean.indexOf("{"); const end = clean.lastIndexOf("}"); if (start >= 0 && end > start) { try { return JSON.parse(clean.slice(start, end + 1)) as Record<string, unknown>; } catch { return null; } } return null; }
+function asStringArray(value: unknown, limit = 10) { return Array.isArray(value) ? value.filter((item): item is string => typeof item === "string").map((item) => item.trim()).filter(Boolean).slice(0, limit) : []; }
 
-function parseJsonLoose(text: string): Record<string, unknown> | null {
-  const clean = text.trim().replace(/^```(?:json)?\s*/i, "").replace(/\s*```$/, "");
-  try { return JSON.parse(clean) as Record<string, unknown>; } catch { /* continue */ }
-  const start = clean.indexOf("{"); const end = clean.lastIndexOf("}");
-  if (start >= 0 && end > start) {
-    try { return JSON.parse(clean.slice(start, end + 1)) as Record<string, unknown>; } catch { return null; }
-  }
-  return null;
-}
+const DEMAND_SCHEMA: JsonSchema = { type: "object", properties: { summary: { type: "string" }, category: { type: "string" }, suggestedDepartment: { type: "string" }, urgency: { type: "string", enum: ["Baixa", "Normal", "Alta", "Crítica"] }, urgencyReason: { type: "string" }, tags: { type: "array", items: { type: "string" } }, issueKey: { type: "string" }, recommendedAction: { type: "string" }, confidence: { type: "number", minimum: 0, maximum: 1 }, sentiment: { type: "string", enum: ["Positivo", "Neutro", "Negativo"] }, suggestedSlaHours: { type: "integer", minimum: 1, maximum: 720 }, checklist: { type: "array", items: { type: "string" } } }, required: ["summary", "category", "suggestedDepartment", "urgency", "urgencyReason", "tags", "issueKey", "recommendedAction", "confidence", "sentiment", "suggestedSlaHours", "checklist"], additionalProperties: false };
+export async function analyzeMunicipalDemand(subject: string, message: string, neighborhood = ""): Promise<MunicipalAiAnalysis> { const fallback = heuristicMunicipalAnalysis(subject, message, neighborhood); if (!hasMunicipalAiConfig()) return fallback; try { const text = await callGroq({ system: "Faça triagem administrativa da demanda e devolva apenas o JSON solicitado. Use exatamente um dos nomes de secretarias válidas. Para prioridade, considere risco, impacto coletivo e necessidade de resposta rápida. Não classifique crítica apenas por tom emocional.", user: `Assunto: ${subject}\nBairro: ${neighborhood || "não informado"}\nRelato: ${message}\n\nSecretarias válidas: ${DEPARTMENT_RULES.map((item) => item.department).join("; ")}; Gabinete do Prefeito.`, schema: { name: "municipal_demand_triage", schema: DEMAND_SCHEMA }, maxTokens: 1600 }); const parsed = text ? parseJsonLoose(text) : null; if (!parsed) return fallback; const urgency = ["Baixa", "Normal", "Alta", "Crítica"].includes(String(parsed.urgency)) ? String(parsed.urgency) as MunicipalAiUrgency : fallback.urgency; const confidence = typeof parsed.confidence === "number" ? Math.max(0, Math.min(1, parsed.confidence)) : fallback.confidence; const suggestedSlaHours = typeof parsed.suggestedSlaHours === "number" ? Math.max(1, Math.min(720, Math.round(parsed.suggestedSlaHours))) : fallback.suggestedSlaHours; const sentiment = ["Positivo", "Neutro", "Negativo"].includes(String(parsed.sentiment)) ? String(parsed.sentiment) as "Positivo" | "Neutro" | "Negativo" : fallback.sentiment; return { summary: typeof parsed.summary === "string" ? parsed.summary.slice(0, 700) : fallback.summary, category: typeof parsed.category === "string" ? parsed.category.slice(0, 140) : fallback.category, suggestedDepartment: typeof parsed.suggestedDepartment === "string" ? parsed.suggestedDepartment.slice(0, 200) : fallback.suggestedDepartment, urgency, urgencyReason: typeof parsed.urgencyReason === "string" ? parsed.urgencyReason.slice(0, 600) : fallback.urgencyReason, tags: asStringArray(parsed.tags, 10).length ? asStringArray(parsed.tags, 10) : fallback.tags, issueKey: typeof parsed.issueKey === "string" ? normalize(parsed.issueKey).slice(0, 180) : fallback.issueKey, recommendedAction: typeof parsed.recommendedAction === "string" ? parsed.recommendedAction.slice(0, 850) : fallback.recommendedAction, source: "groq", confidence, sentiment, suggestedSlaHours, checklist: asStringArray(parsed.checklist, 8).length ? asStringArray(parsed.checklist, 8) : fallback.checklist }; } catch { return fallback; } }
 
-async function callMunicipalAi(instruction: string, input: string) {
-  const apiKey = process.env.OPENAI_API_KEY;
-  if (!apiKey) return null;
-  const model = process.env.OPENAI_MODEL || "gpt-5.6-luna";
-  const response = await fetch("https://api.openai.com/v1/responses", {
-    method: "POST",
-    headers: { "content-type": "application/json", authorization: `Bearer ${apiKey}` },
-    body: JSON.stringify({
-      model,
-      input: [
-        { role: "system", content: [{ type: "input_text", text: instruction }] },
-        { role: "user", content: [{ type: "input_text", text: input }] },
-      ],
-    }),
-    cache: "no-store",
-  });
-  if (!response.ok) throw new Error(`AI_PROVIDER_${response.status}`);
-  return extractResponseText(await response.json());
-}
+export async function summarizeMunicipalText(text: string) { const trimmed = text.trim().slice(0, 16000); if (!trimmed) return { text: "", source: "regras" as const }; if (!hasMunicipalAiConfig()) return { text: compactSummary("", trimmed), source: "regras" as const }; try { const result = await callGroq({ system: "Resuma o texto administrativo em até 6 bullets. Destaque: fato principal, providências, responsáveis/cargos citados, prazo, pendência e risco. Não invente itens ausentes.", user: trimmed, maxTokens: 1400 }); return { text: result?.slice(0, 5000) || compactSummary("", trimmed), source: result ? "groq" as const : "regras" as const }; } catch { return { text: compactSummary("", trimmed), source: "regras" as const }; } }
+export async function generateMunicipalWeeklyReport(input: unknown) { const serialized = JSON.stringify(input).slice(0, 36000); const fallback = "Resumo gerencial gerado em modo de contingência. Revise os indicadores de demandas abertas, atrasadas, concluídas e prioridades críticas exibidos no painel antes da reunião de gestão."; if (!hasMunicipalAiConfig()) return { text: fallback, source: "regras" as const }; try { const result = await callGroq({ model: process.env.GROQ_REPORT_MODEL || "openai/gpt-oss-120b", system: "Gere um resumo executivo para reunião de secretariado. Estruture em: Visão geral; Avanços; Riscos e gargalos; Secretarias que exigem atenção; Padrões recorrentes; Decisões sugeridas ao gestor; Próximas ações. Não invente números ausentes.", user: serialized, maxTokens: 3000 }); return { text: result?.slice(0, 9000) || fallback, source: result ? "groq" as const : "regras" as const }; } catch { return { text: fallback, source: "regras" as const }; } }
 
-function asStringArray(value: unknown) {
-  return Array.isArray(value) ? value.filter((item): item is string => typeof item === "string").map((item) => item.trim()).filter(Boolean).slice(0, 10) : [];
-}
+const COPILOT_SCHEMA: JsonSchema = { type: "object", properties: { headline: { type: "string" }, answer: { type: "string" }, priority: { type: "string", enum: ["Baixa", "Normal", "Alta", "Crítica"] }, recommendedActions: { type: "array", items: { type: "string" } }, cautions: { type: "array", items: { type: "string" } } }, required: ["headline", "answer", "priority", "recommendedActions", "cautions"], additionalProperties: false };
+const MODE_INSTRUCTIONS: Record<string, string> = { assistant: "Responda à solicitação usando somente o contexto fornecido. Seja útil como copiloto operacional da prefeitura.", prioritize: "Priorize o trabalho do usuário. Identifique o que merece atenção primeiro e explique objetivamente por quê.", risk_scan: "Faça uma varredura de riscos, atrasos, gargalos, inconsistências e pontos que exigem revisão humana.", action_plan: "Transforme o contexto em um plano de ação curto, sequencial, com responsáveis por papel/setor quando disponíveis.", draft: "Produza uma minuta administrativa profissional baseada no pedido e no contexto. Não assine em nome de ninguém.", meeting: "Prepare pauta executiva para reunião com tópicos, decisões necessárias, pendências e próximos passos.", explain: "Explique o conteúdo ou módulo de forma simples e operacional para um servidor municipal.", search: "Use o contexto fornecido como base de busca e síntese. Aponte registros relacionados sem inventar resultados." };
+export async function runMunicipalCopilot(input: { prompt: string; context?: unknown; mode?: string }): Promise<MunicipalCopilotResult> { const prompt = input.prompt.trim().slice(0, 8000); const serialized = JSON.stringify(input.context ?? {}).slice(0, 32000); const fallback: MunicipalCopilotResult = { headline: "IA em modo de contingência", answer: prompt ? "A integração com a Groq ainda não está configurada neste ambiente. O sistema mantém as automações por regras, mas o Copiloto precisa da variável GROQ_API_KEY para responder com análise generativa." : "Informe o que deseja analisar.", priority: "Normal", recommendedActions: ["Configure GROQ_API_KEY na Vercel", "Faça um novo deploy", "Repita a análise no módulo desejado"], cautions: ["Não grave chaves de API no código-fonte ou em variáveis NEXT_PUBLIC_."], source: "regras" }; if (!prompt || !hasMunicipalAiConfig()) return fallback; try { const mode = input.mode && MODE_INSTRUCTIONS[input.mode] ? input.mode : "assistant"; const text = await callGroq({ system: `${MODE_INSTRUCTIONS[mode]}\nDevolva o resultado estruturado no schema solicitado. Em recommendedActions, use ações curtas e executáveis. Em cautions, inclua apenas cuidados realmente relevantes.`, user: `PEDIDO DO USUÁRIO:\n${prompt}\n\nCONTEXTO PERMITIDO DA TELA/SISTEMA:\n${serialized}`, schema: { name: "municipal_copilot", schema: COPILOT_SCHEMA }, maxTokens: 2200 }); const parsed = text ? parseJsonLoose(text) : null; if (!parsed) return fallback; const priority = ["Baixa", "Normal", "Alta", "Crítica"].includes(String(parsed.priority)) ? String(parsed.priority) as MunicipalCopilotResult["priority"] : "Normal"; return { headline: typeof parsed.headline === "string" ? parsed.headline.slice(0, 180) : "Análise da IA", answer: typeof parsed.answer === "string" ? parsed.answer.slice(0, 7000) : "", priority, recommendedActions: asStringArray(parsed.recommendedActions, 8), cautions: asStringArray(parsed.cautions, 6), source: "groq" }; } catch { return fallback; } }
 
-export async function analyzeMunicipalDemand(subject: string, message: string, neighborhood = ""): Promise<MunicipalAiAnalysis> {
-  const fallback = heuristicMunicipalAnalysis(subject, message, neighborhood);
-  if (!hasMunicipalAiConfig()) return fallback;
-  try {
-    const text = await callMunicipalAi(
-      "Você é um classificador operacional de uma prefeitura brasileira. Não tome decisões legais ou médicas. Faça triagem administrativa e devolva SOMENTE JSON válido com: summary, category, suggestedDepartment, urgency (Baixa|Normal|Alta|Crítica), urgencyReason, tags (array), issueKey e recommendedAction. Em situações de risco, apenas sinalize prioridade para revisão humana. Use os nomes de secretarias fornecidos quando possível.",
-      `Assunto: ${subject}\nBairro: ${neighborhood || "não informado"}\nRelato: ${message}\n\nSecretarias válidas: ${DEPARTMENT_RULES.map((item) => item.department).join("; ")}; Gabinete do Prefeito.`,
-    );
-    const parsed = text ? parseJsonLoose(text) : null;
-    if (!parsed) return fallback;
-    const urgency = ["Baixa", "Normal", "Alta", "Crítica"].includes(String(parsed.urgency)) ? String(parsed.urgency) as MunicipalAiUrgency : fallback.urgency;
-    return {
-      summary: typeof parsed.summary === "string" ? parsed.summary.slice(0, 600) : fallback.summary,
-      category: typeof parsed.category === "string" ? parsed.category.slice(0, 120) : fallback.category,
-      suggestedDepartment: typeof parsed.suggestedDepartment === "string" ? parsed.suggestedDepartment.slice(0, 180) : fallback.suggestedDepartment,
-      urgency,
-      urgencyReason: typeof parsed.urgencyReason === "string" ? parsed.urgencyReason.slice(0, 500) : fallback.urgencyReason,
-      tags: asStringArray(parsed.tags).length ? asStringArray(parsed.tags) : fallback.tags,
-      issueKey: typeof parsed.issueKey === "string" ? normalize(parsed.issueKey).slice(0, 180) : fallback.issueKey,
-      recommendedAction: typeof parsed.recommendedAction === "string" ? parsed.recommendedAction.slice(0, 650) : fallback.recommendedAction,
-      source: "openai",
-    };
-  } catch {
-    return fallback;
-  }
-}
-
-export async function summarizeMunicipalText(text: string) {
-  const trimmed = text.trim().slice(0, 12000);
-  if (!trimmed) return { text: "", source: "regras" as const };
-  if (!hasMunicipalAiConfig()) return { text: compactSummary("", trimmed), source: "regras" as const };
-  try {
-    const result = await callMunicipalAi("Resuma o texto administrativo em português do Brasil em até 5 bullets objetivos, sem inventar fatos, destacando providências, responsáveis, prazo e risco quando existirem.", trimmed);
-    return { text: result?.slice(0, 3500) || compactSummary("", trimmed), source: result ? "openai" as const : "regras" as const };
-  } catch { return { text: compactSummary("", trimmed), source: "regras" as const }; }
-}
-
-export async function generateMunicipalWeeklyReport(input: unknown) {
-  const serialized = JSON.stringify(input).slice(0, 24000);
-  const fallback = "Resumo gerencial gerado em modo de contingência. Revise os indicadores de demandas abertas, atrasadas, concluídas e prioridades críticas exibidos no painel antes da reunião de gestão.";
-  if (!hasMunicipalAiConfig()) return { text: fallback, source: "regras" as const };
-  try {
-    const result = await callMunicipalAi("Você é um analista de gestão municipal. Gere um resumo executivo semanal em português do Brasil, conciso e acionável. Estruture em: Visão geral; O que melhorou; Pontos de atenção; Secretarias/áreas que exigem acompanhamento; Próximas ações. Não invente números ausentes e não faça inferências pessoais sobre cidadãos.", serialized);
-    return { text: result?.slice(0, 6000) || fallback, source: result ? "openai" as const : "regras" as const };
-  } catch { return { text: fallback, source: "regras" as const }; }
-}
+const TICKET_SCHEMA: JsonSchema = { type: "object", properties: { title: { type: "string" }, description: { type: "string" }, department: { type: "string" }, priority: { type: "string", enum: ["Baixa", "Média", "Alta", "Urgente"] }, slaHours: { type: "integer", minimum: 1, maximum: 720 }, dueDays: { type: "integer", minimum: 0, maximum: 60 }, tags: { type: "array", items: { type: "string" } }, checklist: { type: "array", items: { type: "string" } } }, required: ["title", "description", "department", "priority", "slaHours", "dueDays", "tags", "checklist"], additionalProperties: false };
+export async function createTicketAiDraft(input: { title: string; description: string; neighborhood?: string; departments?: string[] }): Promise<TicketAiDraft> { const heuristic = heuristicMunicipalAnalysis(input.title, input.description, input.neighborhood || ""); const fallback: TicketAiDraft = { title: input.title.trim().slice(0, 180) || heuristic.summary.slice(0, 120), description: input.description.trim().slice(0, 2500) || heuristic.summary, department: heuristic.suggestedDepartment, priority: heuristic.urgency === "Crítica" ? "Urgente" : heuristic.urgency === "Alta" ? "Alta" : heuristic.urgency === "Baixa" ? "Baixa" : "Média", slaHours: heuristic.suggestedSlaHours || 72, dueDays: heuristic.urgency === "Crítica" ? 0 : heuristic.urgency === "Alta" ? 1 : 3, tags: heuristic.tags, checklist: heuristic.checklist || [], source: "regras" }; if (!hasMunicipalAiConfig()) return fallback; try { const departments = (input.departments?.length ? input.departments : DEPARTMENT_RULES.map((item) => item.department)).slice(0, 40); const text = await callGroq({ system: "Transforme o rascunho em um chamado municipal claro. Sugira setor, prioridade, SLA e checklist. Preserve o fato relatado; não crie detalhes inexistentes. Use exatamente um setor da lista.", user: `Título atual: ${input.title}\nDescrição atual: ${input.description}\nBairro: ${input.neighborhood || "não informado"}\nSetores válidos: ${departments.join("; ")}`, schema: { name: "municipal_ticket_draft", schema: TICKET_SCHEMA }, maxTokens: 1800 }); const parsed = text ? parseJsonLoose(text) : null; if (!parsed) return fallback; const priority = ["Baixa", "Média", "Alta", "Urgente"].includes(String(parsed.priority)) ? String(parsed.priority) as TicketAiDraft["priority"] : fallback.priority; return { title: typeof parsed.title === "string" ? parsed.title.slice(0, 180) : fallback.title, description: typeof parsed.description === "string" ? parsed.description.slice(0, 3000) : fallback.description, department: typeof parsed.department === "string" && departments.includes(parsed.department) ? parsed.department : fallback.department, priority, slaHours: typeof parsed.slaHours === "number" ? Math.max(1, Math.min(720, Math.round(parsed.slaHours))) : fallback.slaHours, dueDays: typeof parsed.dueDays === "number" ? Math.max(0, Math.min(60, Math.round(parsed.dueDays))) : fallback.dueDays, tags: asStringArray(parsed.tags, 10), checklist: asStringArray(parsed.checklist, 10), source: "groq" }; } catch { return fallback; } }
+export async function generateMunicipalDraft(input: { kind: string; text: string; context?: unknown }) { const text = input.text.trim().slice(0, 12000); const context = JSON.stringify(input.context ?? {}).slice(0, 18000); const fallback = text; if (!text || !hasMunicipalAiConfig()) return { text: fallback, source: "regras" as const }; const instructions: Record<string, string> = { improve_message: "Reescreva a mensagem para ficar objetiva, cordial e profissional. Preserve o sentido e não adicione promessas ou fatos.", citizen_response: "Crie uma minuta de resposta ao cidadão: clara, respeitosa, transparente e sem juridiquês. Não prometa prazo ou solução não presentes no contexto.", internal_note: "Reescreva como anotação interna objetiva, destacando ação, responsável e pendência quando houver.", event_agenda: "Transforme o texto em uma pauta de reunião curta com objetivo, tópicos, decisões e próximos passos.", checklist: "Transforme o texto em checklist operacional conciso, uma ação por linha.", project_brief: "Transforme o texto em resumo de projeto com objetivo, entregáveis, riscos, marcos e próximos passos.", document_summary: "Resuma o documento administrativo em tópicos: assunto, fatos, decisões, prazos, responsáveis e pendências.", public_copy: "Reescreva como comunicação institucional pública clara, acessível e sem linguagem partidária." }; try { const result = await callGroq({ system: instructions[input.kind] || instructions.improve_message, user: `${text}\n\nContexto adicional, se útil:\n${context}`, maxTokens: 1800 }); return { text: result?.slice(0, 6000) || fallback, source: result ? "groq" as const : "regras" as const }; } catch { return { text: fallback, source: "regras" as const }; } }
