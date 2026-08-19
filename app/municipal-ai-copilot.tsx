@@ -22,6 +22,8 @@ type Props = {
 };
 
 const PRESETS = [
+  { mode: "assistant", label: "Resumir esta tela", icon: Sparkles, prompt: "Resuma o que está acontecendo nesta tela, destaque o que é mais importante e explique de forma simples." },
+  { mode: "assistant", label: "Como posso usar isto?", icon: MessageSquareText, prompt: "Explique para que serve esta área do sistema, o que eu consigo fazer aqui e quais são as ações mais comuns." },
   { mode: "prioritize", label: "Priorizar meu dia", icon: Target, prompt: "Analise o contexto desta tela e me diga o que eu deveria priorizar agora." },
   { mode: "risk_scan", label: "Encontrar riscos", icon: AlertTriangle, prompt: "Procure atrasos, riscos, gargalos e itens que precisam de atenção humana no contexto atual." },
   { mode: "action_plan", label: "Criar plano de ação", icon: Zap, prompt: "Transforme o contexto desta tela em um plano de ação objetivo e executável." },
@@ -74,10 +76,30 @@ export function MunicipalAiCopilot({ activeModule, department, user, tickets, ev
   const activeConversation = conversations.find((item) => item.id === activeConversationId) ?? null;
   const context = useMemo(() => ({
     now: new Date().toISOString(), currentScreen: activeModule, viewedDepartment: department,
-    currentUser: { role: user.role, department },
+    currentUser: { fullName: user.fullName, role: user.role, department },
     summary: { visibleTickets: tickets.length, urgentTickets: tickets.filter((item) => ["Urgente", "Crítica"].includes(item.priority) && !["Concluído", "Cancelado"].includes(item.status)).length, openTickets: tickets.filter((item) => !["Concluído", "Cancelado"].includes(item.status)).length, unreadNotifications, upcomingEvents: events.filter((event) => new Date(event.startsAt).getTime() >= Date.now()).slice(0, 10) },
     visibleTickets: tickets.slice(0, 30).map(compactTicket), upcomingEvents: events.slice(0, 20),
-    navigationOptions: ["Início", "Demandas", "Tarefas", "Agenda", "Gestão", "Configurações", "Chamados", "Atendimento ao Cidadão", "Central Integrada", "Próximos Eventos"],
+    navigationOptions: ["Início", "Demandas", "Tarefas", "Agenda", "Gestão", "Configurações", "Chamados", "Atendimento ao Cidadão", "Central Integrada", "Próximos Eventos", "Comunicação", "Processos", "Indicadores", "Arquivos", "Auditoria", "Ajuda"],
+    capabilities: [
+      "Responder perguntas e explicar como usar o Prefeitura Conecta",
+      "Resumir telas, demandas, agenda e informações visíveis",
+      "Comparar prioridades, prazos e situações operacionais",
+      "Sugerir secretaria/setor, urgência, SLA e próximos passos",
+      "Ajudar a redigir mensagens, respostas, pautas, minutas e textos administrativos",
+      "Criar chamados, tarefas, reuniões, projetos, metas e locais quando solicitado",
+      "Enviar mensagens internas e preparar alterações permitidas",
+      "Orientar o usuário para o módulo correto sem inventar dados não disponíveis",
+    ],
+    moduleGuide: {
+      "Chamados": "Demandas e atendimentos com protocolo, prioridade, setor, responsável, prazo e histórico.",
+      "Atendimento ao Cidadão": "Reclamações, elogios, sugestões, satisfação, triagem de IA e resposta ao cidadão.",
+      "Central Integrada": "Tarefas, Kanban, projetos, metas, mapa, locais públicos e gestão operacional.",
+      "Próximos Eventos": "Agenda institucional, reuniões, compromissos e eventos por setor.",
+      "Comunicação": "Mensagens internas e colaboração entre servidores e setores conforme permissões.",
+      "Processos Digitais": "Tramitações, etapas, documentos, aprovações e histórico de processos.",
+      "Indicadores": "Métricas operacionais, SLA, satisfação, volumes e desempenho.",
+      "Configurações": "Preferências, permissões, segurança e administração autorizada.",
+    },
   }), [activeModule, department, events, tickets, unreadNotifications, user.role]);
 
   function updateConversation(conversationId: string, updater: (conversation: AiConversation) => AiConversation) {
@@ -137,23 +159,23 @@ export function MunicipalAiCopilot({ activeModule, department, user, tickets, ev
 
   const messages = activeConversation?.messages ?? [];
   return <>
-    <button className="municipal-ai-fab" type="button" onClick={() => setOpen(true)} aria-label="Abrir Copiloto Municipal com IA"><span><Sparkles size={17}/></span><div><strong>IA</strong><small>Copiloto Municipal</small></div></button>
+    <button className="municipal-ai-fab" type="button" onClick={() => setOpen(true)} aria-label="Abrir IA Conecta"><span><Sparkles size={17}/></span><div><strong>IA</strong><small>Chat + Agente</small></div></button>
     {open && <div className="municipal-ai-overlay" role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget) setOpen(false); }}><aside className="municipal-ai-panel municipal-ai-agent-panel" role="dialog" aria-modal="true" aria-labelledby="municipal-ai-title">
-      <header><div className="municipal-ai-brand"><span><Bot size={21}/></span><div><small>GROQ · AGENTE MUNICIPAL</small><h2 id="municipal-ai-title">Assistente que executa</h2></div></div><div className="municipal-ai-header-actions"><button type="button" title="Histórico" aria-label="Abrir histórico" onClick={() => setShowHistory((value) => !value)}><History size={18}/></button><button type="button" title="Nova conversa" aria-label="Nova conversa" onClick={startNewConversation}><MessageSquarePlus size={18}/></button><button type="button" aria-label="Fechar Agente" onClick={() => setOpen(false)}><X size={19}/></button></div></header>
+      <header><div className="municipal-ai-brand"><span><Bot size={21}/></span><div><small>GROQ · CHATBOT + AGENTE</small><h2 id="municipal-ai-title">Pergunte qualquer coisa</h2></div></div><div className="municipal-ai-header-actions"><button type="button" title="Histórico" aria-label="Abrir histórico" onClick={() => setShowHistory((value) => !value)}><History size={18}/></button><button type="button" title="Nova conversa" aria-label="Nova conversa" onClick={startNewConversation}><MessageSquarePlus size={18}/></button><button type="button" aria-label="Fechar Agente" onClick={() => setOpen(false)}><X size={19}/></button></div></header>
       {showHistory && <section className="municipal-ai-history"><div><strong>Histórico de conversas</strong><small>{historyStatus === "salvando" ? "Salvando…" : historyStatus === "offline" ? "Histórico local — sincronizará depois" : "Sincronizado"}</small></div>{conversations.length ? conversations.slice(0,30).map((conversation)=><button type="button" className={conversation.id===activeConversationId?"active":""} key={conversation.id} onClick={()=>{setActiveConversationId(conversation.id);setShowHistory(false);setPendingAction(null);}}><span><strong>{conversation.title || "Conversa"}</strong><small>{formatChatTime(conversation.updatedAt)}</small></span><i role="button" tabIndex={0} aria-label="Excluir conversa" onClick={(event)=>{event.stopPropagation();removeConversation(conversation.id);}} onKeyDown={(event)=>{if(event.key==="Enter"){event.stopPropagation();removeConversation(conversation.id);}}}><Trash2 size={13}/></i></button>):<p>Nenhuma conversa salva ainda.</p>}</section>}
       <div className="municipal-ai-context"><span><Sparkles size={14}/></span><div><strong>{activeModule}</strong><small>{department} · a IA pode operar os recursos permitidos</small></div></div>
       {!messages.length && <section className="municipal-ai-presets" aria-label="Ações rápidas de inteligência artificial">{PRESETS.map(({ mode, label, icon: Icon, prompt: presetPrompt }) => <button type="button" key={mode} disabled={busy} onClick={() => void ask(presetPrompt)}><Icon size={15}/><span>{label}</span><ChevronRight size={13}/></button>)}</section>}
       <section className="municipal-ai-chat" aria-live="polite">
         {!historyReady && <div className="municipal-ai-loading"><LoaderCircle className="spin" size={22}/><strong>Carregando seu histórico...</strong><p>As conversas são separadas por usuário e sincronizadas com a persistência do sistema.</p></div>}
-        {historyReady && !messages.length && !busy && <div className="municipal-ai-empty"><Bot size={30}/><strong>Peça e a IA executa</strong><p>Ex.: “Abra um chamado para uma visita familiar no bairro Caiçara 1”. Se faltar algo, eu pergunto antes de registrar.</p></div>}
+        {historyReady && !messages.length && !busy && <div className="municipal-ai-empty"><Bot size={30}/><strong>Pergunte, peça ajuda ou solicite uma ação</strong><p>Posso explicar o sistema, resumir informações, ajudar a escrever, analisar prioridades ou executar tarefas como criar chamados e reuniões.</p></div>}
         {messages.map((message)=><article key={message.id} className={`municipal-ai-bubble ${message.role} ${message.actionStatus || ""}`}><div><strong>{message.role === "user" ? user.fullName : message.role === "assistant" ? "Agente Municipal" : message.actionStatus === "executed" ? "Ação concluída" : "Sistema"}</strong><small>{formatChatTime(message.createdAt)}</small></div>{message.requestSummary && <div className="municipal-ai-request-summary"><small>Resumo do pedido</small><strong>{message.requestSummary}</strong></div>}<p>{message.content}</p>{message.actionSummary && <span className="municipal-ai-action-summary"><CheckCircle2 size={13}/>{message.actionSummary}</span>}</article>)}
         {busy && <div className="municipal-ai-loading compact"><LoaderCircle className="spin" size={20}/><strong>{pendingAction ? "Executando no sistema..." : "Analisando e preparando a ação..."}</strong></div>}
         {error && <div className="municipal-ai-error"><AlertTriangle size={20}/><div><strong>Não foi possível concluir</strong><p>{error}</p></div></div>}
         {pendingAction && activeConversation && !busy && <div className="municipal-ai-confirm"><ShieldCheck size={17}/><div><strong>Confirmar alteração</strong><p>{pendingAction.summary}</p><span><button type="button" className="button secondary" onClick={()=>{setPendingAction(null);appendMessage(activeConversation.id,{id:makeId("ai-msg"),role:"system",content:"Ação cancelada pelo usuário.",createdAt:new Date().toISOString(),actionSummary:pendingAction.summary,actionStatus:"failed"});}}>Cancelar</button><button type="button" className="button primary" onClick={()=>void executePreparedAction(activeConversation.id,pendingAction)}>Confirmar e executar</button></span></div></div>}
         <div ref={endRef}/>
       </section>
-      <form className="municipal-ai-composer" onSubmit={submit}><textarea value={prompt} onChange={(event) => setPrompt(event.target.value)} placeholder="Peça uma ação ou faça uma pergunta…" aria-label="Mensagem para o Agente Municipal" onKeyDown={(event)=>{if(event.key==="Enter"&&!event.shiftKey){event.preventDefault();if(prompt.trim()&&!busy)void ask(prompt);}}}/><button type="submit" disabled={busy || !historyReady || !prompt.trim()} aria-label="Enviar mensagem para a IA">{busy ? <LoaderCircle className="spin" size={17}/> : <Send size={17}/>}</button></form>
-      <footer><ShieldCheck size={13}/><span>{!online ? "Modo offline: comandos essenciais usam regras locais e as ações ficam na fila de sincronização." : configured === false ? "Configure GROQ_API_KEY na Vercel para ativar as ações inteligentes." : "Ações respeitam permissões e ficam registradas no histórico do sistema."}</span></footer>
+      <form className="municipal-ai-composer" onSubmit={submit}><textarea value={prompt} onChange={(event) => setPrompt(event.target.value)} placeholder="Pergunte, peça ajuda ou solicite uma ação…" aria-label="Mensagem para o Agente Municipal" onKeyDown={(event)=>{if(event.key==="Enter"&&!event.shiftKey){event.preventDefault();if(prompt.trim()&&!busy)void ask(prompt);}}}/><button type="submit" disabled={busy || !historyReady || !prompt.trim()} aria-label="Enviar mensagem para a IA">{busy ? <LoaderCircle className="spin" size={17}/> : <Send size={17}/>}</button></form>
+      <footer><ShieldCheck size={13}/><span>{!online ? "Modo offline: comandos essenciais usam regras locais e as ações ficam na fila de sincronização." : configured === false ? "Configure GROQ_API_KEY na Vercel para ativar o chatbot e as ações inteligentes." : "Converse livremente ou peça ações no sistema. Ações respeitam permissões e ficam registradas no histórico."}</span></footer>
     </aside></div>}
   </>;
 }

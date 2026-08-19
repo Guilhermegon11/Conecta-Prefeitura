@@ -875,18 +875,20 @@ export default function Home() {
     if (item === "Funcionários" || item === "Configurações") return canManageEmployees;
     return permissionFor(item, canManageEmployees, currentUser.id, departmentPermissionSettings).view;
   };
-  const cleanNavGroups: Array<{ label: string; icon: LucideIcon; target?: NavItem; children?: NavItem[] }> = [
-    { label: "Início", icon: LayoutDashboard, target: "Visão geral" },
-    { label: "Demandas", icon: Inbox, target: "Chamados", children: ["Chamados", "Atendimento ao Cidadão", "Pendências"] },
-    { label: "Tarefas", icon: ListTodo, target: "Central Integrada" },
-    { label: "Agenda", icon: CalendarDays, target: "Próximos Eventos" },
-    { label: "Gestão", icon: Building2, children: ["Área do Setor", "Fluxos e Anotações", "Comunicação", "Processos Digitais", "Gestão Municipal", "Indicadores", "Anexos e Arquivos", "Funcionários", "Secretarias"] },
-    { label: "Configurações", icon: Settings, children: ["Notificações", "Segurança e LGPD", "Auditoria", "Central de Ajuda", "Configurações"] },
+  const cleanNavSections: Array<{ label: string; items: NavItem[] }> = [
+    { label: "Geral", items: ["Visão geral"] },
+    { label: "Demandas e atendimento", items: ["Chamados", "Atendimento ao Cidadão", "Pendências"] },
+    { label: "Rotina operacional", items: ["Central Integrada", "Próximos Eventos", "Comunicação", "Fluxos e Anotações"] },
+    { label: "Gestão administrativa", items: ["Área do Setor", "Processos Digitais", "Gestão Municipal", "Indicadores", "Anexos e Arquivos", "Funcionários", "Secretarias"] },
+    { label: "Sistema e suporte", items: ["Notificações", "Segurança e LGPD", "Auditoria", "Central de Ajuda", "Configurações"] },
   ];
   const cleanNavLabel: Partial<Record<NavItem, string>> = {
+    "Visão geral": "Início",
     "Área do Setor": "Meu setor",
     "Fluxos e Anotações": "Fluxos e anotações",
     "Atendimento ao Cidadão": "Atendimento ao cidadão",
+    "Próximos Eventos": "Agenda",
+    "Central Integrada": "Tarefas e central integrada",
     "Processos Digitais": "Processos",
     "Gestão Municipal": "Gestão municipal",
     "Anexos e Arquivos": "Arquivos",
@@ -901,53 +903,42 @@ export default function Home() {
           <div className="brand-mark" aria-hidden="true"><Landmark size={21} strokeWidth={2.2} /></div>
           <div><strong>Prefeitura Conecta</strong><small>Gestão Integrada</small></div>
         </div>
-        <nav className="main-nav clean-main-nav" aria-label="Navegação principal">
+        <nav className="main-nav clean-main-nav organized-main-nav" aria-label="Navegação principal">
           <span className="nav-label">NAVEGAÇÃO</span>
-          {cleanNavGroups.map((group) => {
-            const visibleChildren = (group.children ?? []).filter(canViewMenuItem);
-            const groupActive = group.target === activeNav || visibleChildren.includes(activeNav);
-            const hasChildren = visibleChildren.length > 0;
-            const isExpanded = expandedNavGroup === group.label || (groupActive && hasChildren);
-            const GroupIcon = group.icon;
-            const demandBadge = group.label === "Demandas" ? (pendingCount + (mayorAccess ? citizenFeedbackUnread : 0)) : 0;
-            const configBadge = group.label === "Configurações" ? unreadCount : 0;
-            if (!group.target && !hasChildren) return null;
+          {cleanNavSections.map((section) => {
+            const visibleItems = section.items.filter(canViewMenuItem);
+            if (!visibleItems.length) return null;
             return (
-              <div className={`clean-nav-group ${groupActive ? "active" : ""}`} key={group.label}>
-                <button
-                  type="button"
-                  className={`nav-item clean-nav-primary ${groupActive ? "active" : ""}`}
-                  aria-expanded={hasChildren ? isExpanded : undefined}
-                  onClick={() => {
-                    if (group.target && canViewMenuItem(group.target)) {
-                      setActiveNav(group.target);
-                      if (hasChildren) setExpandedNavGroup(group.label);
-                      else setExpandedNavGroup(null);
-                      setSidebarOpen(false);
-                      return;
-                    }
-                    if (hasChildren) setExpandedNavGroup((current) => current === group.label ? null : group.label);
-                  }}
-                >
-                  <span className="nav-icon" aria-hidden="true"><GroupIcon size={19} strokeWidth={2} /></span>
-                  <span>{group.label}</span>
-                  {demandBadge > 0 && <span className="nav-badge">{demandBadge}</span>}
-                  {!demandBadge && configBadge > 0 && <span className="nav-badge">{configBadge}</span>}
-                  {hasChildren && <ChevronRight className={isExpanded ? "nav-chevron expanded" : "nav-chevron"} size={16} />}
-                </button>
-                {hasChildren && isExpanded && <div className="clean-nav-children">
-                  {visibleChildren.map((item) => {
-                    const ChildIcon = navIcons[item];
-                    return <button type="button" key={item} className={activeNav === item ? "clean-nav-child active" : "clean-nav-child"} onClick={() => { setActiveNav(item); setSidebarOpen(false); }}>
-                      <ChildIcon size={16} strokeWidth={2} />
-                      <span>{cleanNavLabel[item] ?? item}</span>
-                      {item === "Comunicação" && messageBadgeCount > 0 && <span className="nav-badge">{messageBadgeCount}</span>}
-                      {item === "Atendimento ao Cidadão" && mayorAccess && citizenFeedbackUnread > 0 && <span className="nav-badge">{citizenFeedbackUnread}</span>}
-                      {item === "Notificações" && unreadCount > 0 && <span className="nav-badge">{unreadCount}</span>}
-                      {item === "Pendências" && pendingCount > 0 && <span className="nav-badge pending-badge">{pendingCount}</span>}
-                    </button>;
+              <div className="clean-nav-section" key={section.label}>
+                <span className="clean-nav-section-label">{section.label}</span>
+                <div className="clean-nav-section-items">
+                  {visibleItems.map((item) => {
+                    const ItemIcon = navIcons[item];
+                    const badge = item === "Chamados"
+                      ? pendingCount
+                      : item === "Atendimento ao Cidadão" && mayorAccess
+                        ? citizenFeedbackUnread
+                        : item === "Notificações"
+                          ? unreadCount
+                          : item === "Comunicação"
+                            ? messageBadgeCount
+                            : item === "Configurações"
+                              ? unreadCount
+                              : 0;
+                    return (
+                      <button
+                        type="button"
+                        key={item}
+                        className={activeNav === item ? "clean-nav-child organized-nav-item active" : "clean-nav-child organized-nav-item"}
+                        onClick={() => { setActiveNav(item); setSidebarOpen(false); }}
+                      >
+                        <ItemIcon size={17} strokeWidth={2} />
+                        <span>{cleanNavLabel[item] ?? item}</span>
+                        {badge > 0 && <span className={`nav-badge ${item === "Pendências" || item === "Chamados" ? "pending-badge" : ""}`}>{badge}</span>}
+                      </button>
+                    );
                   })}
-                </div>}
+                </div>
               </div>
             );
           })}

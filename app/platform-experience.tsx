@@ -1,8 +1,8 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { CalendarPlus, Check, CloudOff, CloudUpload, ClipboardList, Download, Landmark, Plus, Sparkles, Wifi, Workflow, X } from "lucide-react";
-import { flushOfflineQueue, getOfflinePendingCount, subscribeOfflineQueue } from "./offline-sync";
+import { CalendarPlus, Check, ClipboardList, Landmark, Plus, Sparkles, Workflow, X } from "lucide-react";
+import { flushOfflineQueue, subscribeOfflineQueue } from "./offline-sync";
 import { flushPendingOfflineLogout } from "./offline-auth";
 
 type InstallPromptEvent = Event & { prompt: () => Promise<void>; userChoice: Promise<{ outcome: "accepted" | "dismissed" }> };
@@ -27,25 +27,22 @@ export function PwaRegistrar() {
 }
 
 export function OfflineStatusBar() {
-  const [online, setOnline] = useState(true);
-  const [pending, setPending] = useState(0);
-  const [syncing, setSyncing] = useState(false);
-  const [installPrompt, setInstallPrompt] = useState<InstallPromptEvent | null>(null);
   useEffect(() => {
-    const refresh = () => { setOnline(navigator.onLine); void getOfflinePendingCount().then(setPending); };
-    const onInstall = (event: Event) => { event.preventDefault(); setInstallPrompt(event as InstallPromptEvent); };
-    refresh();
-    window.addEventListener("online", refresh); window.addEventListener("offline", refresh); window.addEventListener("beforeinstallprompt", onInstall);
-    const unsubscribe = subscribeOfflineQueue(refresh);
-    return () => { unsubscribe(); window.removeEventListener("online", refresh); window.removeEventListener("offline", refresh); window.removeEventListener("beforeinstallprompt", onInstall); };
+    const sync = () => {
+      if (typeof navigator !== "undefined" && navigator.onLine) {
+        void flushOfflineQueue().catch(() => undefined);
+      }
+    };
+    sync();
+    window.addEventListener("online", sync);
+    const unsubscribe = subscribeOfflineQueue(sync);
+    return () => {
+      unsubscribe();
+      window.removeEventListener("online", sync);
+    };
   }, []);
-  async function syncNow() { setSyncing(true); try { await flushOfflineQueue(); } finally { setSyncing(false); setPending(await getOfflinePendingCount()); } }
-  async function install() { if (!installPrompt) return; await installPrompt.prompt(); const choice = await installPrompt.userChoice; if (choice.outcome === "accepted") setInstallPrompt(null); }
-  if (online && pending === 0 && !installPrompt) return null;
-  return <div className={`offline-global-bar ${online ? "online" : "offline"}`} role="status">
-    <span className="offline-global-main">{online ? <Wifi size={15}/> : <CloudOff size={15}/>}<strong>{online ? (pending ? `${pending} alteração(ões) aguardando sincronização` : "Conectado") : "Modo offline ativo"}</strong><small>{online ? "Os dados locais serão enviados para o servidor." : "Você pode continuar trabalhando. As alterações ficam guardadas neste dispositivo."}</small></span>
-    <span className="offline-global-actions">{online && pending > 0 && <button type="button" onClick={() => void syncNow()} disabled={syncing}><CloudUpload size={14}/>{syncing ? "Sincronizando…" : "Sincronizar agora"}</button>}{installPrompt && <button type="button" onClick={() => void install()}><Download size={14}/>Instalar para uso offline</button>}</span>
-  </div>;
+
+  return null;
 }
 
 export function OnboardingTour({ userName, role, department, onNavigate }: { userName: string; role: string; department: string; onNavigate: (nav: string) => void }) {
