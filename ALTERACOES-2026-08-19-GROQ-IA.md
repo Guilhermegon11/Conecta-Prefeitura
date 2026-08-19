@@ -12,3 +12,10 @@
 - Sistema de relatórios periódicos passa a usar Groq.
 - Saúde do sistema identifica Groq/modelo configurado.
 - Chave não é incluída no repositório nem no ZIP; configuração via `GROQ_API_KEY` na Vercel.
+
+## v4.4.1 — Correção do agente operacional
+- Corrigido fallback genérico em pedidos explícitos de automação.
+- Adicionado `reasoning_format: hidden` para saídas JSON com GPT-OSS/Groq.
+- Agente passa a tentar JSON Object Mode e Structured Outputs em redundância.
+- Adicionado parser operacional local para chamados, visitas familiares, reuniões e tarefas.
+- Continuidade de dados entre mensagens do mesmo pedido.

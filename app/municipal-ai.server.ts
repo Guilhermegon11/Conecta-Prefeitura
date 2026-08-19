@@ -50,12 +50,39 @@ export function heuristicMunicipalAnalysis(subject: string, message: string, nei
 
 type GroqMessage = { role: "system" | "user" | "assistant"; content: string }; type JsonSchema = Record<string, unknown>;
 function extractGroqText(payload: unknown): string { if (!payload || typeof payload !== "object") return ""; const choices = (payload as { choices?: unknown }).choices; if (!Array.isArray(choices)) return ""; const first = choices[0]; if (!first || typeof first !== "object") return ""; const message = (first as { message?: unknown }).message; if (!message || typeof message !== "object") return ""; const content = (message as { content?: unknown }).content; return typeof content === "string" ? content.trim() : ""; }
-async function callGroq(params: { system: string; user: string; model?: string; temperature?: number; maxTokens?: number; schema?: { name: string; schema: JsonSchema } }) {
-  const apiKey = process.env.GROQ_API_KEY; if (!apiKey) return null; const model = params.model || process.env.GROQ_MODEL || "openai/gpt-oss-20b"; const messages: GroqMessage[] = [{ role: "system", content: `${AI_BASE_SYSTEM}\n\n${params.system}` }, { role: "user", content: params.user }];
-  const body: Record<string, unknown> = { model, messages, temperature: params.temperature ?? 0.2, max_completion_tokens: params.maxTokens ?? 1800, reasoning_effort: model.startsWith("openai/gpt-oss") ? "low" : undefined };
-  if (params.schema) body.response_format = { type: "json_schema", json_schema: { name: params.schema.name, strict: true, schema: params.schema.schema } }; Object.keys(body).forEach((key) => body[key] === undefined && delete body[key]);
-  const response = await fetch("https://api.groq.com/openai/v1/chat/completions", { method: "POST", headers: { "content-type": "application/json", authorization: `Bearer ${apiKey}` }, body: JSON.stringify(body), cache: "no-store" });
-  if (!response.ok) { const detail = (await response.text().catch(() => "")).slice(0, 500); throw new Error(`GROQ_${response.status}${detail ? `:${detail}` : ""}`); } return extractGroqText(await response.json());
+async function callGroq(params: { system: string; user: string; model?: string; temperature?: number; maxTokens?: number; schema?: { name: string; schema: JsonSchema }; jsonObject?: boolean }) {
+  const apiKey = process.env.GROQ_API_KEY;
+  if (!apiKey) return null;
+  const model = params.model || process.env.GROQ_MODEL || "openai/gpt-oss-20b";
+  const isGptOss = model.startsWith("openai/gpt-oss");
+  const messages: GroqMessage[] = [
+    { role: "system", content: `${AI_BASE_SYSTEM}\n\n${params.system}` },
+    { role: "user", content: params.user },
+  ];
+  const body: Record<string, unknown> = {
+    model,
+    messages,
+    temperature: params.temperature ?? 0.2,
+    max_completion_tokens: params.maxTokens ?? 1800,
+    reasoning_effort: isGptOss ? "low" : undefined,
+    // A Groq exige que o raciocínio fique oculto/parseado ao combinar GPT-OSS
+    // com JSON mode/tool-like outputs. Sem isso a requisição pode ser recusada.
+    reasoning_format: isGptOss && (params.schema || params.jsonObject) ? "hidden" : undefined,
+  };
+  if (params.schema) body.response_format = { type: "json_schema", json_schema: { name: params.schema.name, strict: true, schema: params.schema.schema } };
+  else if (params.jsonObject) body.response_format = { type: "json_object" };
+  Object.keys(body).forEach((key) => body[key] === undefined && delete body[key]);
+  const response = await fetch("https://api.groq.com/openai/v1/chat/completions", {
+    method: "POST",
+    headers: { "content-type": "application/json", authorization: `Bearer ${apiKey}` },
+    body: JSON.stringify(body),
+    cache: "no-store",
+  });
+  if (!response.ok) {
+    const detail = (await response.text().catch(() => "")).slice(0, 900);
+    throw new Error(`GROQ_${response.status}${detail ? `:${detail}` : ""}`);
+  }
+  return extractGroqText(await response.json());
 }
 function parseJsonLoose(text: string): Record<string, unknown> | null { const clean = text.trim().replace(/^```(?:json)?\s*/i, "").replace(/\s*```$/, ""); try { return JSON.parse(clean) as Record<string, unknown>; } catch {} const start = clean.indexOf("{"); const end = clean.lastIndexOf("}"); if (start >= 0 && end > start) { try { return JSON.parse(clean.slice(start, end + 1)) as Record<string, unknown>; } catch { return null; } } return null; }
 function asStringArray(value: unknown, limit = 10) { return Array.isArray(value) ? value.filter((item): item is string => typeof item === "string").map((item) => item.trim()).filter(Boolean).slice(0, limit) : []; }
@@ -112,43 +139,206 @@ function safeAgentPayload(value: unknown): MunicipalAgentPayload {
   return { title:text("title",240),description:text("description",8000),department:text("department",220),priority:text("priority",40),dueDate:text("dueDate",80),dueAt:text("dueAt",80),neighborhood:text("neighborhood",180),address:text("address",320),assignee:text("assignee",180),slaHours:Math.max(0,Math.min(720,Math.round(number("slaHours")))),kind:text("kind",80),startsAt:text("startsAt",80),endsAt:text("endsAt",80),location:text("location",320),targetDepartments:asStringArray(source.targetDepartments,30),ticketProtocol:text("ticketProtocol",80),status:text("status",80),owner:text("owner",180),target:number("target"),current:number("current"),unit:text("unit",80),placeType:text("placeType",100),tags:asStringArray(source.tags,12),navTarget:text("navTarget",120) };
 }
 function validAgentAction(value: unknown): MunicipalAgentActionType { return typeof value === "string" && (AGENT_ACTION_TYPES as readonly string[]).includes(value) ? value as MunicipalAgentActionType : "none"; }
+function contextDepartment(context: unknown, departments: string[]) {
+  const source = context && typeof context === "object" ? context as Record<string, unknown> : {};
+  const currentUser = source.currentUser && typeof source.currentUser === "object" ? source.currentUser as Record<string, unknown> : {};
+  const candidates = [currentUser.department, source.viewedDepartment].filter((item): item is string => typeof item === "string" && item.trim().length > 0);
+  for (const candidate of candidates) {
+    const normalized = normalize(candidate);
+    const exact = departments.find((item) => normalize(item) === normalized);
+    if (exact) return exact;
+  }
+  return candidates[0] || "";
+}
+function departmentByHint(text: string, departments: string[], fallbackDepartment = "") {
+  const normalized = normalize(text);
+  const hints: Array<[string[], string[]]> = [
+    [["familia","familiar","cras","creas","assistencia social","vulnerabilidade"], ["desenvolvimento social","assistencia social"]],
+    [["saude","ubs","medicamento","medico","hospital"], ["saude"]],
+    [["escola","educacao","professor","aluno","creche"], ["educacao"]],
+    [["obra","buraco","asfalto","poste","iluminacao","estrada","transporte"], ["infraestrutura","transporte","obras"]],
+    [["lixo","meio ambiente","arvore","coleta"], ["meio ambiente","agricultura"]],
+    [["evento","cerimonial","divulgacao","comunicacao"], ["comunicacao","eventos"]],
+    [["financeiro","licitacao","contrato","iptu","alvara"], ["administracao","financas"]],
+  ];
+  for (const [words, deptHints] of hints) {
+    if (!words.some((word) => normalized.includes(word))) continue;
+    const found = departments.find((department) => deptHints.some((hint) => normalize(department).includes(normalize(hint))));
+    if (found) return found;
+  }
+  return fallbackDepartment;
+}
+function extractNeighborhoodFromText(text: string) {
+  const match = text.match(/(?:no|na|do|da|em)?\s*\bbairro\s+([A-Za-zÀ-ÿ0-9][A-Za-zÀ-ÿ0-9' .-]{0,70})/i);
+  if (!match) return "";
+  return match[1].split(/\s+(?:na|no|em|para|por|porque|com|às|as|dia|rua|avenida|av\.|travessa|estrada)\b/i)[0].replace(/[,.!?;:]+$/g, "").trim().slice(0, 180);
+}
+function extractAddressFromText(text: string) {
+  const explicit = text.match(/(?:endereço|endereco|localização|localizacao)\s*(?:é|e|:)?\s*([^\n.!?]{5,180})/i);
+  if (explicit) return explicit[1].trim().slice(0, 320);
+  const street = text.match(/\b((?:Rua|R\.|Avenida|Av\.|Travessa|Estrada|Rodovia)\s+[^\n.!?]{2,160})/i);
+  return street ? street[1].trim().slice(0, 320) : "";
+}
+function parseAgentDateTime(text: string, context: unknown) {
+  const source = context && typeof context === "object" ? context as Record<string, unknown> : {};
+  const nowValue = typeof source.now === "string" ? new Date(source.now) : new Date();
+  const now = Number.isNaN(nowValue.getTime()) ? new Date() : nowValue;
+  let year = now.getFullYear(), month = now.getMonth() + 1, day = now.getDate();
+  const dateMatch = text.match(/\b(\d{1,2})\/(\d{1,2})(?:\/(\d{2,4}))?\b/);
+  if (dateMatch) {
+    day = Number(dateMatch[1]); month = Number(dateMatch[2]);
+    if (dateMatch[3]) { const rawYear = Number(dateMatch[3]); year = rawYear < 100 ? 2000 + rawYear : rawYear; }
+    else {
+      const candidate = new Date(year, month - 1, day, 23, 59, 59);
+      if (candidate.getTime() < now.getTime()) year += 1;
+    }
+  } else if (/\bamanh[ãa]\b/i.test(text)) {
+    const tomorrow = new Date(now.getTime()); tomorrow.setDate(tomorrow.getDate() + 1); year = tomorrow.getFullYear(); month = tomorrow.getMonth() + 1; day = tomorrow.getDate();
+  } else if (!/\bhoje\b/i.test(text)) return { date:"", time:"", startsAt:"" };
+  const timeMatch = text.match(/\b(\d{1,2})[:h](\d{2})\b/i) || text.match(/(?:às|as)\s*(\d{1,2})(?:[:h](\d{2}))?\s*(?:h|horas?)?\b/i);
+  let hour = "", minute = "";
+  if (timeMatch) {
+    const parsedHour = Number(timeMatch[1]);
+    if (parsedHour >= 0 && parsedHour <= 23) { hour = String(parsedHour).padStart(2,"0"); minute = String(Number(timeMatch[2] || 0)).padStart(2,"0"); }
+  }
+  const date = `${year}-${String(month).padStart(2,"0")}-${String(day).padStart(2,"0")}`;
+  return { date, time: hour ? `${hour}:${minute}` : "", startsAt: hour ? `${date}T${hour}:${minute}` : "" };
+}
+function operationalIntent(content: string): MunicipalAgentActionType {
+  const text = normalize(content);
+  const createVerb = /\b(abra|abrir|abre|crie|criar|cria|registre|registrar|cadastre|cadastrar|adicione|adicionar|marque|marcar|agende|agendar|coloque|colocar|quero)\b/.test(text);
+  if (/\b(reuniao|evento|compromisso|agenda)\b/.test(text) && createVerb) return "create_event";
+  if (/\b(chamado|solicitacao|atendimento|visita familiar|visita domiciliar)\b/.test(text) && createVerb) return "create_ticket";
+  if (/\b(tarefa|vistoria)\b/.test(text) && createVerb) return "create_task";
+  if (/\b(projeto)\b/.test(text) && createVerb) return "create_project";
+  if (/\b(meta)\b/.test(text) && createVerb) return "create_goal";
+  if (/\b(local publico|predio publico|praca|escola|ubs)\b/.test(text) && /\b(cadastre|cadastrar|registre|registrar)\b/.test(text)) return "create_place";
+  if (/\b(mensagem|avise|avisar|mande|enviar|envie)\b/.test(text)) return "send_internal_message";
+  if (/\b(chamado|protocolo)\b/.test(text) && /\b(status|concluido|concluir|andamento|encaminhado|respondido)\b/.test(text)) return "update_ticket_status";
+  if (/\b(abra|abrir|va para|ir para|navegue|navegar)\b/.test(text) && /\b(inicio|demandas|tarefas|agenda|gestao|configuracoes|chamados)\b/.test(text)) return "navigate";
+  return "none";
+}
+function latestOperationalSegment(messages: Array<{ role: "user" | "assistant"; content: string }>) {
+  let start = -1; let action: MunicipalAgentActionType = "none";
+  for (let index = messages.length - 1; index >= 0; index -= 1) {
+    if (messages[index].role !== "user") continue;
+    const candidate = operationalIntent(messages[index].content);
+    if (candidate !== "none") { start = index; action = candidate; break; }
+  }
+  const relevant = start >= 0 ? messages.slice(start) : messages.slice(-6);
+  const userText = relevant.filter((item) => item.role === "user").map((item) => item.content).join("\n");
+  return { action, userText, start };
+}
+function localOperationalFallback(messages: Array<{ role: "user" | "assistant"; content: string }>, context: unknown, departments: string[]): MunicipalAgentTurnResult {
+  const payload = emptyAgentPayload();
+  const { action, userText } = latestOperationalSegment(messages);
+  const normalized = normalize(userText);
+  const currentDepartment = contextDepartment(context, departments);
+  const defaultResult = (reply: string): MunicipalAgentTurnResult => ({ reply, actionType:action, readyToExecute:false, requiresConfirmation:false, missingFields:[], questions:[], actionSummary:"", payload, source:"regras" });
+  if (action === "create_ticket") {
+    payload.neighborhood = extractNeighborhoodFromText(userText);
+    payload.address = extractAddressFromText(userText);
+    payload.department = departmentByHint(userText, departments, currentDepartment || "Gabinete do Prefeito");
+    payload.priority = /\b(urgente|emergencia|perigo|risco)\b/.test(normalized) ? "Alta" : "Média";
+    payload.slaHours = payload.priority === "Alta" ? 24 : 72;
+    const familyVisit = /\bvisita (familiar|domiciliar)\b/.test(normalized);
+    payload.title = familyVisit ? `Visita familiar${payload.neighborhood ? ` — ${payload.neighborhood}` : ""}` : "Chamado solicitado pelo Agente Municipal";
+    payload.description = userText.trim().slice(0, 8000);
+    const hasReason = /\b(motivo|porque|necessita|precisa|acompanhamento|acompanhar|situacao|denuncia|solicitacao da familia)\b/.test(normalized);
+    const missing:string[]=[]; const questions:string[]=[];
+    if (!payload.department) { missing.push("setor"); questions.push("Para qual secretaria/setor o chamado deve ser encaminhado?"); }
+    if (familyVisit && !payload.neighborhood) { missing.push("bairro"); questions.push("Qual é o bairro da visita?"); }
+    if (familyVisit && !payload.address) { missing.push("endereço/referência"); questions.push("Qual é o endereço ou um ponto de referência suficiente para a equipe localizar a família?"); }
+    if (familyVisit && !hasReason) { missing.push("motivo"); questions.push("Qual é o motivo ou objetivo da visita familiar?"); }
+    if (missing.length) return { ...defaultResult(`Entendi. Vou preparar o chamado de ${familyVisit ? "visita familiar" : "atendimento"}. Antes, preciso de ${questions.length === 1 ? "uma informação" : "algumas informações"}:\n${questions.map((q,i)=>`${i+1}. ${q}`).join("\n")}`), missingFields:missing, questions };
+    return { reply:"As informações estão completas. Vou registrar o chamado agora.", actionType:"create_ticket", readyToExecute:true, requiresConfirmation:false, missingFields:[], questions:[], actionSummary:`Criar chamado: ${payload.title}`, payload, source:"regras" };
+  }
+  if (action === "create_event") {
+    const parsed = parseAgentDateTime(userText, context); payload.startsAt = parsed.startsAt;
+    payload.department = departmentByHint(userText, departments, currentDepartment) || currentDepartment;
+    payload.targetDepartments = payload.department ? [payload.department] : [];
+    const about = userText.match(/reuni[ãa]o\s+(?:sobre|para tratar de|com pauta sobre)\s+([^\n,.!?]+)/i);
+    const withPerson = userText.match(/reuni[ãa]o\s+com\s+([^\n,.!?]+)/i);
+    payload.title = about ? `Reunião sobre ${about[1].trim()}`.slice(0,240) : withPerson ? `Reunião com ${withPerson[1].trim()}`.slice(0,240) : "";
+    payload.description = userText.trim().slice(0,8000); payload.kind="Reunião";
+    const missing:string[]=[]; const questions:string[]=[];
+    if (!payload.title) { missing.push("título/assunto"); questions.push("Qual é o assunto ou título da reunião?"); }
+    if (!parsed.date) { missing.push("data"); questions.push("Em qual data a reunião deve acontecer?"); }
+    if (!parsed.time) { missing.push("horário"); questions.push("Qual é o horário de início?"); }
+    if (!payload.targetDepartments.length) { missing.push("setor"); questions.push("Qual secretaria/setor deve participar ou receber esse compromisso na agenda?"); }
+    if (missing.length) return { ...defaultResult(`Entendi. Vou preparar a reunião na sua agenda. Preciso completar ${questions.length === 1 ? "este dado" : "estes dados"}:\n${questions.map((q,i)=>`${i+1}. ${q}`).join("\n")}`), missingFields:missing, questions };
+    return { reply:"As informações da reunião estão completas. Vou publicar o compromisso na agenda agora.", actionType:"create_event", readyToExecute:true, requiresConfirmation:false, missingFields:[], questions:[], actionSummary:`Criar evento: ${payload.title}`, payload, source:"regras" };
+  }
+  if (action === "create_task") {
+    payload.department = departmentByHint(userText, departments, currentDepartment) || currentDepartment; payload.description=userText.trim().slice(0,8000); payload.kind=/\bvistoria\b/.test(normalized)?"Vistoria":"Tarefa"; payload.priority=/\b(urgente|prioridade alta)\b/.test(normalized)?"Urgente":"Normal"; payload.slaHours=48;
+    const taskMatch=userText.match(/(?:tarefa|vistoria)\s+(?:para\s+)?([^\n,.!?]+)/i); payload.title=taskMatch?taskMatch[1].trim().slice(0,240):"";
+    if(!payload.title||!payload.department){const questions=[] as string[];const missing=[] as string[];if(!payload.title){missing.push("título/objetivo");questions.push("O que exatamente deve ser feito nessa tarefa?");}if(!payload.department){missing.push("setor");questions.push("Qual setor ficará responsável?");}return{...defaultResult(`Vou preparar a tarefa. Preciso completar:\n${questions.map((q,i)=>`${i+1}. ${q}`).join("\n")}`),missingFields:missing,questions};}
+    return { reply:"A tarefa está pronta para registro. Vou criá-la agora.", actionType:"create_task", readyToExecute:true, requiresConfirmation:false, missingFields:[], questions:[], actionSummary:`Criar tarefa: ${payload.title}`, payload, source:"regras" };
+  }
+  return { reply: hasMunicipalAiConfig() ? "Entendi sua mensagem, mas não identifiquei com segurança uma ação operacional específica. Diga diretamente o que deseja criar, agendar, enviar, alterar ou abrir no sistema." : "A Groq ainda não está disponível neste ambiente. Configure GROQ_API_KEY para usar ações automáticas.", actionType:"none", readyToExecute:false, requiresConfirmation:false, missingFields:[], questions:[], actionSummary:"", payload, source:"regras" };
+}
+function agentResultFromParsed(parsed: Record<string, unknown>, fallback: MunicipalAgentTurnResult): MunicipalAgentTurnResult {
+  const actionType = validAgentAction(parsed.actionType); const payload = safeAgentPayload(parsed.payload);
+  const result: MunicipalAgentTurnResult = { reply:typeof parsed.reply === "string" ? parsed.reply.slice(0,6000) : fallback.reply, actionType, readyToExecute:Boolean(parsed.readyToExecute) && actionType !== "none", requiresConfirmation:Boolean(parsed.requiresConfirmation), missingFields:asStringArray(parsed.missingFields,12), questions:asStringArray(parsed.questions,10), actionSummary:typeof parsed.actionSummary === "string" ? parsed.actionSummary.slice(0,500) : "", payload, source:"groq" };
+  if (result.missingFields.length || result.questions.length) result.readyToExecute = false;
+  if (actionType === "none") { result.readyToExecute=false; result.requiresConfirmation=false; }
+  return result;
+}
 export async function runMunicipalAgent(input: { messages: Array<{ role: "user" | "assistant"; content: string }>; context?: unknown; departments?: string[] }): Promise<MunicipalAgentTurnResult> {
   const messages = input.messages.slice(-24).map((m)=>({ role:m.role, content:String(m.content||"").trim().slice(0,6000) })).filter((m)=>m.content);
-  const fallback: MunicipalAgentTurnResult = { reply: hasMunicipalAiConfig() ? "Não consegui interpretar a ação com segurança. Reformule o pedido informando o que deseja criar ou alterar." : "A Groq ainda não está disponível neste ambiente. Configure GROQ_API_KEY para usar ações automáticas.", actionType:"none", readyToExecute:false, requiresConfirmation:false, missingFields:[], questions:[], actionSummary:"", payload:emptyAgentPayload(), source:"regras" };
-  if (!messages.length || !hasMunicipalAiConfig()) return fallback;
   const departments = (input.departments || []).filter(Boolean).slice(0,60);
+  const fallback = localOperationalFallback(messages, input.context, departments);
+  if (!messages.length || !hasMunicipalAiConfig()) return fallback;
   const serializedConversation = messages.map((m)=>`${m.role === "user" ? "USUÁRIO" : "ASSISTENTE"}: ${m.content}`).join("\n");
   const serializedContext = JSON.stringify(input.context ?? {}).slice(0,28000);
-  try {
-    const text = await callGroq({
-      system: `Você também é um AGENTE OPERACIONAL do Prefeitura Conecta. Sua função é entender pedidos em linguagem natural, coletar os dados obrigatórios que faltarem e preparar UMA ação real do sistema.
+  const system = `Você também é um AGENTE OPERACIONAL do Prefeitura Conecta. Sua função é entender pedidos em linguagem natural, coletar os dados obrigatórios que faltarem e preparar UMA ação real do sistema.
 Ações disponíveis: create_ticket, create_task, create_event, send_internal_message, update_ticket_status, create_project, create_goal, create_place, navigate. Use none quando o usuário só estiver perguntando/analisando.
 Regras de execução:
 - Nunca diga que executou uma ação. Você apenas prepara a ação; o sistema executará depois da sua resposta.
 - Preserve dados já informados em turnos anteriores. Não repita perguntas respondidas.
-- Faça poucas perguntas por vez e, quando possível, agrupe todos os campos ainda necessários numa única resposta.
-- Para create_ticket, tenha ao menos título/assunto, descrição factual suficiente e setor. Se envolver visita, atendimento domiciliar, vistoria ou deslocamento, peça bairro e endereço/referência suficientes para a equipe encontrar o local. Nome da pessoa/família só deve ser pedido quando operacionalmente necessário; evite CPF e dados sensíveis.
-- Para create_task, tenha título, descrição e setor; responsável e prazo podem ser inferidos/deixados a definir se o pedido permitir.
-- Para create_event, tenha título, data/hora de início e pelo menos um setor destinatário; pergunte local quando a natureza do evento exigir.
-- Para send_internal_message, tenha o nome do destinatário em assignee e o texto exato/objetivo da mensagem em description. Só prepare envio quando o usuário pedir explicitamente para enviar/avisar alguém.
-- Para update_ticket_status, tenha protocolo e novo status e marque requiresConfirmation=true.
+- Faça poucas perguntas por vez e agrupe todos os campos realmente necessários numa única resposta.
+- Para create_ticket, tenha título/assunto, descrição factual suficiente e setor. Para visita/atendimento domiciliar/vistoria com deslocamento, peça bairro e endereço ou referência suficiente. Em visita familiar, também entenda o motivo/objetivo antes de criar. Evite CPF e dados sensíveis desnecessários.
+- Para create_task, tenha título, descrição e setor; responsável e prazo podem ficar a definir quando o pedido permitir.
+- Para create_event, tenha título, data/hora de início e pelo menos um setor destinatário. Se o usuário disser “minha agenda”, use o setor atual do contexto como destinatário quando ele for válido. Local é opcional, salvo quando necessário para executar o compromisso.
+- Para send_internal_message, tenha destinatário em assignee e mensagem em description.
+- Para update_ticket_status, tenha protocolo e novo status e use requiresConfirmation=true.
 - Para create_project, tenha título, setor e prazo. Para create_goal, título, setor, alvo, unidade e prazo. Para create_place, nome, tipo, bairro e endereço.
-- Para create_ticket/create_task/create_event/send_internal_message/create_project/create_goal/create_place, quando todos os dados operacionais necessários estiverem presentes, use readyToExecute=true e requiresConfirmation=false: o usuário já pediu explicitamente a criação e o sistema pode executar.
-- Se o pedido for ambíguo sobre criar ou só sugerir, não execute: faça uma pergunta de confirmação.
-- Nunca prepare exclusão, pagamento, transferência financeira, alteração de permissões, criação de usuário ou outra ação destrutiva/financeira. Explique que exige fluxo humano específico.
-- Use datas ISO quando conseguir resolver uma data informada. Contexto contém a data/hora atual.
-- department e targetDepartments devem usar exatamente nomes válidos quando a lista estiver disponível.
-- Ao escolher setor, use o contexto e a natureza do pedido. Visita familiar/assistência a família normalmente pertence à Secretaria de Desenvolvimento Social, salvo contexto contrário.
-- Se readyToExecute=false, reply deve conter as perguntas necessárias. Se readyToExecute=true, reply deve informar de forma curta que as informações estão completas e que o sistema fará o registro agora.
-- actionSummary deve ser uma frase curta que possa entrar no histórico de auditoria.`,
-      user: `CONVERSA ATÉ AGORA:\n${serializedConversation}\n\nCONTEXTO ATUAL DO SISTEMA:\n${serializedContext}\n\nSETORES VÁLIDOS:\n${departments.join("; ") || "não fornecidos"}`,
-      schema: { name:"municipal_operational_agent", schema:AGENT_SCHEMA }, maxTokens:3000, temperature:0.1,
-    });
-    const parsed = text ? parseJsonLoose(text) : null; if (!parsed) return fallback;
-    const actionType = validAgentAction(parsed.actionType); const payload = safeAgentPayload(parsed.payload);
-    const result: MunicipalAgentTurnResult = { reply:typeof parsed.reply === "string" ? parsed.reply.slice(0,6000) : fallback.reply, actionType, readyToExecute:Boolean(parsed.readyToExecute) && actionType !== "none", requiresConfirmation:Boolean(parsed.requiresConfirmation), missingFields:asStringArray(parsed.missingFields,12), questions:asStringArray(parsed.questions,10), actionSummary:typeof parsed.actionSummary === "string" ? parsed.actionSummary.slice(0,500) : "", payload, source:"groq" };
-    if (result.missingFields.length || result.questions.length) result.readyToExecute = false;
-    if (actionType === "none") { result.readyToExecute=false; result.requiresConfirmation=false; }
-    return result;
-  } catch { return fallback; }
+- Para criações explicitamente pedidas, quando os dados obrigatórios estiverem completos, use readyToExecute=true e requiresConfirmation=false.
+- Se faltar informação, readyToExecute=false, missingFields deve listar somente o que falta, questions deve conter perguntas objetivas e reply deve fazer essas perguntas naturalmente.
+- Se o usuário começar um pedido novo na mesma conversa, abandone a intenção pendente anterior e trate o pedido mais recente.
+- Nunca prepare exclusão, pagamento, transferência financeira, alteração de permissões, criação de usuário ou outra ação destrutiva/financeira.
+- Use datas no formato local ISO YYYY-MM-DDTHH:mm quando o usuário informar dia/hora; resolva DD/MM usando a data atual do contexto.
+- department e targetDepartments devem usar exatamente nomes válidos da lista quando disponível.
+- Visita familiar/assistência a família normalmente pertence à Secretaria de Desenvolvimento Social.
+- Retorne SOMENTE um objeto JSON, sem markdown, com estas chaves: reply, actionType, readyToExecute, requiresConfirmation, missingFields, questions, actionSummary, payload.
+- payload pode conter: title, description, department, priority, dueDate, dueAt, neighborhood, address, assignee, slaHours, kind, startsAt, endsAt, location, targetDepartments, ticketProtocol, status, owner, target, current, unit, placeType, tags, navTarget.`;
+  const user = `CONVERSA ATÉ AGORA:\n${serializedConversation}\n\nCONTEXTO ATUAL DO SISTEMA:\n${serializedContext}\n\nSETORES VÁLIDOS:\n${departments.join("; ") || "não fornecidos"}`;
+  // 1) JSON Object Mode é mais tolerante para um payload polimórfico, no qual cada
+  // ação usa campos diferentes. O servidor valida actionType e normaliza o payload.
+  try {
+    const text = await callGroq({ system, user, jsonObject:true, maxTokens:3000, temperature:0.1 });
+    const parsed = text ? parseJsonLoose(text) : null;
+    if (parsed) {
+      const result = agentResultFromParsed(parsed, fallback);
+      // Se a IA devolveu "none" para um comando operacional explícito, tenta novamente
+      // antes de desistir, pois isso normalmente representa uma classificação ruim.
+      const localIntent = latestOperationalSegment(messages).action;
+      if (result.actionType !== "none" || localIntent === "none") return result;
+    }
+  } catch (error) {
+    console.error("[MunicipalAgent] Groq JSON mode falhou:", error instanceof Error ? error.message.slice(0,900) : "erro desconhecido");
+  }
+  // 2) Segunda tentativa com Structured Outputs estrito. Mantida como redundância
+  // para contas/modelos em que o JSON Object Mode esteja temporariamente instável.
+  try {
+    const text = await callGroq({ system, user, schema:{name:"municipal_operational_agent",schema:AGENT_SCHEMA}, maxTokens:3000, temperature:0.1 });
+    const parsed = text ? parseJsonLoose(text) : null;
+    if (parsed) return agentResultFromParsed(parsed, fallback);
+  } catch (error) {
+    console.error("[MunicipalAgent] Groq Structured Output falhou:", error instanceof Error ? error.message.slice(0,900) : "erro desconhecido");
+  }
+  // 3) Ações comuns continuam úteis mesmo durante indisponibilidade/erro de parsing
+  // da Groq: o fallback local identifica a intenção e pergunta os dados que faltam.
+  return fallback;
 }
+
