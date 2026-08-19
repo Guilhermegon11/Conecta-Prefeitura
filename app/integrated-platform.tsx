@@ -74,10 +74,10 @@ function IntegratedModal({ title, onClose, children }: { title: string; onClose:
   return <div className="integrated-modal-backdrop" onMouseDown={(e)=>{if(e.target===e.currentTarget)onClose();}}><section className="integrated-modal" role="dialog" aria-modal="true"><header><div><p className="eyebrow">GESTÃO INTEGRADA</p><h2>{title}</h2></div><button onClick={onClose} aria-label="Fechar"><X size={18}/></button></header>{children}</section></div>;
 }
 
-export function IntegratedManagementSection({ department, currentUser, executive, tickets, users, offices, events, departments, notify }: {
-  department: string; currentUser: UserInput; executive: boolean; tickets: TicketInput[]; users: UserInput[]; offices: OfficeInput[]; events: EventInput[]; departments: string[]; notify: Notify;
+export function IntegratedManagementSection({ department, currentUser, executive, tickets, users, offices, events, departments, notify, initialTab = "Tarefas" }: {
+  department: string; currentUser: UserInput; executive: boolean; tickets: TicketInput[]; users: UserInput[]; offices: OfficeInput[]; events: EventInput[]; departments: string[]; notify: Notify; initialTab?: IntegratedTab;
 }) {
-  const [tab, setTab] = useState<IntegratedTab>("Central");
+  const [tab, setTab] = useState<IntegratedTab>(initialTab);
   const [tasks, setTasks, taskSave] = usePersistentState<IntegratedTask[]>("integrated:tasks:v2", INITIAL_TASKS);
   const [projects, setProjects, projectSave] = usePersistentState<Project[]>("integrated:projects:v2", INITIAL_PROJECTS);
   const [goals, setGoals, goalSave] = usePersistentState<Goal[]>("integrated:goals:v2", INITIAL_GOALS);
@@ -122,7 +122,15 @@ export function IntegratedManagementSection({ department, currentUser, executive
 
   return <section className="integrated-shell">
     <div className="integrated-topline"><span className={`module-sync-banner ${saveState}`}>{saveState==="offline"?"Modo resiliente: alterações mantidas localmente até reconectar":saveState==="salvando"?"Sincronizando gestão integrada…":"Gestão integrada sincronizada"}</span><span className={online?"connectivity online":"connectivity offline"}>{online?<Wifi size={13}/>:<WifiOff size={13}/>} {online?"Online":"Sem conexão"}</span></div>
-    <div className="integrated-tabs" role="tablist">{(["Central","Tarefas","Projetos e metas","Mapa e locais","Organograma","IA Municipal","Saúde do sistema"] as IntegratedTab[]).map((item)=><button key={item} className={tab===item?"active":""} onClick={()=>setTab(item)}>{item==="IA Municipal"&&<Sparkles size={14}/>} {item}</button>)}</div>
+    <div className="integrated-tabs clean-integrated-tabs" role="tablist">
+      {(["Central","Tarefas","Projetos e metas"] as IntegratedTab[]).map((item)=><button key={item} className={tab===item?"active":""} onClick={()=>setTab(item)}>{item === "Projetos e metas" ? "Projetos" : item}</button>)}
+      <details className={`integrated-more-nav ${["Mapa e locais","Organograma","IA Municipal","Saúde do sistema"].includes(tab)?"active":""}`}>
+        <summary>Mais <ChevronRight size={14}/></summary>
+        <div>
+          {(["Mapa e locais","Organograma","IA Municipal","Saúde do sistema"] as IntegratedTab[]).map((item)=><button key={item} className={tab===item?"active":""} onClick={(event)=>{setTab(item);const details=event.currentTarget.closest("details");details?.removeAttribute("open");}}>{item==="IA Municipal"&&<Sparkles size={14}/>} {item}</button>)}
+        </div>
+      </details>
+    </div>
 
     {tab==="Central"&&<>
       <article className="panel integrated-command-hero"><div><p className="eyebrow">CENTRAL DE GESTÃO MUNICIPAL</p><h2>{executive?"Situação operacional do município":`Painel operacional de ${department}`}</h2><p>Uma visão única de tarefas, prazos, projetos, metas, agenda e riscos para reduzir dependência de planilhas e mensagens dispersas.</p></div><div className="integrated-command-score"><Gauge size={22}/><strong>{Math.max(0,100-Math.min(45,overdue.length*6))}%</strong><small>saúde operacional</small></div></article>

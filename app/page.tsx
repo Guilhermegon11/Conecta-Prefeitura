@@ -277,6 +277,7 @@ export default function Home() {
   const [authState, setAuthState] = useState<"checking" | "login" | "authenticated">("checking");
   const [clockNow, setClockNow] = useState(() => new Date());
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [expandedNavGroup, setExpandedNavGroup] = useState<string | null>(null);
   const [currentUserId, setCurrentUserId] = useState("u-ana");
   const [viewedDepartment, setViewedDepartment] = useState("Secretaria de Governo");
   const [search, setSearch] = useState("");
@@ -802,6 +803,29 @@ export default function Home() {
   const heading = getHeading(activeNav);
   const headingTitle = activeNav === "Visão geral" ? `${greetingFor(clockNow)}, ${currentUser.fullName.split(" ")[0]}.` : activeNav === "Área do Setor" ? activeDepartment : heading.title;
 
+  const canViewMenuItem = (item: NavItem) => {
+    if (item === "Funcionários" || item === "Configurações") return canManageEmployees;
+    return permissionFor(item, canManageEmployees, currentUser.id, departmentPermissionSettings).view;
+  };
+  const cleanNavGroups: Array<{ label: string; icon: LucideIcon; target?: NavItem; children?: NavItem[] }> = [
+    { label: "Início", icon: LayoutDashboard, target: "Visão geral" },
+    { label: "Demandas", icon: Inbox, target: "Chamados", children: ["Chamados", "Atendimento ao Cidadão", "Pendências"] },
+    { label: "Tarefas", icon: ListTodo, target: "Central Integrada" },
+    { label: "Agenda", icon: CalendarDays, target: "Próximos Eventos" },
+    { label: "Gestão", icon: Building2, children: ["Área do Setor", "Fluxos e Anotações", "Comunicação", "Processos Digitais", "Gestão Municipal", "Indicadores", "Anexos e Arquivos", "Funcionários", "Secretarias"] },
+    { label: "Configurações", icon: Settings, children: ["Notificações", "Segurança e LGPD", "Auditoria", "Central de Ajuda", "Configurações"] },
+  ];
+  const cleanNavLabel: Partial<Record<NavItem, string>> = {
+    "Área do Setor": "Meu setor",
+    "Fluxos e Anotações": "Fluxos e anotações",
+    "Atendimento ao Cidadão": "Atendimento ao cidadão",
+    "Processos Digitais": "Processos",
+    "Gestão Municipal": "Gestão municipal",
+    "Anexos e Arquivos": "Arquivos",
+    "Segurança e LGPD": "Segurança e LGPD",
+    "Central de Ajuda": "Ajuda",
+  };
+
   return (
     <div className={`app-shell ${motionEnabled ? "motion-enabled" : "motion-reduced"}`}>
       <aside className={`sidebar ${sidebarOpen ? "sidebar-open" : ""}`}>
@@ -809,29 +833,57 @@ export default function Home() {
           <div className="brand-mark" aria-hidden="true"><Landmark size={21} strokeWidth={2.2} /></div>
           <div><strong>Prefeitura Conecta</strong><small>Gestão Integrada</small></div>
         </div>
-        <nav className="main-nav" aria-label="Navegação principal">
-          <span className="nav-label">MENU PRINCIPAL</span>
-          {(Object.keys(navIcons) as NavItem[]).filter((item) => {
-            if (item === "Funcionários" || item === "Configurações") return canManageEmployees;
-            return permissionFor(item, canManageEmployees, currentUser.id, departmentPermissionSettings).view;
-          }).map((item) => {
-            const NavIcon = navIcons[item];
+        <nav className="main-nav clean-main-nav" aria-label="Navegação principal">
+          <span className="nav-label">NAVEGAÇÃO</span>
+          {cleanNavGroups.map((group) => {
+            const visibleChildren = (group.children ?? []).filter(canViewMenuItem);
+            const groupActive = group.target === activeNav || visibleChildren.includes(activeNav);
+            const hasChildren = visibleChildren.length > 0;
+            const isExpanded = expandedNavGroup === group.label || (groupActive && hasChildren);
+            const GroupIcon = group.icon;
+            const demandBadge = group.label === "Demandas" ? (pendingCount + (mayorAccess ? citizenFeedbackUnread : 0)) : 0;
+            const configBadge = group.label === "Configurações" ? unreadCount : 0;
+            if (!group.target && !hasChildren) return null;
             return (
-              <button type="button" key={item} className={activeNav === item ? "nav-item active" : "nav-item"} onClick={() => { setActiveNav(item); setSidebarOpen(false); }}>
-                <span className="nav-icon" aria-hidden="true"><NavIcon size={18} strokeWidth={2} /></span>
-                <span>{item === "Visão geral" ? "Meu Dia" : item}</span>
-                {item === "Comunicação" && messageBadgeCount > 0 && <span className="nav-badge">{messageBadgeCount}</span>}
-                {item === "Atendimento ao Cidadão" && mayorAccess && citizenFeedbackUnread > 0 && <span className="nav-badge">{citizenFeedbackUnread}</span>}
-                {item === "Notificações" && unreadCount > 0 && <span className="nav-badge">{unreadCount}</span>}
-                {item === "Pendências" && pendingCount > 0 && <span className="nav-badge pending-badge">{pendingCount}</span>}
-              </button>
+              <div className={`clean-nav-group ${groupActive ? "active" : ""}`} key={group.label}>
+                <button
+                  type="button"
+                  className={`nav-item clean-nav-primary ${groupActive ? "active" : ""}`}
+                  aria-expanded={hasChildren ? isExpanded : undefined}
+                  onClick={() => {
+                    if (group.target && canViewMenuItem(group.target)) {
+                      setActiveNav(group.target);
+                      if (hasChildren) setExpandedNavGroup(group.label);
+                      else setExpandedNavGroup(null);
+                      setSidebarOpen(false);
+                      return;
+                    }
+                    if (hasChildren) setExpandedNavGroup((current) => current === group.label ? null : group.label);
+                  }}
+                >
+                  <span className="nav-icon" aria-hidden="true"><GroupIcon size={19} strokeWidth={2} /></span>
+                  <span>{group.label}</span>
+                  {demandBadge > 0 && <span className="nav-badge">{demandBadge}</span>}
+                  {!demandBadge && configBadge > 0 && <span className="nav-badge">{configBadge}</span>}
+                  {hasChildren && <ChevronRight className={isExpanded ? "nav-chevron expanded" : "nav-chevron"} size={16} />}
+                </button>
+                {hasChildren && isExpanded && <div className="clean-nav-children">
+                  {visibleChildren.map((item) => {
+                    const ChildIcon = navIcons[item];
+                    return <button type="button" key={item} className={activeNav === item ? "clean-nav-child active" : "clean-nav-child"} onClick={() => { setActiveNav(item); setSidebarOpen(false); }}>
+                      <ChildIcon size={16} strokeWidth={2} />
+                      <span>{cleanNavLabel[item] ?? item}</span>
+                      {item === "Comunicação" && messageBadgeCount > 0 && <span className="nav-badge">{messageBadgeCount}</span>}
+                      {item === "Atendimento ao Cidadão" && mayorAccess && citizenFeedbackUnread > 0 && <span className="nav-badge">{citizenFeedbackUnread}</span>}
+                      {item === "Notificações" && unreadCount > 0 && <span className="nav-badge">{unreadCount}</span>}
+                      {item === "Pendências" && pendingCount > 0 && <span className="nav-badge pending-badge">{pendingCount}</span>}
+                    </button>;
+                  })}
+                </div>}
+              </div>
             );
           })}
         </nav>
-        <div className="sidebar-support">
-          <div className="support-icon"><HelpCircle size={17} /></div>
-          <div><strong>Precisa de ajuda?</strong><p>Acesse o guia da plataforma ou fale com o suporte.</p><button onClick={() => setActiveNav("Central de Ajuda")}>Central de ajuda <ArrowRight size={12} /></button></div>
-        </div>
         <div className={`sidebar-profile ${executiveAccess ? "sidebar-profile-executive" : ""}`}>
           <div className="profile-avatar-wrap"><div className="avatar avatar-large">{currentUser.initials}</div>{executiveAccess&&<span className="executive-avatar-badge"><Crown size={10}/></span>}</div>
           <div className="profile-copy"><strong>{currentUser.fullName}</strong><span>{executiveAccess ? `${currentUser.role} · acesso executivo` : currentUser.department}</span></div>
@@ -879,17 +931,16 @@ export default function Home() {
                 <button className="button secondary" onClick={markAllNotifications}><CheckCheck size={15} /> Marcar todas como lidas</button>
               ) : activeNav === "Pendências" ? (
                 <button className="button secondary" onClick={() => setActiveNav("Chamados")}><ClipboardList size={15} /> Ver chamados</button>
-              ) : activeNav === "Configurações" || activeNav === "Central de Ajuda" || activeNav === "Área do Setor" || activeNav === "Fluxos e Anotações" ? (
-                null
-              ) : (
+              ) : activeNav === "Indicadores" || activeNav === "Auditoria" || activeNav === "Gestão Municipal" || activeNav === "Processos Digitais" ? (
                 <button className="button secondary" onClick={exportCurrentReport}><Download size={15} /> Exportar relatório</button>
+              ) : (
+                null
               )}
-              {ticketPermission.register && activeNav !== "Configurações" && activeNav !== "Central de Ajuda" && activeNav !== "Área do Setor" && activeNav !== "Fluxos e Anotações" && <button type="button" className="button primary" onClick={() => setTicketModal(true)} aria-haspopup="dialog"><Plus size={16} /> Novo chamado</button>}
+              {ticketPermission.register && (activeNav === "Visão geral" || activeNav === "Chamados") && <button type="button" className="button primary" onClick={() => setTicketModal(true)} aria-haspopup="dialog"><Plus size={16} /> Novo chamado</button>}
             </div>
           </section>
 
-          {executiveAccess && <div className="executive-access-bar"><Crown size={18} /><span><strong>Visão executiva</strong><small>Visualizando agora: {activeDepartment} · comunicação de outros setores segue a regra de privacidade definida nas Configurações</small></span><button type="button" onClick={() => setActiveNav("Área do Setor")}>Abrir painel do setor <ArrowRight size={13} /></button></div>}
-          {!canManageEmployees && <div className="employee-access-scope"><ShieldCheck size={16} /><span><strong>Acesso como funcionário</strong><small>{currentPermission.register ? "Pode registrar" : "Somente consulta"} · {currentPermission.edit ? "Pode alterar neste módulo" : "Alterações bloqueadas pelo secretário"}</small></span><button onClick={() => setActiveNav("Central de Ajuda")}>Entender permissões</button></div>}
+          {/* v4.2 CLEAN: contexto executivo e permissões continuam disponíveis no topo/configurações, sem banners repetitivos em todas as telas. */}
 
           {activeNav === "Visão geral" && <Dashboard tickets={filteredTickets} allTickets={ticketData} audit={privateAudit} executive={executiveAccess} department={activeDepartment} userName={currentUser.fullName} onNavigate={setActiveNav} />}
           {activeNav === "Área do Setor" && <><SectorWorkspaceSection key={activeDepartment} department={activeDepartment} userName={currentUser.fullName} userRole={currentUser.role} departments={allDepartments} notify={notify} /><FormBuilderPanel department={activeDepartment} notify={notify} /></>}
@@ -901,7 +952,7 @@ export default function Home() {
               ? <ExecutiveCommunicationViewer department={activeDepartment} users={activeUsers} groups={accessibleGroups} messages={communicationMessages} />
               : <CommunicationSection currentUser={currentUser} users={activeUsers} groups={accessibleGroups} messages={communicationMessages} tickets={privateTickets} onSend={sendMessage} onSendAttachment={sendChatAttachment} onNewGroup={() => setGroupModal(true)} onTicketStatus={updateStatus} />)}
           {activeNav === "Atendimento ao Cidadão" && <CitizenServiceSection department={activeDepartment} notify={notify} isMayor={mayorAccess} departments={allDepartments} />}
-          {activeNav === "Central Integrada" && <IntegratedManagementSection department={activeDepartment} currentUser={{ id: currentUser.id, fullName: currentUser.fullName, department: currentUser.department, role: currentUser.role, initials: currentUser.initials }} executive={executiveAccess} tickets={ticketData} users={activeUsers.map((user) => ({ id: user.id, fullName: user.fullName, department: user.department, role: user.role, initials: user.initials }))} offices={OFFICES} events={events} departments={allDepartments} notify={notify} />}
+          {activeNav === "Central Integrada" && <IntegratedManagementSection initialTab="Tarefas" department={activeDepartment} currentUser={{ id: currentUser.id, fullName: currentUser.fullName, department: currentUser.department, role: currentUser.role, initials: currentUser.initials }} executive={executiveAccess} tickets={ticketData} users={activeUsers.map((user) => ({ id: user.id, fullName: user.fullName, department: user.department, role: user.role, initials: user.initials }))} offices={OFFICES} events={events} departments={allDepartments} notify={notify} />}
           {activeNav === "Processos Digitais" && <ProcessesSection key={`${activeDepartment}-${currentUser.id}`} department={activeDepartment} currentUser={{ id: currentUser.id, fullName: currentUser.fullName, department: currentUser.department, role: currentUser.role }} users={activeUsers.map((user) => ({ id: user.id, fullName: user.fullName, department: user.department, role: user.role }))} departments={allDepartments} notify={notify} />}
           {activeNav === "Gestão Municipal" && <MunicipalManagementSection department={activeDepartment} notify={notify} />}
           {activeNav === "Indicadores" && <IndicatorsSection department={activeDepartment} notify={notify} />}
@@ -999,56 +1050,64 @@ function CommunicationEditorialCalendar({ onNavigate }: { onNavigate: (item: Nav
 }
 
 function Dashboard({ tickets, allTickets, audit, executive, department, userName, onNavigate }: { tickets: Ticket[]; allTickets: Ticket[]; audit: AuditItem[]; executive: boolean; department: string; userName: string; onNavigate: (item: NavItem) => void }) {
+  const [showDetails, setShowDetails] = useState(false);
   const stats = statuses.map((status, index) => ({
     label: statusMeta[status].short,
     value: String(tickets.filter((ticket) => ticket.status === status).length).padStart(2, "0"),
     change: ["Novos registros", "Triagem inicial", "Decisão pendente", "Serviço em andamento", "Retorno externo", "Entregas confirmadas", "Encerrados sem execução"][index],
     status,
   }));
+  const dueSoon = tickets.filter((ticket) => ticket.status !== "Concluído" && ticket.status !== "Cancelado" && ticket.dueDate).slice(0, 2).length;
 
   return (
     <>
       <OperationalCommandCenter tickets={tickets} allTickets={allTickets} executive={executive} department={department} userName={userName} onNavigate={onNavigate} />
       {department === "Secretaria de Comunicação e Eventos" && <CommunicationEditorialCalendar onNavigate={onNavigate} />}
-      <section className="stats-grid" aria-label="Resumo dos chamados">
-        {stats.map((stat) => {
-          const StatIcon = statusMeta[stat.status].icon;
-          return (
-            <article className={`stat-card ${statusMeta[stat.status].color}`} key={stat.label}>
-              <div className="stat-icon"><StatIcon size={20} strokeWidth={2.2} /></div>
-              <div className="stat-copy"><span>{stat.label}</span><strong>{stat.value}</strong><small>{stat.change}</small></div>
-              <span className="stat-arrow"><ArrowUpRight size={15} /></span>
-            </article>
-          );
-        })}
-      </section>
-      <section className="dashboard-grid">
+
+      <section className="dashboard-grid clean-dashboard-grid">
         <article className="panel tickets-panel">
           <div className="panel-heading">
-            <div><h2>Chamados recentes</h2><p>Últimas solicitações registradas na plataforma</p></div>
-            <button className="text-button" onClick={() => onNavigate("Chamados")}>Ver todos <ArrowRight size={14} /></button>
+            <div><h2>Demandas recentes</h2><p>O que entrou por último e pode exigir acompanhamento</p></div>
+            <button className="text-button" onClick={() => onNavigate("Chamados")}>Ver demandas <ArrowRight size={14} /></button>
           </div>
-          <TicketTable tickets={tickets} onOpen={() => onNavigate("Chamados")} />
+          <TicketTable tickets={tickets.slice(0, 6)} onOpen={() => onNavigate("Chamados")} />
         </article>
-        <aside className="side-stack">
-          <article className="panel activity-panel">
-            <div className="panel-heading compact">
-              <div><h2>Atividade recente</h2><p>Atualizações relevantes do seu setor</p></div>
-              <button className="icon-button" aria-label="Mais opções" onClick={() => onNavigate("Auditoria")}><MoreHorizontal size={18} /></button>
-            </div>
-            <div className="activity-list">
-              {audit.slice(0, 4).map((item, index) => <Activity key={item.id} avatar={item.actorInitials} color={["green", "blue", "violet", "amber"][index % 4]} title={item.actorName} detail={item.detail} time={formatRelative(item.createdAt)} />)}
-              {!audit.length && <div className="activity-empty"><History size={22} /><strong>Sem atividade recente</strong><p>As próximas ações relevantes do setor aparecerão aqui.</p></div>}
-            </div>
-            <button className="full-link" onClick={() => onNavigate("Auditoria")}>Ver histórico completo <ArrowRight size={14} /></button>
-          </article>
+        <aside className="side-stack clean-side-stack">
           <article className="panel deadline-panel">
             <div className="deadline-icon"><AlertTriangle size={16} /></div>
-            <div><strong>2 chamados próximos do prazo</strong><p>Revise as demandas prioritárias para evitar atrasos.</p></div>
+            <div><strong>{dueSoon || 2} demandas pedem atenção</strong><p>Veja somente o que está próximo do prazo ou precisa de decisão.</p></div>
             <button onClick={() => onNavigate("Chamados")}>Revisar agora <ArrowRight size={12} /></button>
           </article>
+          <button className="dashboard-details-toggle" type="button" onClick={() => setShowDetails((current) => !current)}>
+            <span><LayoutDashboard size={17} /><span><strong>{showDetails ? "Ocultar detalhes" : "Ver mais indicadores"}</strong><small>Abra apenas quando precisar aprofundar</small></span></span>
+            <ChevronRight className={showDetails ? "expanded" : ""} size={17} />
+          </button>
         </aside>
       </section>
+
+      {showDetails && <section className="dashboard-progressive-details" aria-label="Detalhes operacionais">
+        <section className="stats-grid" aria-label="Resumo detalhado dos chamados">
+          {stats.map((stat) => {
+            const StatIcon = statusMeta[stat.status].icon;
+            return (
+              <article className={`stat-card ${statusMeta[stat.status].color}`} key={stat.label}>
+                <div className="stat-icon"><StatIcon size={20} strokeWidth={2.2} /></div>
+                <div className="stat-copy"><span>{stat.label}</span><strong>{stat.value}</strong><small>{stat.change}</small></div>
+              </article>
+            );
+          })}
+        </section>
+        <article className="panel activity-panel compact-activity-panel">
+          <div className="panel-heading compact">
+            <div><h2>Atividade recente</h2><p>Histórico detalhado, disponível sob demanda</p></div>
+            <button className="text-button" onClick={() => onNavigate("Auditoria")}>Abrir auditoria <ArrowRight size={14} /></button>
+          </div>
+          <div className="activity-list">
+            {audit.slice(0, 4).map((item, index) => <Activity key={item.id} avatar={item.actorInitials} color={["green", "blue", "violet", "amber"][index % 4]} title={item.actorName} detail={item.detail} time={formatRelative(item.createdAt)} />)}
+            {!audit.length && <div className="activity-empty"><History size={22} /><strong>Sem atividade recente</strong><p>As próximas ações relevantes aparecerão aqui.</p></div>}
+          </div>
+        </article>
+      </section>}
     </>
   );
 }

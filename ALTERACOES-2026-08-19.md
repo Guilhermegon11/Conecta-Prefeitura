@@ -79,3 +79,15 @@ Esta versão consolida o sistema como uma plataforma integrada de gestão munici
 - IA: `OPENAI_API_KEY`; `OPENAI_MODEL` é opcional.
 - Cron: `CRON_SECRET`.
 - Segurança: `AUTH_SESSION_SECRET` e, se usado, credenciais Twilio Verify.
+
+## v4.2 CLEAN — redução de complexidade visual
+
+- Navegação lateral reorganizada em seis áreas principais com submenus progressivos.
+- Removido o bloco de suporte redundante da sidebar; Ajuda permanece em Configurações.
+- Dashboard inicial simplificado e indicadores detalhados recolhidos por padrão.
+- Central Integrada abre em Tarefas pelo menu principal e esconde ferramentas avançadas em “Mais”.
+- Régua tipográfica ampliada em toda a área administrativa, login e páginas públicas.
+- Funcionalidades anteriores preservadas.
+- Ações do cabeçalho reduzidas por contexto: “Novo chamado” somente em Início/Demandas e exportação somente em módulos de gestão/relatório.
+- Banners globais repetitivos de visão executiva/permissão removidos da área de conteúdo; controles e regras continuam ativos no topo/configurações.
+- 589 declarações explícitas de fonte abaixo de 12 px foram elevadas; não restam tamanhos CSS explícitos inferiores a 12 px.
