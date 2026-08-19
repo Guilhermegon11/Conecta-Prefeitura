@@ -38,3 +38,11 @@ Quando a Twilio estiver configurada, cada novo login após a senha dispara um no
 
 ## Observação de produção
 `admin/admin` existe apenas para teste. Antes de uso real, altere as credenciais e o segredo de sessão. Para múltiplos funcionários, a etapa seguinte recomendada é migrar a autenticação principal para contas individuais do Supabase Auth.
+
+## Ajuste — página pública /avaliar
+- O formulário de satisfação foi removido completamente da tela de login administrativo.
+- Criada a rota pública independente `/avaliar` para reclamações, elogios, sugestões e nota de 1 a 5 estrelas.
+- A página pública possui identidade própria e link discreto para o acesso administrativo.
+- Erros de configuração do armazenamento não expõem mais detalhes técnicos/credenciais ao cidadão.
+- O endpoint de feedback agora devolve o código `STORAGE_NOT_CONFIGURED` quando as variáveis de servidor do Supabase ainda não foram configuradas.
+- Para persistência central real entre dispositivos, continuam obrigatórias `SUPABASE_URL` (ou `NEXT_PUBLIC_SUPABASE_URL`) e `SUPABASE_SECRET_KEY` (ou `SUPABASE_SERVICE_ROLE_KEY`) no deployment.

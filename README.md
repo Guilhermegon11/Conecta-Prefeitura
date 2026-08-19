@@ -79,3 +79,16 @@ npm run build:vercel
 ## Observação de arquitetura
 
 A persistência desta versão é centralizada no Supabase Storage por chave de domínio. Isso elimina a dependência do `localStorage` como fonte de verdade e mantém os dados entre navegadores/deploys. Para cenários de alta concorrência com muitas gravações simultâneas no mesmo domínio, a evolução recomendada é migrar os agregados de estado para tabelas relacionais do Postgres/Supabase com controle de concorrência e políticas RLS por usuário/setor.
+
+## Gestão Integrada + IA — versão 19/08/2026
+
+A versão atual amplia o Prefeitura Conecta com a **Central Integrada**, reunindo tarefas e solicitações internas, Kanban, SLA e escalonamento, projetos, metas cadastráveis, gestão territorial, locais públicos, organograma/diretório, saúde do sistema, backup e relatórios executivos automáticos.
+
+O canal do cidadão permanece separado do login:
+
+- `/avaliar` — reclamação, elogio ou sugestão, com protocolo, anexos e triagem inteligente;
+- `/acompanhar` — acompanhamento por protocolo + código de acesso, resposta oficial e avaliação pós-atendimento/NPS.
+
+A camada de IA faz resumo, classificação de categoria e secretaria, indicação de urgência, tags, ação sugerida, identificação de demandas semelhantes e relatórios executivos. Ela é **assistiva** e não substitui a validação do servidor público. Sem `OPENAI_API_KEY`, o sistema usa regras locais de contingência.
+
+Veja `IMPLEMENTACAO-45-RECOMENDACOES.md` para o mapa completo das frentes implementadas e `README-VERCEL.md` para variáveis e deploy.

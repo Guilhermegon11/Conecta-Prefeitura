@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
+import { PwaRegistrar } from "./platform-experience";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -14,7 +15,9 @@ const geistMono = Geist_Mono({
 
 export const metadata: Metadata = {
   title: "Prefeitura Conecta",
-  description: "Gestão integrada de chamados e comunicação entre secretarias municipais.",
+  description: "Plataforma integrada de gestão municipal, atendimento ao cidadão, operações, indicadores e inteligência artificial.",
+  manifest: "/manifest.webmanifest",
+  applicationName: "Prefeitura Conecta",
   other: {
     "codex-preview": "development",
   },
@@ -34,6 +37,7 @@ export default function RootLayout({
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
       >
+        <PwaRegistrar />
         {children}
       </body>
     </html>

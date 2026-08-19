@@ -85,6 +85,8 @@ import {
 import { PermissionProvider, useCurrentPermission } from "./permission-context";
 import { loadCachedPersistentValue, loadPersistentValue, savePersistentValue, usePersistentState } from "./persistence";
 import { LoginLoadingScreen, TestLoginScreen } from "./test-login";
+import { IntegratedManagementSection } from "./integrated-platform";
+import { OnboardingTour, QuickActionDock } from "./platform-experience";
 
 type TicketStatus = "Recebido" | "Em análise" | "Aguardando aprovação" | "Em execução" | "Aguardando resposta" | "Concluído" | "Cancelado";
 type Priority = "Urgente" | "Alta" | "Média" | "Baixa";
@@ -240,6 +242,7 @@ const navIcons: Record<NavItem, LucideIcon> = {
   Chamados: ClipboardList,
   Comunicação: MessagesSquare,
   "Atendimento ao Cidadão": Landmark,
+  "Central Integrada": LayoutDashboard,
   "Processos Digitais": FileText,
   "Gestão Municipal": Building2,
   Indicadores: LayoutDashboard,
@@ -898,6 +901,7 @@ export default function Home() {
               ? <ExecutiveCommunicationViewer department={activeDepartment} users={activeUsers} groups={accessibleGroups} messages={communicationMessages} />
               : <CommunicationSection currentUser={currentUser} users={activeUsers} groups={accessibleGroups} messages={communicationMessages} tickets={privateTickets} onSend={sendMessage} onSendAttachment={sendChatAttachment} onNewGroup={() => setGroupModal(true)} onTicketStatus={updateStatus} />)}
           {activeNav === "Atendimento ao Cidadão" && <CitizenServiceSection department={activeDepartment} notify={notify} isMayor={mayorAccess} departments={allDepartments} />}
+          {activeNav === "Central Integrada" && <IntegratedManagementSection department={activeDepartment} currentUser={{ id: currentUser.id, fullName: currentUser.fullName, department: currentUser.department, role: currentUser.role, initials: currentUser.initials }} executive={executiveAccess} tickets={ticketData} users={activeUsers.map((user) => ({ id: user.id, fullName: user.fullName, department: user.department, role: user.role, initials: user.initials }))} offices={OFFICES} events={events} departments={allDepartments} notify={notify} />}
           {activeNav === "Processos Digitais" && <ProcessesSection key={`${activeDepartment}-${currentUser.id}`} department={activeDepartment} currentUser={{ id: currentUser.id, fullName: currentUser.fullName, department: currentUser.department, role: currentUser.role }} users={activeUsers.map((user) => ({ id: user.id, fullName: user.fullName, department: user.department, role: user.role }))} departments={allDepartments} notify={notify} />}
           {activeNav === "Gestão Municipal" && <MunicipalManagementSection department={activeDepartment} notify={notify} />}
           {activeNav === "Indicadores" && <IndicatorsSection department={activeDepartment} notify={notify} />}
@@ -922,6 +926,8 @@ export default function Home() {
       {eventToDelete && <EventDeleteModal event={eventToDelete} onClose={() => setEventToDelete(null)} onConfirm={() => deleteEvent(eventToDelete)} />}
       {employeeModal && canManageEmployees && <EmployeeInviteModal department={activeDepartment} onClose={() => setEmployeeModal(false)} onInvite={inviteEmployee} />}
       {interactionModal && <div className="modal-backdrop" role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget) setInteractionModal(null); }}><section className="modal interaction-action-modal" role="dialog" aria-modal="true" aria-labelledby="interaction-action-title"><header><div><p className="eyebrow">FUNÇÃO DO SISTEMA</p><h2 id="interaction-action-title">{interactionModal.title}</h2></div><button type="button" aria-label="Fechar" onClick={() => setInteractionModal(null)}><X size={18} /></button></header><div className="interaction-action-body"><span className="interaction-action-icon"><ArrowUpRight size={22} /></span><div><strong>Recurso aberto</strong><p>{interactionModal.message}</p><small>Use esta janela para revisar a função e seguir para as orientações do módulo.</small></div></div><footer><button className="button secondary" onClick={() => setInteractionModal(null)}>Fechar</button><button className="button primary" onClick={() => { setInteractionModal(null); setActiveNav("Central de Ajuda"); }}>Ver orientações</button></footer></section></div>}
+      <OnboardingTour userName={currentUser.fullName} role={currentUser.role} department={activeDepartment} onNavigate={(nav) => setActiveNav(nav as NavItem)} />
+      <QuickActionDock onNavigate={(nav) => setActiveNav(nav as NavItem)} onNewTicket={() => { setTicketModal(true); setActiveNav("Chamados"); }} onNewEvent={() => { setEventModal("new"); setActiveNav("Próximos Eventos"); }} />
       {toast && <div className="toast" role="status"><span><Check size={14} strokeWidth={2.5} /></span>{toast}</div>}
     </div>
   );
@@ -935,6 +941,7 @@ function getHeading(active: NavItem) {
     Chamados: { eyebrow: "GESTÃO DE DEMANDAS", title: "Chamados", subtitle: "Organize cada solicitação do recebimento à entrega final." },
     Comunicação: { eyebrow: "CENTRAL DE COMUNICAÇÃO", title: "Conversas", subtitle: "Mensagens diretas e grupos por convite entre as secretarias." },
     "Atendimento ao Cidadão": { eyebrow: "PROTOCOLO, OUVIDORIA E SERVIÇOS", title: "Atendimento ao Cidadão", subtitle: "Registre, encaminhe e acompanhe solicitações, manifestações e pedidos de informação." },
+    "Central Integrada": { eyebrow: "CENTRAL OPERACIONAL", title: "Central Integrada", subtitle: "Tarefas, projetos, metas, mapa, organograma, inteligência artificial e saúde do sistema em um só lugar." },
     "Processos Digitais": { eyebrow: "ADMINISTRAÇÃO SEM PAPEL", title: "Processos Digitais", subtitle: "Organize processos, despachos, documentos, versões e assinaturas em um fluxo rastreável." },
     "Gestão Municipal": { eyebrow: "RECURSOS E OPERAÇÕES", title: "Gestão Municipal", subtitle: "Acompanhe frota, patrimônio, materiais, contratos, convênios, obras e serviços de campo." },
     Indicadores: { eyebrow: "INTELIGÊNCIA DE GESTÃO", title: "Indicadores e Relatórios", subtitle: "Analise prazos, produtividade, satisfação e riscos com visão restrita ao seu setor." },

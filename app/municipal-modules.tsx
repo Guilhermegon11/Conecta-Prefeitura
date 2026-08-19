@@ -88,7 +88,16 @@ type PublicCitizenFeedback = {
   destination: "Gabinete do Prefeito";
   status: "Novo" | "Em análise" | "Encaminhado" | "Respondido" | "Concluído";
   mayorNote: string;
+  citizenResponse?: string;
   forwardedDepartment?: string;
+  ai?: { summary: string; category: string; suggestedDepartment: string; urgency: "Baixa" | "Normal" | "Alta" | "Crítica"; urgencyReason: string; tags: string[]; issueKey: string; recommendedAction: string; source: "openai" | "regras" };
+  similarProtocols?: string[];
+  similarCount?: number;
+  attachments?: Array<{ id: string; name: string; contentType: string; size: number; createdAt: string }>;
+  resolutionRating?: number | null;
+  resolutionNps?: number | null;
+  resolutionComment?: string;
+  resolutionEvaluatedAt?: string | null;
   history?: Array<{ at: string; action: string; detail: string }>;
   createdAt: string;
   updatedAt: string;
@@ -330,6 +339,7 @@ function MayorCitizenInbox({ notify, departments }: { notify: Notify; department
   const [query, setQuery] = useState("");
   const [status, setStatus] = useState("Todos");
   const [note, setNote] = useState("");
+  const [citizenResponse, setCitizenResponse] = useState("");
   const selected = items.find((item) => item.id === selectedId) ?? null;
 
   async function load(silent = false) {
@@ -351,7 +361,7 @@ function MayorCitizenInbox({ notify, departments }: { notify: Notify; department
     return () => window.clearInterval(timer);
   }, []);
 
-  useEffect(() => { setNote(selected?.mayorNote ?? ""); }, [selectedId, selected?.mayorNote]);
+  useEffect(() => { setNote(selected?.mayorNote ?? ""); setCitizenResponse(selected?.citizenResponse ?? ""); }, [selectedId, selected?.mayorNote, selected?.citizenResponse]);
 
   const filtered = useMemo(() => items.filter((item) => {
     const matchesQuery = !query.trim() || [item.protocol, item.subject, item.message, item.name, item.neighborhood, item.kind].join(" ").toLowerCase().includes(query.trim().toLowerCase());
@@ -359,7 +369,7 @@ function MayorCitizenInbox({ notify, departments }: { notify: Notify; department
     return matchesQuery && matchesStatus;
   }), [items, query, status]);
 
-  async function updateItem(item: PublicCitizenFeedback, changes: { status?: PublicCitizenFeedback["status"]; mayorNote?: string; forwardedDepartment?: string; markRead?: boolean }, message?: string) {
+  async function updateItem(item: PublicCitizenFeedback, changes: { status?: PublicCitizenFeedback["status"]; mayorNote?: string; citizenResponse?: string; forwardedDepartment?: string; markRead?: boolean }, message?: string) {
     try {
       const response = await fetch("/api/citizen-feedback", { method: "PATCH", headers: { "content-type": "application/json" }, body: JSON.stringify({ id: item.id, ...changes }) });
       const payload = await response.json().catch(() => null) as { feedback?: PublicCitizenFeedback; error?: string } | null;
@@ -395,11 +405,15 @@ function MayorCitizenInbox({ notify, departments }: { notify: Notify; department
         {selected ? <><header><div><p className="eyebrow">{selected.protocol}</p><h2>{selected.subject}</h2><p>{selected.kind} · avaliação {selected.rating}/5</p></div><StatusTag>{selected.status}</StatusTag></header>
           <div className="mayor-feedback-citizen"><span><UserRound size={17} /></span><div><strong>{selected.name}</strong><small>{selected.anonymous ? "Manifestação anônima" : selected.contact || "Sem contato informado"}{selected.neighborhood ? ` · ${selected.neighborhood}` : ""}</small></div></div>
           <div className="mayor-feedback-message"><p>{selected.message}</p><small>Recebido em {new Date(selected.createdAt).toLocaleString("pt-BR")} · destino automático: {selected.destination}</small></div>
-          {!!selected.history?.length && <div className="mayor-feedback-history"><strong>Histórico do protocolo</strong>{[...selected.history].reverse().slice(0,5).map((entry, index) => <div key={`${entry.at}-${index}`}><span /><p><b>{entry.action}</b><small>{entry.detail} · {new Date(entry.at).toLocaleString("pt-BR")}</small></p></div>)}</div>}
+          {!!selected.attachments?.length && <section className="mayor-feedback-attachments"><strong>Anexos do cidadão</strong><div>{selected.attachments.map((attachment) => <a key={attachment.id} href={`/api/citizen-feedback-attachment?feedbackId=${encodeURIComponent(selected.id)}&attachmentId=${encodeURIComponent(attachment.id)}`} target="_blank" rel="noreferrer"><FileText size={14} /><span>{attachment.name}<small>{Math.max(1, Math.round(attachment.size / 1024))} KB</small></span><Download size={13} /></a>)}</div></section>}
+          {selected.ai && <section className={`mayor-ai-triage ${selected.ai.urgency.toLowerCase().replace("í", "i")}`}><div className="mayor-ai-heading"><span>IA</span><div><strong>Triagem inteligente</strong><small>{selected.ai.source === "openai" ? "Análise por IA · requer validação humana" : "Contingência por regras · requer validação humana"}</small></div><b>{selected.ai.urgency}</b></div><p>{selected.ai.summary}</p><dl><div><dt>Categoria</dt><dd>{selected.ai.category}</dd></div><div><dt>Setor sugerido</dt><dd>{selected.ai.suggestedDepartment}</dd></div><div><dt>Motivo da prioridade</dt><dd>{selected.ai.urgencyReason}</dd></div><div><dt>Ação sugerida</dt><dd>{selected.ai.recommendedAction}</dd></div></dl>{!!selected.ai.tags?.length && <div className="mayor-ai-tags">{selected.ai.tags.map((tag) => <span key={tag}>{tag}</span>)}</div>}{Boolean(selected.similarCount) && <div className="mayor-ai-similar"><strong>{selected.similarCount} demanda(s) semelhante(s) identificada(s)</strong><small>{selected.similarProtocols?.join(" · ")}</small></div>}</section>}
+          {selected.resolutionEvaluatedAt && <section className="mayor-resolution-rating"><strong>Avaliação após a solução</strong><div><span>{selected.resolutionRating ?? "—"}/5 ★</span><span>NPS {selected.resolutionNps ?? "—"}/10</span></div>{selected.resolutionComment && <p>{selected.resolutionComment}</p>}</section>}
+          {!!selected.history?.length && <div className="mayor-feedback-history"><strong>Histórico do protocolo</strong>{[...selected.history].reverse().slice(0,8).map((entry, index) => <div key={`${entry.at}-${index}`}><span /><p><b>{entry.action}</b><small>{entry.detail} · {new Date(entry.at).toLocaleString("pt-BR")}</small></p></div>)}</div>}
           <label className="field"><span>Status do atendimento</span><select value={selected.status} onChange={(event) => void updateItem(selected, { status: event.target.value as PublicCitizenFeedback["status"] }, "Status da manifestação atualizado.")}><option>Novo</option><option>Em análise</option><option>Encaminhado</option><option>Respondido</option><option>Concluído</option></select></label>
           <label className="field"><span>Encaminhar para setor</span><select value={selected.forwardedDepartment ?? ""} onChange={(event) => { const target = event.target.value; void updateItem(selected, { forwardedDepartment: target, status: target ? "Encaminhado" : selected.status }, target ? `Manifestação encaminhada para ${target}.` : "Encaminhamento removido."); }}><option value="">Manter somente no Gabinete</option>{departments.filter((item) => item !== "Gabinete do Prefeito").map((item) => <option key={item}>{item}</option>)}</select></label>
-          <label className="field"><span>Anotação do Gabinete</span><textarea value={note} onChange={(event) => setNote(event.target.value)} placeholder="Registre providências, setor encaminhado ou retorno ao cidadão." /></label>
-          <div className="mayor-feedback-actions"><button className="button secondary" onClick={() => void updateItem(selected, { mayorNote: note }, "Anotação do Gabinete salva.")}><Save size={14} /> Salvar anotação</button><button className="button primary" onClick={() => void updateItem(selected, { status: "Concluído", mayorNote: note, markRead: true }, "Manifestação concluída.")}><CheckCircle2 size={14} /> Concluir</button></div>
+          <label className="field"><span>Anotação interna do Gabinete</span><textarea value={note} onChange={(event) => setNote(event.target.value)} placeholder="Visível apenas internamente. Registre providências, contatos e decisões." /></label>
+          <label className="field public-response-field"><span>Resposta oficial ao cidadão</span><textarea value={citizenResponse} onChange={(event) => setCitizenResponse(event.target.value)} placeholder="Esta resposta ficará disponível para o cidadão em /acompanhar." /></label>
+          <div className="mayor-feedback-actions"><button className="button secondary" onClick={() => void updateItem(selected, { mayorNote: note }, "Anotação interna salva.")}><Save size={14} /> Salvar anotação</button><button className="button secondary" onClick={() => void updateItem(selected, { citizenResponse, status: citizenResponse.trim() ? "Respondido" : selected.status }, "Resposta oficial salva para acompanhamento do cidadão.")}><MessageSquareText size={14} /> Publicar resposta</button><button className="button primary" onClick={() => void updateItem(selected, { status: "Concluído", mayorNote: note, citizenResponse, markRead: true }, "Manifestação concluída. O cidadão já pode avaliar a solução.")}><CheckCircle2 size={14} /> Concluir</button></div>
         </> : <div className="citizen-sector-empty"><Landmark size={26} /><strong>Selecione uma manifestação</strong><p>Abra um item da caixa do Gabinete para ler o relato, registrar providências e atualizar o status.</p></div>}
       </article>
     </div>

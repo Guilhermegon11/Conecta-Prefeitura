@@ -1,10 +1,20 @@
 export const DATA_BUCKET = "prefeitura-conecta-data";
 let bucketReady: Promise<void> | null = null;
 
+export function hasSupabaseAdminConfig() {
+  const url = process.env.SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const secret = process.env.SUPABASE_SECRET_KEY || process.env.SUPABASE_SERVICE_ROLE_KEY;
+  return Boolean(url && secret);
+}
+
 export function supabaseAdminConfig() {
   const url = process.env.SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_URL;
   const secret = process.env.SUPABASE_SECRET_KEY || process.env.SUPABASE_SERVICE_ROLE_KEY;
-  if (!url || !secret) throw new Error("Supabase não está configurado neste ambiente. Verifique a integração do projeto na Vercel.");
+  if (!url || !secret) {
+    const error = new Error("Armazenamento central não configurado.") as Error & { code?: string };
+    error.code = "STORAGE_NOT_CONFIGURED";
+    throw error;
+  }
   return { url: url.replace(/\/$/, ""), secret };
 }
 

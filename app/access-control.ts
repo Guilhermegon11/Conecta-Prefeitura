@@ -5,6 +5,7 @@ export type PermissionModule =
   | "Chamados"
   | "Comunicação"
   | "Atendimento ao Cidadão"
+  | "Central Integrada"
   | "Processos Digitais"
   | "Gestão Municipal"
   | "Indicadores"
@@ -19,7 +20,7 @@ export type PermissionModule =
 
 export type PermissionAction = "view" | "register" | "edit";
 export type ModulePermission = Record<PermissionAction, boolean>;
-export type StaffProfileId = "atendimento" | "operacional" | "campo" | "consulta";
+export type StaffProfileId = "atendimento" | "operacional" | "campo" | "consulta" | "personalizado";
 
 export type StaffProfile = {
   id: StaffProfileId;
@@ -41,6 +42,7 @@ export const PERMISSION_MODULES: Array<{ module: PermissionModule; group: string
   { module: "Chamados", group: "Atendimento", description: "Demandas internas e execução" },
   { module: "Comunicação", group: "Atendimento", description: "Conversas, grupos e anexos" },
   { module: "Atendimento ao Cidadão", group: "Atendimento", description: "Protocolos, Ouvidoria e e-SIC" },
+  { module: "Central Integrada", group: "Gestão", description: "Tarefas, projetos, metas, mapa, IA e saúde operacional" },
   { module: "Processos Digitais", group: "Operações", description: "Processos, despachos e documentos" },
   { module: "Gestão Municipal", group: "Operações", description: "Frota, patrimônio, estoque, contratos e obras" },
   { module: "Indicadores", group: "Gestão", description: "Painéis, metas e relatórios" },
@@ -76,7 +78,7 @@ function profile(
 }
 
 const COMMON: PermissionModule[] = [
-  "Visão geral", "Área do Setor", "Fluxos e Anotações", "Chamados", "Comunicação", "Notificações", "Pendências",
+  "Visão geral", "Área do Setor", "Fluxos e Anotações", "Chamados", "Comunicação", "Central Integrada", "Notificações", "Pendências",
   "Anexos e Arquivos", "Próximos Eventos", "Secretarias", "Central de Ajuda",
 ];
 
@@ -112,6 +114,14 @@ export function createDefaultPermissionSettings(): DepartmentPermissionSettings 
         "Somente consulta",
         "Acompanha informações autorizadas sem criar ou alterar registros.",
         ["Visão geral", "Área do Setor", "Fluxos e Anotações", "Chamados", "Indicadores", "Notificações", "Anexos e Arquivos", "Secretarias", "Central de Ajuda"],
+        [],
+        [],
+      ),
+      personalizado: profile(
+        "personalizado",
+        "Personalizado",
+        "Perfil livre para o secretário montar uma combinação própria de acessos.",
+        ["Visão geral", "Central Integrada", "Notificações", "Central de Ajuda"],
         [],
         [],
       ),

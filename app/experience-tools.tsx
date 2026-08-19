@@ -73,6 +73,12 @@ export function GlobalSearchPanel({
       ...documents.filter((item) => includes(item.name, item.category, item.ownerName)).map((item) => ({ id: item.id, type: "Documento", title: item.name, detail: `${item.category} · ${item.ownerName}`, nav: "Anexos e Arquivos", icon: FileText })),
       ...events.filter((item) => includes(item.title, item.location, item.department)).map((item) => ({ id: item.id, type: "Evento", title: item.title, detail: `${item.location || "Local a definir"} · ${item.department}`, nav: "Próximos Eventos", icon: CalendarDays })),
       ...offices.filter((item) => includes(item.name, item.head, item.address)).map((item) => ({ id: item.id, type: "Unidade", title: item.name, detail: `${item.head} · ${item.address}`, nav: "Secretarias", icon: Building2 })),
+      ...[
+        { id: "central-tarefas", type: "Módulo", title: "Tarefas e solicitações internas", detail: "Kanban, SLA, responsáveis e escalonamento", nav: "Central Integrada", icon: ClipboardList },
+        { id: "central-projetos", type: "Módulo", title: "Projetos e metas", detail: "Progresso, etapas e metas da gestão", nav: "Central Integrada", icon: Building2 },
+        { id: "central-mapa", type: "Módulo", title: "Mapa da cidade e locais públicos", detail: "Ocorrências por bairro e histórico dos equipamentos", nav: "Central Integrada", icon: Building2 },
+        { id: "central-ia", type: "Módulo", title: "IA Municipal", detail: "Resumo, classificação, urgência e relatório semanal", nav: "Central Integrada", icon: Search },
+      ].filter((item) => includes(item.title, item.detail)),
     ];
     return all.slice(0, 12);
   }, [documents, events, offices, query, tickets, users]);
