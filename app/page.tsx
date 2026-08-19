@@ -99,7 +99,7 @@ type NavItem = PermissionModule | "Funcionários" | "Configurações";
 type ChatTab = "direct" | "group";
 type OfficeCategory = "Prefeitura e apoio" | "Secretarias" | "Departamentos" | "Seções e subprefeitura";
 
-type Ticket = { id: string; protocol: string; title: string; description: string; requester: string; department: string; priority: Priority; status: TicketStatus; dueDate: string | null; assigneeId: string | null; assigneeName?: string; assigneeInitials?: string; neighborhood?: string; address?: string; createdAt: string; updatedAt: string };
+type Ticket = { id: string; protocol: string; title: string; description: string; requester: string; department: string; priority: Priority; status: TicketStatus; dueDate: string | null; assigneeId: string | null; assigneeName?: string; assigneeInitials?: string; neighborhood?: string; address?: string; latitude?: number | null; longitude?: number | null; createdAt: string; updatedAt: string };
 type AccountStatus = "Ativo" | "Aguardando criação de senha";
 type User = { id: string; fullName: string; email: string; department: string; role: string; initials: string; accountStatus?: AccountStatus; invitedAt?: string | null; invitedBy?: string | null };
 type Office = { id: string; name: string; head: string; hours: string; phone: string; email: string; address: string; category: OfficeCategory };
@@ -579,7 +579,7 @@ export default function Home() {
       id: makeId(), protocol: `CH-2026-${String(ticketData.length + 188).padStart(4, "0")}`,
       title: String(form.get("title")), description: String(form.get("description")), requester: activeDepartment,
       department: String(form.get("department")), priority: String(form.get("priority")) as Priority, status: "Recebido",
-      dueDate: String(form.get("dueDate")) || null, assigneeId, assigneeName: assignee?.fullName, assigneeInitials: assignee?.initials, neighborhood: String(form.get("neighborhood") || ""), address: String(form.get("address") || ""), createdAt: now, updatedAt: now,
+      dueDate: String(form.get("dueDate")) || null, assigneeId, assigneeName: assignee?.fullName, assigneeInitials: assignee?.initials, neighborhood: String(form.get("neighborhood") || ""), address: String(form.get("address") || ""), latitude: Number.isFinite(Number(form.get("latitude"))) && String(form.get("latitude")||"").trim() ? Number(form.get("latitude")) : null, longitude: Number.isFinite(Number(form.get("longitude"))) && String(form.get("longitude")||"").trim() ? Number(form.get("longitude")) : null, createdAt: now, updatedAt: now,
     };
     const belongsToCurrentDepartment = sameDepartment(temporary.department, activeDepartment);
     setTicketData((current) => [temporary, ...current]);

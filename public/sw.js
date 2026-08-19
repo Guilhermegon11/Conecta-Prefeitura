@@ -89,6 +89,24 @@ self.addEventListener("fetch", (event) => {
   const request = event.request;
   if (request.method !== "GET") return;
   const url = new URL(request.url);
+
+  // Tiles do OpenStreetMap já visualizados ficam disponíveis offline no aparelho.
+  if (url.hostname === "tile.openstreetmap.org") {
+    event.respondWith((async () => {
+      const tileCache = await caches.open(`${CACHE}-map-tiles`);
+      const cached = await tileCache.match(request);
+      if (cached) return cached;
+      try {
+        const response = await fetch(request);
+        await tileCache.put(request, response.clone()).catch(() => undefined);
+        return response;
+      } catch {
+        return new Response("", { status: 504 });
+      }
+    })());
+    return;
+  }
+
   if (url.origin !== self.location.origin || url.pathname.startsWith("/api/")) return;
 
   // Assets imutáveis do Next: cache-first.

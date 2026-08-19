@@ -1,61 +1,62 @@
-const memoryCache = new Map<string, { lat: number; lng: number; displayName: string; expiresAt: number }>();
+import { hasValidSession } from "../../auth-session";
+
+export const runtime = "nodejs";
+export const dynamic = "force-dynamic";
+
+const memoryCache = new Map<string, { lat: number; lon: number; displayName: string; at: number }>();
 let lastRequestAt = 0;
-let queue: Promise<void> = Promise.resolve();
+let requestChain: Promise<void> = Promise.resolve();
 
-function normalizeQuery(value: string) {
-  return value.trim().replace(/\s+/g, " ").slice(0, 240);
-}
-
-async function throttle() {
-  const elapsed = Date.now() - lastRequestAt;
-  if (elapsed < 1100) await new Promise((resolve) => setTimeout(resolve, 1100 - elapsed));
-  lastRequestAt = Date.now();
+function clean(value: string, max = 420) { return value.replace(/[\r\n\t]+/g, " ").replace(/\s+/g, " ").trim().slice(0, max); }
+function wait(ms: number) { return new Promise((resolve) => setTimeout(resolve, ms)); }
+async function rateLimited<T>(task: () => Promise<T>): Promise<T> {
+  let release!: () => void;
+  const previous = requestChain;
+  requestChain = new Promise<void>((resolve) => { release = resolve; });
+  await previous;
+  try {
+    const elapsed = Date.now() - lastRequestAt;
+    if (elapsed < 1100) await wait(1100 - elapsed);
+    lastRequestAt = Date.now();
+    return await task();
+  } finally { release(); }
 }
 
 export async function GET(request: Request) {
+  if (!hasValidSession(request)) return Response.json({ error: "Sessão expirada." }, { status: 401 });
   const url = new URL(request.url);
-  const raw = url.searchParams.get("q") ?? "";
-  const query = normalizeQuery(raw);
-  if (!query) return Response.json({ error: "Endereço obrigatório" }, { status: 400 });
+  const q = clean(url.searchParams.get("q") || "");
+  const precision = url.searchParams.get("precision") === "bairro" ? "bairro" : "endereço";
+  if (!q) return Response.json({ error: "Informe um endereço." }, { status: 400 });
+  const cacheKey = q.toLocaleLowerCase("pt-BR");
+  const cached = memoryCache.get(cacheKey);
+  if (cached && Date.now() - cached.at < 30 * 86400000) return Response.json({ found: true, lat: cached.lat, lon: cached.lon, displayName: cached.displayName, precision }, { headers: { "cache-control": "private, max-age=86400" } });
 
-  const key = query.toLocaleLowerCase("pt-BR");
-  const cached = memoryCache.get(key);
-  if (cached && cached.expiresAt > Date.now()) {
-    return Response.json({ lat: cached.lat, lng: cached.lng, displayName: cached.displayName, cached: true });
-  }
-
-  let release!: () => void;
-  const previous = queue;
-  queue = new Promise<void>((resolve) => { release = resolve; });
-  await previous;
   try {
-    await throttle();
-    const endpoint = new URL("https://nominatim.openstreetmap.org/search");
-    endpoint.searchParams.set("format", "jsonv2");
-    endpoint.searchParams.set("limit", "1");
-    endpoint.searchParams.set("countrycodes", "br");
-    endpoint.searchParams.set("accept-language", "pt-BR");
-    endpoint.searchParams.set("q", query);
-
-    const response = await fetch(endpoint, {
-      headers: {
-        Accept: "application/json",
-        "User-Agent": "PrefeituraConecta/1.0 (mapa-de-chamados; contato institucional)",
-      },
+    const result = await rateLimited(async () => {
+      const endpoint = new URL("https://nominatim.openstreetmap.org/search");
+      endpoint.searchParams.set("format", "jsonv2");
+      endpoint.searchParams.set("limit", "1");
+      endpoint.searchParams.set("countrycodes", "br");
+      endpoint.searchParams.set("q", q);
+      const response = await fetch(endpoint, {
+        headers: {
+          "User-Agent": "Prefeitura-Conecta/4.6.7 (mapa municipal de Varzea da Palma; contato administrativo via portal municipal)",
+          "Accept-Language": "pt-BR,pt;q=0.9",
+        },
+        cache: "no-store",
+      });
+      if (!response.ok) throw new Error(`Geocodificação indisponível (${response.status}).`);
+      const list = await response.json() as Array<{ lat?: string; lon?: string; display_name?: string }>;
+      return list[0] || null;
     });
-    if (!response.ok) return Response.json({ error: "Serviço de localização indisponível" }, { status: 502 });
-    const results = await response.json() as Array<{ lat: string; lon: string; display_name?: string }>;
-    const first = results[0];
-    if (!first) return Response.json({ error: "Rua não encontrada" }, { status: 404 });
-    const lat = Number(first.lat);
-    const lng = Number(first.lon);
-    if (!Number.isFinite(lat) || !Number.isFinite(lng)) return Response.json({ error: "Coordenadas inválidas" }, { status: 502 });
-    const result = { lat, lng, displayName: first.display_name ?? query, expiresAt: Date.now() + 1000 * 60 * 60 * 24 * 30 };
-    memoryCache.set(key, result);
-    return Response.json({ lat, lng, displayName: result.displayName, cached: false }, { headers: { "Cache-Control": "public, max-age=86400, s-maxage=2592000" } });
-  } catch {
-    return Response.json({ error: "Falha ao localizar a rua" }, { status: 502 });
-  } finally {
-    release();
+    if (!result) return Response.json({ found: false, precision }, { headers: { "cache-control": "private, max-age=3600" } });
+    const lat = Number(result.lat), lon = Number(result.lon);
+    if (!Number.isFinite(lat) || !Number.isFinite(lon)) return Response.json({ found: false, precision });
+    const displayName = clean(result.display_name || q, 600);
+    memoryCache.set(cacheKey, { lat, lon, displayName, at: Date.now() });
+    return Response.json({ found: true, lat, lon, displayName, precision }, { headers: { "cache-control": "private, max-age=2592000" } });
+  } catch (error) {
+    return Response.json({ error: error instanceof Error ? error.message : "Não foi possível localizar o endereço." }, { status: 502 });
   }
 }
