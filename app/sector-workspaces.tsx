@@ -198,16 +198,13 @@ export function SectorWorkspaceSection({department,userName,userRole,departments
   const profile=profileFor(department);
   const initialState=useMemo<SectorWorkspaceState>(()=>({
     records:profile.records.map(([title,detail,status],index)=>({id:`seed-record-${index}`,title,detail,status,priority:index===0?"Alta":"Normal",owner:index===0?userName:profile.teams[index%profile.teams.length]?.[0]??userName,dueDate:["2026-08-19","2026-08-22","2026-08-26"][index]??"2026-08-30",category:profile.forms[index%profile.forms.length]??"Registro geral",updatedAt:"2026-08-18T12:00:00.000Z"})),
-    referrals:[
-      {id:"seed-ref-1",destination:"Secretaria de Administração e Finanças",subject:"Solicitação de apoio administrativo",scope:"Somente dados necessários",dueDate:"2026-08-21",status:"Aguardando retorno",note:"Providência encaminhada ao setor responsável.",createdAt:"2026-08-18T10:00:00.000Z"},
-      {id:"seed-ref-2",destination:"Secretaria de Comunicação e Eventos",subject:"Divulgação de ação do setor",scope:"Informações institucionais",dueDate:"2026-08-24",status:"Recebido",note:"Material institucional em preparação.",createdAt:"2026-08-17T15:30:00.000Z"},
-    ],
+    referrals:[],
     goals:profile.goals.map(([title,progress,target],index)=>({id:`seed-goal-${index}`,title,progress,target,owner:index===0?userName:profile.teams[index%profile.teams.length]?.[0]??userName})),
     activities:[],
     agenda:[{id:"seed-agenda-1",title:"Alinhamento das prioridades do setor",kind:"Reunião",date:"2026-08-18",time:"11:30",owner:userName,status:"Confirmado",notes:"Revisar entregas, riscos de prazo e responsáveis.",createdAt:"2026-08-18T08:00:00.000Z"},{id:"seed-agenda-2",title:"Revisão de pendências e encaminhamentos",kind:"Despacho",date:"2026-08-19",time:"09:00",owner:userName,status:"Planejado",notes:"Conferir retornos intersetoriais.",createdAt:"2026-08-18T08:05:00.000Z"}],
     decisions:[{id:"seed-decision-1",title:"Definir responsável para demandas prioritárias",owner:userName,priority:"Alta",status:"Aguardando decisão",dueDate:"2026-08-19",notes:"Consolidar a distribuição antes do próximo despacho.",createdAt:"2026-08-18T08:10:00.000Z"}],
   }),[profile,userName]);
-  const [state,setState,saveStatus,ready]=usePersistentState<SectorWorkspaceState>(persistenceKey("sector-workspace",department,"v3"),initialState);
+  const [state,setState,saveStatus,ready]=usePersistentState<SectorWorkspaceState>(persistenceKey("sector-workspace",department,"v4"),initialState);
   const [tab,setTab]=useState<WorkspaceTab>("Painel setorial");
   const [query,setQuery]=useState("");
   const [statusFilter,setStatusFilter]=useState("Todos os status");
@@ -280,4 +277,3 @@ export function SectorWorkspaceSection({department,userName,userRole,departments
     {fieldModal&&access.register&&<div className="modal-backdrop" role="presentation" onMouseDown={event=>{if(event.target===event.currentTarget)setFieldModal(false)}}><section className="modal sector-modal" role="dialog" aria-modal="true" aria-labelledby="field-modal-title"><header><div><p className="eyebrow">ATIVIDADE EXTERNA</p><h2 id="field-modal-title">Registro da equipe de campo</h2></div><button type="button" aria-label="Fechar" onClick={()=>setFieldModal(false)}><X size={18}/></button></header><form onSubmit={createFieldRecord}><label className="field"><span>Equipe *</span><select name="team" required>{profile.teams.map(item=><option key={item[0]}>{item[0]}</option>)}</select></label><label className="field"><span>Tipo de atividade *</span><select name="type" required>{profile.forms.slice(0,4).map(item=><option key={item}>{item}</option>)}</select></label><label className="field full"><span>Rua, endereço ou referência *</span><input name="location" required placeholder="Informe onde a atividade foi realizada"/></label><label className="field"><span>Situação</span><select name="status"><option>Em andamento</option><option>Concluído</option><option>Requer retorno</option><option>Impedimento encontrado</option></select></label><label className="field full"><span>Observações</span><textarea name="notes" placeholder="Descreva o serviço, resultados e pendências."/></label><p className="offline-form-note"><ShieldCheck size={14}/>O registro será sincronizado no armazenamento central e ficará disponível para a equipe autorizada.</p><div className="modal-actions"><button type="button" className="button secondary" onClick={()=>setFieldModal(false)}>Cancelar</button><button className="button primary"><MapPin size={15}/>Registrar atividade</button></div></form></section></div>}
   </section>;
 }
-

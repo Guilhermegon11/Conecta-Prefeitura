@@ -16,6 +16,7 @@ const geistMono = Geist_Mono({
 export const metadata: Metadata = {
   title: "Prefeitura Conecta IA",
   description: "Gestão municipal inteligente, integrada e próxima do cidadão.",
+  other: { "codex-preview": "development" },
   manifest: "/manifest.webmanifest",
   applicationName: "Prefeitura Conecta IA",
   openGraph: {

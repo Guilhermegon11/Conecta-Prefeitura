@@ -83,8 +83,8 @@ export function GlobalSearchPanel({
     return all.slice(0, 12);
   }, [documents, events, offices, query, tickets, users]);
 
-  return <div className="global-search-panel" role="dialog" aria-label="Resultados da busca global">
-    <header><span><Search size={15} /><strong>Busca em toda a plataforma</strong></span><button onClick={onClose} aria-label="Fechar resultados"><X size={16} /></button></header>
+  return <div className="global-search-panel" role="dialog" aria-label="Resultados da busca do setor atual">
+    <header><span><Search size={15} /><strong>Busca no setor atual</strong></span><button onClick={onClose} aria-label="Fechar resultados"><X size={16} /></button></header>
     <div>{results.map((result) => { const Icon = result.icon; return <button key={`${result.type}-${result.id}`} onClick={() => { onOpen(result.nav); onClose(); }}><span><Icon size={17} /></span><span><i>{result.type}</i><strong>{result.title}</strong><small>{result.detail}</small></span><ArrowRight size={14} /></button>; })}
       {!results.length && <div className="global-search-empty"><Search size={24} /><strong>Nenhum resultado encontrado</strong><p>Busque por protocolo, pessoa, documento, evento, setor ou endereço.</p></div>}
     </div>

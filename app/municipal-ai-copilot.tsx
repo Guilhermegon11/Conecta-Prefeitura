@@ -88,7 +88,7 @@ function buildRequestSummary(question: string, result: MunicipalAgentTurnResult)
 }
 
 export function MunicipalAiCopilot({ activeModule, department, user, tickets, events, departments, unreadNotifications = 0, onExecuteAction }: Props) {
-  const historyKey = persistenceKey("municipal-ai-chat-history", user.id, "v1");
+  const historyKey = persistenceKey("municipal-ai-chat-history", user.id, department, "v2");
   const [conversations, setConversations, historyStatus, historyReady] = usePersistentState<AiConversation[]>(historyKey, []);
   const [activeConversationId, setActiveConversationId] = useState("");
   const [open, setOpen] = useState(false), [showHistory, setShowHistory] = useState(false), [prompt, setPrompt] = useState(""), [busy, setBusy] = useState(false), [error, setError] = useState(""), [configured, setConfigured] = useState<boolean | null>(null), [online, setOnline] = useState(true);

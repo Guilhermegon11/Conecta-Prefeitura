@@ -329,12 +329,12 @@ export default function Home() {
     .filter((event) => (event.targetDepartments?.length ? event.targetDepartments : [event.department]).some((department) => sameDepartment(department, activeDepartment)))
     .sort((first, second) => new Date(first.startsAt).getTime() - new Date(second.startsAt).getTime());
   const currentEventIds = new Set(currentEvents.map((event) => event.id));
-  const ownCommunicationMessages = messages.filter((message) => messageVisibleToUser(message, currentUserId, groups));
+  const ownCommunicationMessages = messages.filter((message) => messageVisibleToUser(message, currentUserId, groups) && messageConfinedToDepartment(message, activeDepartment, users, groups));
   const viewingOtherDepartment = executiveAccess && !sameDepartment(activeDepartment, currentUser.department);
-  const executiveCommunicationMonitor = mayorAccess && executiveCommunicationAccess && viewingOtherDepartment;
+  const executiveCommunicationMonitor = executiveAccess && executiveCommunicationAccess && viewingOtherDepartment;
   const communicationLocked = viewingOtherDepartment && !executiveCommunicationMonitor;
   const communicationMessages = executiveCommunicationMonitor
-    ? messages.filter((message) => messageTouchesDepartment(message, activeDepartment, users, groups))
+    ? messages.filter((message) => messageConfinedToDepartment(message, activeDepartment, users, groups))
     : ownCommunicationMessages;
   const privateMessageIds = new Set(communicationMessages.map((message) => message.id));
   const privateAudit = audit.filter((item) => {
@@ -344,18 +344,28 @@ export default function Home() {
     if (item.entityType === "evento") return currentEventIds.has(item.entityId) || Boolean(item.department && sameDepartment(item.department, activeDepartment));
     return false;
   });
-  const currentNotifications = notifications.filter((item) => item.userId === currentUserId && (item.type !== "ticket" || !item.relatedEntityId || privateTicketIds.has(item.relatedEntityId)) && (item.type !== "message" || !item.relatedEntityId || privateMessageIds.has(item.relatedEntityId)));
-  const currentInvitations = invitations.filter((item) => item.userId === currentUserId && item.status === "convidado");
+  const scopedGroupIds = new Set(groups.filter((group) => groupConfinedToDepartment(group, activeDepartment, users)).map((group) => group.id));
+  const currentNotifications = notifications.filter((item) => {
+    if (item.userId !== currentUserId) return false;
+    if (item.type === "ticket" && item.relatedEntityId) return privateTicketIds.has(item.relatedEntityId);
+    if (item.type === "message" && item.relatedEntityId) return privateMessageIds.has(item.relatedEntityId);
+    if (item.type === "group_invite" && item.relatedEntityId) return scopedGroupIds.has(item.relatedEntityId);
+    if (item.type === "system" && item.relatedEntityId && events.some((event) => event.id === item.relatedEntityId)) return currentEventIds.has(item.relatedEntityId);
+    return true;
+  });
+  const currentInvitations = invitations.filter((item) => item.userId === currentUserId && item.status === "convidado" && scopedGroupIds.has(item.groupId));
   const pendingTickets = privateTickets.filter((ticket) => ticket.status === "Aguardando aprovação");
   const unreadCount = currentNotifications.filter((item) => !item.readAt).length;
   const messageBadgeCount = communicationLocked ? 0 : communicationMessages.filter((message) => message.senderId !== currentUserId).length;
   const pendingCount = currentInvitations.length + pendingTickets.length;
-  const accessibleGroups = executiveCommunicationMonitor
-    ? groups.filter((group) => (group.memberUserIds ?? []).some((userId) => users.some((user) => user.id === userId && sameDepartment(user.department, activeDepartment))))
-    : groups.filter((group) => !group.memberUserIds || group.memberUserIds.includes(currentUserId));
+  const accessibleGroups = groups.filter((group) => groupConfinedToDepartment(group, activeDepartment, users) && (executiveCommunicationMonitor || !group.memberUserIds || group.memberUserIds.includes(currentUserId)));
   const activeUsers = users.filter((user) => (user.accountStatus ?? "Ativo") === "Ativo");
   const canManageEmployees = isSectorManager(currentUser);
   const sectorUsers = users.filter((user) => sameDepartment(user.department, activeDepartment));
+  const scopedActiveUsers = activeUsers.filter((user) => sameDepartment(user.department, activeDepartment));
+  const switchableUsers = executiveAccess ? activeUsers : scopedActiveUsers;
+  const scopedOffices = OFFICES.filter((office) => sameDepartment(office.name, activeDepartment));
+  const availableDepartments = executiveAccess ? allDepartments : [activeDepartment];
   const sectorEmployees = sectorUsers.filter((user) => !isSectorManager(user));
   const departmentPermissionSettings = (() => {
     const configured = permissionConfigs[activeDepartment];
@@ -547,8 +557,8 @@ export default function Home() {
   }
 
   function exportContacts() {
-    exportCsv("contatos-secretarias.csv", [["Secretaria", "Responsável", "Telefone", "E-mail", "Endereço"], ...OFFICES.map((office) => [office.name, office.head, office.phone, office.email, office.address])]);
-    notify("Contatos das secretarias exportados em CSV.");
+    exportCsv("contatos-do-setor.csv", [["Setor", "Responsável", "Telefone", "E-mail", "Endereço"], ...scopedOffices.map((office) => [office.name, office.head, office.phone, office.email, office.address])]);
+    notify("Contatos do setor exportados em CSV.");
   }
 
   function exportCurrentReport() {
@@ -562,8 +572,12 @@ export default function Home() {
 
   function switchUser(userId: string) {
     const nextUser = users.find((user) => user.id === userId);
+    if (!nextUser || (!executiveAccess && !sameDepartment(nextUser.department, currentUser.department))) {
+      notify("A troca de perfil foi bloqueada: somente Prefeito e Vice-prefeito podem acessar outro setor.");
+      return;
+    }
     setCurrentUserId(userId);
-    if (nextUser) setViewedDepartment(nextUser.department);
+    setViewedDepartment(nextUser.department);
   }
 
   async function logout() {
@@ -574,12 +588,14 @@ export default function Home() {
   async function createTicket(form: FormData) {
     const now = new Date().toISOString();
     const assigneeId = String(form.get("assigneeId") || "") || null;
-    const assignee = users.find((user) => user.id === assigneeId);
+    const requestedDepartment = String(form.get("department") || "");
+    const targetDepartment = availableDepartments.find((department) => sameDepartment(department, requestedDepartment)) ?? activeDepartment;
+    const assignee = scopedActiveUsers.find((user) => user.id === assigneeId && sameDepartment(user.department, targetDepartment));
     const temporary: Ticket = {
       id: makeId(), protocol: `CH-2026-${String(ticketData.length + 188).padStart(4, "0")}`,
       title: String(form.get("title")), description: String(form.get("description")), requester: activeDepartment,
-      department: String(form.get("department")), priority: String(form.get("priority")) as Priority, status: "Recebido",
-      dueDate: String(form.get("dueDate")) || null, assigneeId, assigneeName: assignee?.fullName, assigneeInitials: assignee?.initials, neighborhood: String(form.get("neighborhood") || ""), address: String(form.get("address") || ""), latitude: Number.isFinite(Number(form.get("latitude"))) && String(form.get("latitude")||"").trim() ? Number(form.get("latitude")) : null, longitude: Number.isFinite(Number(form.get("longitude"))) && String(form.get("longitude")||"").trim() ? Number(form.get("longitude")) : null, createdAt: now, updatedAt: now,
+      department: targetDepartment, priority: String(form.get("priority")) as Priority, status: "Recebido",
+      dueDate: String(form.get("dueDate")) || null, assigneeId: assignee?.id ?? null, assigneeName: assignee?.fullName, assigneeInitials: assignee?.initials, neighborhood: String(form.get("neighborhood") || ""), address: String(form.get("address") || ""), latitude: Number.isFinite(Number(form.get("latitude"))) && String(form.get("latitude")||"").trim() ? Number(form.get("latitude")) : null, longitude: Number.isFinite(Number(form.get("longitude"))) && String(form.get("longitude")||"").trim() ? Number(form.get("longitude")) : null, createdAt: now, updatedAt: now,
     };
     const belongsToCurrentDepartment = sameDepartment(temporary.department, activeDepartment);
     setTicketData((current) => [temporary, ...current]);
@@ -592,7 +608,7 @@ export default function Home() {
 
   async function executeMunicipalAgentAction(action: MunicipalAgentAction): Promise<MunicipalAgentExecutionResult> {
     const payload = action.payload;
-    const validDepartment = (name: string) => allDepartments.find((item) => sameDepartment(item, name)) || "";
+    const validDepartment = (name: string) => availableDepartments.find((item) => sameDepartment(item, name)) || "";
     if (action.type === "navigate") {
       const navMap: Record<string, NavItem> = { "Início": "Visão geral", "Demandas": "Chamados", "Tarefas": "Central Integrada", "Agenda": "Próximos Eventos", "Gestão": "Central Integrada", "Configurações": "Configurações", "Chamados": "Chamados", "Atendimento ao Cidadão": "Atendimento ao Cidadão", "Central Integrada": "Central Integrada", "Próximos Eventos": "Próximos Eventos" };
       const target = navMap[payload.navTarget] || navMap[payload.title]; if (!target) return { ok:false, message:"Não encontrei essa área na navegação disponível." }; setActiveNav(target); return { ok:true, message:`Abri a área “${payload.navTarget || payload.title}”.` };
@@ -606,12 +622,12 @@ export default function Home() {
     if (action.type === "send_internal_message") {
       if (!payload.assignee.trim() || !payload.description.trim()) return { ok:false, message:"A IA ainda precisa do destinatário e do texto da mensagem antes de enviar." };
       if (!communicationPermission.register) return { ok:false, message:"Seu perfil não possui permissão para enviar mensagens internas." };
-      const normalizedRecipient = normalizeText(payload.assignee); const matches = users.filter((item)=>item.id!==currentUser.id && (normalizeText(item.fullName)===normalizedRecipient || normalizeText(item.fullName).includes(normalizedRecipient) || normalizedRecipient.includes(normalizeText(item.fullName))));
+      const normalizedRecipient = normalizeText(payload.assignee); const matches = scopedActiveUsers.filter((item)=>item.id!==currentUser.id && (normalizeText(item.fullName)===normalizedRecipient || normalizeText(item.fullName).includes(normalizedRecipient) || normalizedRecipient.includes(normalizeText(item.fullName))));
       if (matches.length !== 1) return { ok:false, message: matches.length ? `Encontrei mais de um servidor compatível com “${payload.assignee}”. Informe o nome completo no chat da IA.` : `Não encontrei o destinatário “${payload.assignee}” entre os usuários ativos.` };
-      const recipient=matches[0]; const now=new Date().toISOString(); const message:Message={id:makeId(),conversationType:"direct",conversationId:directConversationId(currentUser.id,recipient.id),senderId:currentUser.id,senderName:currentUser.fullName,senderInitials:currentUser.initials,body:payload.description,ticketId:payload.ticketProtocol ? ticketData.find((item)=>item.protocol.toLowerCase()===payload.ticketProtocol.toLowerCase())?.id ?? null : null,createdAt:now}; sendMessage(message,recipient.id); return {ok:true,message:`Mensagem enviada para ${recipient.fullName} (${recipient.department}).`,entityId:message.id};
+      const recipient=matches[0]; const now=new Date().toISOString(); const message:Message={id:makeId(),conversationType:"direct",conversationId:directConversationId(currentUser.id,recipient.id),senderId:currentUser.id,senderName:currentUser.fullName,senderInitials:currentUser.initials,body:payload.description,ticketId:payload.ticketProtocol ? privateTickets.find((item)=>item.protocol.toLowerCase()===payload.ticketProtocol.toLowerCase())?.id ?? null : null,createdAt:now}; sendMessage(message,recipient.id); return {ok:true,message:`Mensagem enviada para ${recipient.fullName} (${recipient.department}).`,entityId:message.id};
     }
     if (action.type === "update_ticket_status") {
-      const ticket = ticketData.find((item)=>item.protocol.toLowerCase()===payload.ticketProtocol.toLowerCase()); if (!ticket) return { ok:false, message:`Não encontrei o chamado ${payload.ticketProtocol}.` }; const validStatus = statuses.find((status)=>status.toLowerCase()===payload.status.toLowerCase()); if (!validStatus) return { ok:false, message:"O novo status informado não é válido." }; if (!ticketPermission.edit || !sameDepartment(ticket.department, activeDepartment)) return { ok:false, message:"Seu perfil não possui autorização para alterar esse chamado no setor visualizado." }; updateStatus(ticket.id, validStatus); return { ok:true, message:`Chamado ${ticket.protocol} atualizado para “${validStatus}”.`, entityId:ticket.id, protocol:ticket.protocol };
+      const ticket = privateTickets.find((item)=>item.protocol.toLowerCase()===payload.ticketProtocol.toLowerCase()); if (!ticket) return { ok:false, message:`Não encontrei o chamado ${payload.ticketProtocol} no setor atual.` }; const validStatus = statuses.find((status)=>status.toLowerCase()===payload.status.toLowerCase()); if (!validStatus) return { ok:false, message:"O novo status informado não é válido." }; if (!ticketPermission.edit || !sameDepartment(ticket.department, activeDepartment)) return { ok:false, message:"Seu perfil não possui autorização para alterar esse chamado no setor visualizado." }; updateStatus(ticket.id, validStatus); return { ok:true, message:`Chamado ${ticket.protocol} atualizado para “${validStatus}”.`, entityId:ticket.id, protocol:ticket.protocol };
     }
     if (action.type === "create_event") {
       if (!payload.title.trim() || !payload.startsAt.trim()) return { ok:false, message:"A IA ainda precisa do título e da data/hora de início para publicar o evento." };
@@ -624,7 +640,7 @@ export default function Home() {
       if(action.type==="create_task"){if(!payload.title.trim()||!payload.description.trim())return{ok:false,message:"A IA ainda precisa do título e da descrição da tarefa."};const dueAt=payload.dueAt?new Date(payload.dueAt).toISOString():new Date(Date.now()+(payload.slaHours||48)*3600000).toISOString();next={id:entityId,title:payload.title,description:payload.description,kind:["Tarefa","Solicitação interna","Vistoria"].includes(payload.kind)?payload.kind:"Tarefa",requesterDepartment:activeDepartment,department:validDepartment(payload.department)||activeDepartment,assignee:payload.assignee||"Responsável a definir",priority:["Baixa","Normal","Alta","Urgente"].includes(payload.priority)?payload.priority:"Normal",status:"A fazer",dueAt,slaHours:payload.slaHours||48,createdAt:now,updatedAt:now,tags:payload.tags,comments:[],history:[{at:now,action:`Criada pelo Agente Municipal a pedido de ${currentUser.fullName}`} ]};}
       else if(action.type==="create_project"){if(!payload.title.trim()||!payload.dueDate.trim())return{ok:false,message:"A IA ainda precisa do nome e do prazo do projeto."};next={id:entityId,title:payload.title,department:validDepartment(payload.department)||activeDepartment,owner:payload.owner||currentUser.fullName,status:"Planejamento",progress:0,dueDate:payload.dueDate.slice(0,10),stages:[{name:"Planejamento",done:false},{name:"Execução",done:false},{name:"Validação",done:false},{name:"Entrega",done:false}]};}
       else if(action.type==="create_goal"){if(!payload.title.trim()||!payload.dueDate.trim()||payload.target<=0)return{ok:false,message:"A IA ainda precisa do nome, meta numérica e prazo."};next={id:entityId,title:payload.title,department:validDepartment(payload.department)||activeDepartment,current:Math.max(0,payload.current||0),target:Math.max(0.01,payload.target||1),unit:payload.unit||"%",dueDate:payload.dueDate.slice(0,10)};}
-      else {if(!payload.title.trim()||!payload.neighborhood.trim()||!payload.address.trim())return{ok:false,message:"A IA ainda precisa do nome, bairro e endereço do local público."};next={id:entityId,name:payload.title,type:payload.placeType||"Outro",neighborhood:payload.neighborhood,address:payload.address,status:"Operacional",lastMaintenance:now.slice(0,10),history:[`${new Date().toLocaleDateString("pt-BR")} — local cadastrado pelo Agente Municipal por ${currentUser.fullName}`]};}
+      else {if(!payload.title.trim()||!payload.neighborhood.trim()||!payload.address.trim())return{ok:false,message:"A IA ainda precisa do nome, bairro e endereço do local público."};next={id:entityId,name:payload.title,type:payload.placeType||"Outro",department:activeDepartment,neighborhood:payload.neighborhood,address:payload.address,status:"Operacional",lastMaintenance:now.slice(0,10),history:[`${new Date().toLocaleDateString("pt-BR")} — local cadastrado pelo Agente Municipal por ${currentUser.fullName}`]};}
       await savePersistentValue(persistentConfig.key,[next,...current]); window.dispatchEvent(new CustomEvent("municipal-agent-data-changed",{detail:{key:persistentConfig.key}})); addAudit(`ia_${action.type}`,action.type,entityId,action.summary); if(action.type==="create_task")setActiveNav("Central Integrada"); return {ok:true,message:action.type==="create_task"?`Tarefa “${payload.title}” criada e encaminhada para ${String(next.department)}.`:action.type==="create_project"?`Projeto “${payload.title}” criado com sucesso.`:action.type==="create_goal"?`Meta “${payload.title}” cadastrada com sucesso.`:`Local público “${payload.title}” cadastrado com sucesso.`,entityId};
     }
     return { ok:false, message:"Essa ação ainda não possui executor automático no sistema." };
@@ -685,9 +701,11 @@ export default function Home() {
     const rawEndsAt = String(form.get("endsAt") ?? "");
     const endsAt = rawEndsAt ? localDateTimeToIso(rawEndsAt) : null;
     if (endsAt && new Date(endsAt) < new Date(startsAt)) { notify("O término do evento não pode ser anterior ao início."); return; }
-    const targetDepartments = Array.from(new Set(form.getAll("targetDepartments").map(String).filter(Boolean)));
+    const requestedTargets = Array.from(new Set(form.getAll("targetDepartments").map(String).filter(Boolean)));
+    const targetDepartments = availableDepartments.filter((department) => requestedTargets.some((target) => sameDepartment(target, department)));
     if (!targetDepartments.length) { notify("Selecione pelo menos um setor para publicar o evento."); return; }
     if (existing) {
+      if (!sameDepartment(existing.department, activeDepartment)) { notify("Somente o setor que criou o evento pode alterá-lo."); return; }
       const updated: SectorEvent = {
         ...existing,
         title: String(form.get("title") ?? "").trim(), description: String(form.get("description") ?? "").trim(),
@@ -715,7 +733,7 @@ export default function Home() {
   }
 
   function deleteEvent(item: SectorEvent) {
-    if (!eventPermission.edit) { notify("Seu perfil não possui autorização para excluir eventos."); return; }
+    if (!eventPermission.edit || !currentEventIds.has(item.id) || !sameDepartment(item.department, activeDepartment)) { notify("Somente o setor que criou o evento pode excluí-lo."); return; }
     setEvents((current) => current.filter((event) => event.id !== item.id));
     addAudit("evento_excluido", "evento", item.id, `${item.title} removido da agenda`);
     addEventNotifications(item, "cancelado");
@@ -724,8 +742,8 @@ export default function Home() {
   }
 
   function recipientIds(conversationType: ChatTab, conversationId: string, recipientId?: string) {
-    if (conversationType === "direct") return recipientId && recipientId !== currentUserId ? [recipientId] : [];
-    return (groups.find((group) => group.id === conversationId)?.memberUserIds ?? []).filter((id) => id !== currentUserId);
+    if (conversationType === "direct") return recipientId && recipientId !== currentUserId && scopedActiveUsers.some((user) => user.id === recipientId) ? [recipientId] : [];
+    return (groups.find((group) => group.id === conversationId)?.memberUserIds ?? []).filter((id) => id !== currentUserId && scopedActiveUsers.some((user) => user.id === id));
   }
 
   function addMessageNotifications(message: Message, recipientId?: string) {
@@ -741,6 +759,7 @@ export default function Home() {
   }
 
   function sendMessage(message: Message, recipientId?: string) {
+    if (!messageConfinedToDepartment(message, activeDepartment, users, groups)) { notify("A mensagem foi bloqueada porque o destinatário não pertence ao setor visualizado."); return; }
     setMessages((current) => [...current, message]);
     addMessageNotifications(message, recipientId);
     addAudit("mensagem_enviada", "mensagem", message.id, `Mensagem enviada por ${currentUser.fullName}`);
@@ -826,16 +845,17 @@ export default function Home() {
   }
 
   function createGroup(group: Group, memberIds: string[]) {
-    const createdGroup = { ...group, memberUserIds: [currentUserId], pendingUserIds: memberIds };
-    const newInvitations = memberIds.map((userId): GroupInvitation => ({ groupId: group.id, userId, groupName: group.name, description: group.description, invitedByName: currentUser.fullName, invitedByInitials: currentUser.initials, memberCount: 1, status: "convidado", createdAt: group.createdAt }));
-    const newNotifications = memberIds.map((userId): NotificationItem => ({ id: makeId(), userId, type: "group_invite", title: "Novo convite para grupo", body: `${currentUser.fullName} convidou você para ${group.name}.`, relatedEntityId: group.id, readAt: null, createdAt: group.createdAt, actorName: currentUser.fullName, actorInitials: currentUser.initials }));
+    const scopedMemberIds = memberIds.filter((userId) => scopedActiveUsers.some((user) => user.id === userId));
+    const createdGroup = { ...group, memberUserIds: [currentUserId], pendingUserIds: scopedMemberIds };
+    const newInvitations = scopedMemberIds.map((userId): GroupInvitation => ({ groupId: group.id, userId, groupName: group.name, description: group.description, invitedByName: currentUser.fullName, invitedByInitials: currentUser.initials, memberCount: 1, status: "convidado", createdAt: group.createdAt }));
+    const newNotifications = scopedMemberIds.map((userId): NotificationItem => ({ id: makeId(), userId, type: "group_invite", title: "Novo convite para grupo", body: `${currentUser.fullName} convidou você para ${group.name}.`, relatedEntityId: group.id, readAt: null, createdAt: group.createdAt, actorName: currentUser.fullName, actorInitials: currentUser.initials }));
     setGroups((current) => [createdGroup, ...current]);
     setInvitations((current) => [...newInvitations, ...current]);
     setNotifications((current) => [...newNotifications, ...current]);
-    addAudit("grupo_criado", "grupo", group.id, `Grupo ${group.name} criado com ${memberIds.length} convites enviados`);
+    addAudit("grupo_criado", "grupo", group.id, `Grupo ${group.name} criado com ${scopedMemberIds.length} convites enviados`);
     setGroupModal(false);
     setActiveNav("Comunicação");
-    notify(`${memberIds.length} ${memberIds.length === 1 ? "convite enviado" : "convites enviados"} pelo sistema.`);
+    notify(`${scopedMemberIds.length} ${scopedMemberIds.length === 1 ? "convite enviado" : "convites enviados"} para integrantes do setor.`);
   }
 
   async function inviteEmployee(form: FormData) {
@@ -879,7 +899,7 @@ export default function Home() {
     { label: "Geral", items: ["Visão geral"] },
     { label: "Demandas e atendimento", items: ["Chamados", "Atendimento ao Cidadão", "Pendências"] },
     { label: "Rotina operacional", items: ["Central Integrada", "Próximos Eventos", "Comunicação", "Fluxos e Anotações"] },
-    { label: "Gestão administrativa", items: ["Área do Setor", "Processos Digitais", "Gestão Municipal", "Indicadores", "Anexos e Arquivos", "Funcionários", "Secretarias"] },
+    { label: "Gestão administrativa", items: ["Área do Setor", "Processos Digitais", "Gestão Municipal", "Indicadores", "Anexos e Arquivos", "Funcionários"] },
     { label: "Sistema e suporte", items: ["Notificações", "Segurança e LGPD", "Auditoria", "Central de Ajuda", "Configurações"] },
   ];
   const cleanNavLabel: Partial<Record<NavItem, string>> = {
@@ -899,10 +919,6 @@ export default function Home() {
   return (
     <div className={`app-shell ${motionEnabled ? "motion-enabled" : "motion-reduced"}`}>
       <aside className={`sidebar ${sidebarOpen ? "sidebar-open" : ""}`}>
-        <div className="brand">
-          <div className="brand-mark" aria-hidden="true"><Landmark size={21} strokeWidth={2.2} /></div>
-          <div><strong>Prefeitura Conecta</strong><small>Gestão Integrada + IA</small></div>
-        </div>
         <nav className="main-nav clean-main-nav organized-main-nav" aria-label="Navegação principal">
           <span className="nav-label">NAVEGAÇÃO</span>
           {cleanNavSections.map((section) => {
@@ -943,32 +959,31 @@ export default function Home() {
             );
           })}
         </nav>
-        <div className={`sidebar-profile ${executiveAccess ? "sidebar-profile-executive" : ""}`}>
-          <div className="profile-avatar-wrap"><div className="avatar avatar-large">{currentUser.initials}</div>{executiveAccess&&<span className="executive-avatar-badge"><Crown size={10}/></span>}</div>
-          <div className="profile-copy"><strong>{currentUser.fullName}</strong><span>{executiveAccess ? `${currentUser.role} · acesso executivo` : currentUser.department}</span></div>
-          <button className="icon-button" aria-label="Opções do perfil" onClick={() => setInteractionModal({ title: "Opções do perfil", message: `${currentUser.fullName} · ${currentUser.role} · ${currentUser.department}. Use o seletor “Visualizar como” para alternar perfis ou abra Configurações para revisar permissões e preferências.` })}><MoreHorizontal size={18} /></button>
-        </div>
       </aside>
       {sidebarOpen && <button className="sidebar-scrim" aria-label="Fechar menu" onClick={() => setSidebarOpen(false)} />}
 
       <main className="main-area">
         <header className={`topbar ${executiveAccess ? "executive-topbar" : ""}`}>
           <button className="mobile-menu" aria-label="Abrir menu" onClick={() => setSidebarOpen(true)}><Menu size={21} /></button>
+          <div className="topbar-brand">
+            <div className="topbar-brand-mark" aria-hidden="true"><Landmark size={20} strokeWidth={2.1} /></div>
+            <span><strong>Prefeitura Conecta</strong><small>NÚCLEO MUNICIPAL</small></span>
+          </div>
           <div className="global-search-wrap">
             <label className="search-box">
               <Search size={18} aria-hidden="true" />
-              <input type="search" placeholder="Buscar em toda a plataforma..." value={search} onFocus={() => setSearchOpen(true)} onChange={(event) => { setSearch(event.target.value); setSearchOpen(true); }} />
+              <input type="search" placeholder="Buscar chamado, servidor, processo ou arquivo" value={search} onFocus={() => setSearchOpen(true)} onChange={(event) => { setSearch(event.target.value); setSearchOpen(true); }} />
               <kbd>⌘ K</kbd>
             </label>
-            {searchOpen && search.trim() && <GlobalSearchPanel query={search} tickets={privateTickets} users={activeUsers} documents={privateDocuments} events={currentEvents} offices={OFFICES} onOpen={(nav) => setActiveNav(nav as NavItem)} onClose={() => setSearchOpen(false)} />}
+            {searchOpen && search.trim() && <GlobalSearchPanel query={search} tickets={privateTickets} users={scopedActiveUsers} documents={privateDocuments} events={currentEvents} offices={scopedOffices} onOpen={(nav) => setActiveNav(nav as NavItem)} onClose={() => setSearchOpen(false)} />}
           </div>
           {executiveAccess && <label className="executive-sector-switch"><span className="executive-switch-icon"><Crown size={17} /></span><span><small>PAINEL SETORIAL</small><select aria-label="Selecionar setor para a visão executiva" value={activeDepartment} onChange={(event) => setViewedDepartment(event.target.value)}>{allDepartments.map((department) => <option key={department}>{department}</option>)}</select></span></label>}
           <div className="top-actions">
             <span className={`persistence-status ${persistenceStatus}`} title="Persistência central do sistema"><i />{persistenceStatus === "carregando" ? "Conectando" : persistenceStatus === "salvando" ? "Salvando" : persistenceStatus === "offline" ? "Aguardando conexão" : "Salvo"}</span>
-            <button className="top-ai-button" type="button" onClick={() => openMunicipalAi()}><Sparkles size={15}/> IA Conecta</button>
+            <button className="top-ai-button" type="button" onClick={() => openMunicipalAi()}><Sparkles size={15}/> Perguntar à IA</button>
             <button className="icon-button notification-button" aria-label={`Notificações${unreadCount + (mayorAccess ? citizenFeedbackUnread : 0) ? `: ${unreadCount + (mayorAccess ? citizenFeedbackUnread : 0)} novas` : ""}`} onClick={() => setActiveNav(mayorAccess && citizenFeedbackUnread > 0 ? "Atendimento ao Cidadão" : "Notificações")}><Bell size={18} />{unreadCount + (mayorAccess ? citizenFeedbackUnread : 0) > 0 && <span />}</button>
+            <label className="account-switch"><div className="avatar">{currentUser.initials}</div><span><small>PERFIL ATIVO</small><select aria-label="Visualizar como usuário" value={currentUserId} onChange={(event) => switchUser(event.target.value)}>{switchableUsers.map((user) => <option key={user.id} value={user.id}>{user.fullName} — {user.department}</option>)}</select></span></label>
             <button className="icon-button logout-button" aria-label="Sair do sistema" title="Sair" onClick={() => void logout()}><LogOut size={18} /></button>
-            <label className="account-switch"><div className="avatar">{currentUser.initials}</div><span><small>VISUALIZAR COMO</small><select aria-label="Visualizar como usuário" value={currentUserId} onChange={(event) => switchUser(event.target.value)}>{activeUsers.map((user) => <option key={user.id} value={user.id}>{user.fullName} — {user.department}</option>)}</select></span></label>
           </div>
         </header>
 
@@ -985,8 +1000,6 @@ export default function Home() {
                 currentPermission.register && <button type="button" className="button secondary" onClick={() => setEventModal("new")}><CalendarPlus size={15} /> Novo evento</button>
               ) : activeNav === "Funcionários" ? (
                 <button type="button" className="button secondary" onClick={() => setEmployeeModal(true)}><UserPlus size={15} /> Convidar funcionário</button>
-              ) : activeNav === "Secretarias" ? (
-                <button className="button secondary" onClick={exportContacts}><Download size={15} /> Exportar contatos</button>
               ) : activeNav === "Notificações" ? (
                 <button className="button secondary" onClick={markAllNotifications}><CheckCheck size={15} /> Marcar todas como lidas</button>
               ) : activeNav === "Pendências" ? (
@@ -1004,42 +1017,41 @@ export default function Home() {
 
           {activeNav !== "Visão geral" && <ContextualAiBar activeModule={activeNav} department={activeDepartment} tickets={privateTickets} events={currentEvents} />}
 
-          {activeNav === "Visão geral" && <Dashboard tickets={filteredTickets} allTickets={ticketData} audit={privateAudit} executive={executiveAccess} department={activeDepartment} userName={currentUser.fullName} onNavigate={setActiveNav} />}
-          {activeNav === "Área do Setor" && <><SectorWorkspaceSection key={activeDepartment} department={activeDepartment} userName={currentUser.fullName} userRole={currentUser.role} departments={allDepartments} notify={notify} /><FormBuilderPanel department={activeDepartment} notify={notify} /></>}
+          {activeNav === "Visão geral" && <Dashboard tickets={filteredTickets} allTickets={privateTickets} audit={privateAudit} executive={executiveAccess} department={activeDepartment} userName={currentUser.fullName} onNavigate={setActiveNav} />}
+          {activeNav === "Área do Setor" && <><SectorWorkspaceSection key={activeDepartment} department={activeDepartment} userName={currentUser.fullName} userRole={currentUser.role} departments={availableDepartments} notify={notify} /><FormBuilderPanel department={activeDepartment} notify={notify} /></>}
           {activeNav === "Fluxos e Anotações" && <SectorNotesSection key={activeDepartment} department={activeDepartment} userName={currentUser.fullName} team={sectorUsers.map((user) => ({ id: user.id, name: user.fullName, role: user.role }))} notify={notify} />}
-          {activeNav === "Chamados" && <TicketsSection tickets={filteredTickets} department={activeDepartment} onStatus={updateStatus} onNew={() => setTicketModal(true)} />}
+          {activeNav === "Chamados" && <TicketsSection tickets={filteredTickets} department={activeDepartment} departments={availableDepartments} onStatus={updateStatus} onNew={() => setTicketModal(true)} />}
           {activeNav === "Comunicação" && (communicationLocked
             ? <CommunicationPrivacyGate department={activeDepartment} isMayor={mayorAccess} onOpenSettings={() => setActiveNav("Configurações")} />
             : executiveCommunicationMonitor
-              ? <ExecutiveCommunicationViewer department={activeDepartment} users={activeUsers} groups={accessibleGroups} messages={communicationMessages} />
-              : <CommunicationSection currentUser={currentUser} users={activeUsers} groups={accessibleGroups} messages={communicationMessages} tickets={privateTickets} onSend={sendMessage} onSendAttachment={sendChatAttachment} onNewGroup={() => setGroupModal(true)} onTicketStatus={updateStatus} />)}
-          {activeNav === "Atendimento ao Cidadão" && <CitizenServiceSection department={activeDepartment} notify={notify} isMayor={mayorAccess} departments={allDepartments} />}
-          {activeNav === "Central Integrada" && <IntegratedManagementSection initialTab="Tarefas" department={activeDepartment} currentUser={{ id: currentUser.id, fullName: currentUser.fullName, department: currentUser.department, role: currentUser.role, initials: currentUser.initials }} executive={executiveAccess} tickets={ticketData} users={activeUsers.map((user) => ({ id: user.id, fullName: user.fullName, department: user.department, role: user.role, initials: user.initials }))} offices={OFFICES} events={events} departments={allDepartments} notify={notify} />}
-          {activeNav === "Processos Digitais" && <ProcessesSection key={`${activeDepartment}-${currentUser.id}`} department={activeDepartment} currentUser={{ id: currentUser.id, fullName: currentUser.fullName, department: currentUser.department, role: currentUser.role }} users={activeUsers.map((user) => ({ id: user.id, fullName: user.fullName, department: user.department, role: user.role }))} departments={allDepartments} notify={notify} />}
+              ? <ExecutiveCommunicationViewer department={activeDepartment} users={scopedActiveUsers} groups={accessibleGroups} messages={communicationMessages} />
+              : <CommunicationSection currentUser={currentUser} users={scopedActiveUsers} groups={accessibleGroups} messages={communicationMessages} tickets={privateTickets} onSend={sendMessage} onSendAttachment={sendChatAttachment} onNewGroup={() => setGroupModal(true)} onTicketStatus={updateStatus} />)}
+          {activeNav === "Atendimento ao Cidadão" && <CitizenServiceSection department={activeDepartment} notify={notify} isMayor={executiveAccess} departments={availableDepartments} />}
+          {activeNav === "Central Integrada" && <IntegratedManagementSection key={activeDepartment} initialTab="Tarefas" department={activeDepartment} currentUser={{ id: currentUser.id, fullName: currentUser.fullName, department: currentUser.department, role: currentUser.role, initials: currentUser.initials }} tickets={privateTickets} users={scopedActiveUsers.map((user) => ({ id: user.id, fullName: user.fullName, department: user.department, role: user.role, initials: user.initials }))} offices={scopedOffices} events={currentEvents} departments={availableDepartments} notify={notify} />}
+          {activeNav === "Processos Digitais" && <ProcessesSection key={`${activeDepartment}-${currentUser.id}`} department={activeDepartment} currentUser={{ id: currentUser.id, fullName: currentUser.fullName, department: currentUser.department, role: currentUser.role }} users={scopedActiveUsers.map((user) => ({ id: user.id, fullName: user.fullName, department: user.department, role: user.role }))} departments={availableDepartments} notify={notify} />}
           {activeNav === "Gestão Municipal" && <MunicipalManagementSection department={activeDepartment} notify={notify} />}
           {activeNav === "Indicadores" && <IndicatorsSection department={activeDepartment} notify={notify} />}
           {activeNav === "Notificações" && <><NotificationsSection notifications={currentNotifications} onRead={markNotification} onOpenPending={() => setActiveNav("Pendências")} /><SmartNotificationRules department={activeDepartment} notify={notify} /></>}
           {activeNav === "Pendências" && <><PendingSection invitations={currentInvitations} tickets={pendingTickets} onRespond={respondInvitation} onOpenTickets={() => setActiveNav("Chamados")} /><ApprovalCenterPanel department={activeDepartment} notify={notify} /></>}
-          {activeNav === "Anexos e Arquivos" && <><DocumentsSection documents={privateDocuments} department={activeDepartment} currentUserId={currentUser.id} onUpload={() => fileInput.current?.click()} /><DocumentGovernancePanel notify={notify} /></>}
+          {activeNav === "Anexos e Arquivos" && <><DocumentsSection documents={privateDocuments} department={activeDepartment} currentUserId={currentUser.id} onUpload={() => fileInput.current?.click()} /><DocumentGovernancePanel department={activeDepartment} notify={notify} /></>}
           {activeNav === "Próximos Eventos" && <EventsSection events={currentEvents} department={activeDepartment} onNew={() => setEventModal("new")} onEdit={setEventModal} onDelete={setEventToDelete} />}
           {activeNav === "Funcionários" && canManageEmployees && <EmployeesSection users={sectorUsers} department={activeDepartment} onInvite={() => setEmployeeModal(true)} onResend={resendEmployeeInvite} />}
-          {activeNav === "Secretarias" && <TeamSection offices={OFFICES} />}
           {activeNav === "Segurança e LGPD" && <SecuritySection department={activeDepartment} notify={notify} />}
           {activeNav === "Auditoria" && <AuditSection audit={privateAudit} department={activeDepartment} notify={notify} />}
           {activeNav === "Central de Ajuda" && <HelpCenterSection notify={notify} />}
-          {activeNav === "Configurações" && canManageEmployees && <SettingsSection key={activeDepartment} department={activeDepartment} managerName={currentUser.fullName} employees={sectorEmployees} settings={departmentPermissionSettings} soundEnabled={soundEnabled} motionEnabled={motionEnabled} isMayor={mayorAccess} crossSectorCommunicationEnabled={executiveCommunicationAccess} onSettingsChange={updatePermissionSettings} onSoundChange={setSoundEnabled} onMotionChange={setMotionEnabled} onCrossSectorCommunicationChange={(enabled) => { setExecutiveCommunicationAccess(enabled); notify(enabled ? "Acesso executivo à comunicação de outros setores habilitado." : "Comunicações de outros setores voltaram ao modo privado."); }} onTestSound={() => { playNotificationChime(); notify("Som de notificação reproduzido."); }} notify={notify} />}
+          {activeNav === "Configurações" && canManageEmployees && <SettingsSection key={activeDepartment} department={activeDepartment} managerName={currentUser.fullName} employees={sectorEmployees} settings={departmentPermissionSettings} soundEnabled={soundEnabled} motionEnabled={motionEnabled} isMayor={executiveAccess} crossSectorCommunicationEnabled={executiveCommunicationAccess} secretariatsContent={<TeamSection offices={scopedOffices} />} onExportContacts={exportContacts} onSettingsChange={updatePermissionSettings} onSoundChange={setSoundEnabled} onMotionChange={setMotionEnabled} onCrossSectorCommunicationChange={(enabled) => { setExecutiveCommunicationAccess(enabled); notify(enabled ? "Acesso executivo à comunicação de outros setores habilitado." : "Comunicações de outros setores voltaram ao modo privado."); }} onTestSound={() => { playNotificationChime(); notify("Som de notificação reproduzido."); }} notify={notify} />}
         </div>
         </PermissionProvider>
       </main>
 
       <input ref={fileInput} className="hidden-input" type="file" accept=".pdf,.doc,.docx,.xls,.xlsx,.csv,.txt,.png,.jpg,.jpeg,.zip" onChange={(event) => { const file = event.target.files?.[0]; if (file) void uploadFile(file); event.target.value = ""; }} />
-      {ticketModal && <TicketModal users={activeUsers} onClose={() => setTicketModal(false)} onCreate={createTicket} />}
-      {groupModal && <GroupModal currentUserId={currentUserId} users={activeUsers} onClose={() => setGroupModal(false)} onCreate={createGroup} />}
-      {eventModal && <EventModal department={activeDepartment} departments={allDepartments} event={eventModal === "new" ? undefined : eventModal} onClose={() => setEventModal(null)} onSave={(form) => saveEvent(form, eventModal === "new" ? undefined : eventModal)} />}
+      {ticketModal && <TicketModal users={scopedActiveUsers} departments={availableDepartments} onClose={() => setTicketModal(false)} onCreate={createTicket} />}
+      {groupModal && <GroupModal currentUserId={currentUserId} users={scopedActiveUsers} onClose={() => setGroupModal(false)} onCreate={createGroup} />}
+      {eventModal && <EventModal department={activeDepartment} departments={availableDepartments} event={eventModal === "new" ? undefined : eventModal} onClose={() => setEventModal(null)} onSave={(form) => saveEvent(form, eventModal === "new" ? undefined : eventModal)} />}
       {eventToDelete && <EventDeleteModal event={eventToDelete} onClose={() => setEventToDelete(null)} onConfirm={() => deleteEvent(eventToDelete)} />}
       {employeeModal && canManageEmployees && <EmployeeInviteModal department={activeDepartment} onClose={() => setEmployeeModal(false)} onInvite={inviteEmployee} />}
       {interactionModal && <div className="modal-backdrop" role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget) setInteractionModal(null); }}><section className="modal interaction-action-modal" role="dialog" aria-modal="true" aria-labelledby="interaction-action-title"><header><div><p className="eyebrow">FUNÇÃO DO SISTEMA</p><h2 id="interaction-action-title">{interactionModal.title}</h2></div><button type="button" aria-label="Fechar" onClick={() => setInteractionModal(null)}><X size={18} /></button></header><div className="interaction-action-body"><span className="interaction-action-icon"><ArrowUpRight size={22} /></span><div><strong>Recurso aberto</strong><p>{interactionModal.message}</p><small>Use esta janela para revisar a função e seguir para as orientações do módulo.</small></div></div><footer><button className="button secondary" onClick={() => setInteractionModal(null)}>Fechar</button><button className="button primary" onClick={() => { setInteractionModal(null); setActiveNav("Central de Ajuda"); }}>Ver orientações</button></footer></section></div>}
-      <MunicipalAiCopilot activeModule={activeNav} department={activeDepartment} user={{ id: currentUser.id, fullName: currentUser.fullName, role: currentUser.role }} tickets={privateTickets} events={currentEvents} departments={allDepartments} unreadNotifications={unreadCount + (mayorAccess ? citizenFeedbackUnread : 0)} onExecuteAction={executeMunicipalAgentAction} />
+      <MunicipalAiCopilot activeModule={activeNav} department={activeDepartment} user={{ id: currentUser.id, fullName: currentUser.fullName, role: currentUser.role }} tickets={privateTickets} events={currentEvents} departments={availableDepartments} unreadNotifications={unreadCount + (mayorAccess ? citizenFeedbackUnread : 0)} onExecuteAction={executeMunicipalAgentAction} />
       <OnboardingTour userName={currentUser.fullName} role={currentUser.role} department={activeDepartment} onNavigate={(nav) => setActiveNav(nav as NavItem)} />
       <QuickActionDock onNavigate={(nav) => setActiveNav(nav as NavItem)} onNewTicket={() => { setTicketModal(true); setActiveNav("Chamados"); }} onNewEvent={() => { setEventModal("new"); setActiveNav("Próximos Eventos"); }} />
       {toast && <div className="toast" role="status"><span><Check size={14} strokeWidth={2.5} /></span>{toast}</div>}
@@ -1196,7 +1208,7 @@ function TicketTable({ tickets, onOpen }: { tickets: Ticket[]; onOpen: () => voi
   );
 }
 
-function TicketsSection({ tickets, department, onStatus, onNew }: { tickets: Ticket[]; department: string; onStatus: (id: string, status: TicketStatus) => void; onNew: () => void }) {
+function TicketsSection({ tickets, department, departments, onStatus, onNew }: { tickets: Ticket[]; department: string; departments: string[]; onStatus: (id: string, status: TicketStatus) => void; onNew: () => void }) {
   const access = useCurrentPermission();
   const [selectedTicket, setSelectedTicket] = useState<Ticket | null>(null);
   const [viewMode, setViewMode] = useState<"board" | "list">("board");
@@ -1235,7 +1247,7 @@ function TicketsSection({ tickets, department, onStatus, onNew }: { tickets: Tic
           );
         })}
       </div>}
-      {selectedTicket && <TicketDetailModal ticket={selectedTicket} onClose={() => setSelectedTicket(null)} onStatus={(status) => { onStatus(selectedTicket.id, status); setSelectedTicket((current) => current ? { ...current, status } : current); }} />}
+      {selectedTicket && <TicketDetailModal ticket={selectedTicket} departments={departments} onClose={() => setSelectedTicket(null)} onStatus={(status) => { onStatus(selectedTicket.id, status); setSelectedTicket((current) => current ? { ...current, status } : current); }} />}
     </section>
   );
 }
@@ -1539,10 +1551,10 @@ function EventsSection({ events, department, onNew, onEdit, onDelete }: { events
       <div className="access-note events-access-note"><span><CalendarDays size={20} /></span><div><strong>Agenda de {department}</strong><p>Exibe apenas eventos destinados a este setor. Edição e exclusão respeitam as permissões definidas pelo responsável.</p></div><strong className="directory-total">{events.length} {events.length === 1 ? "evento" : "eventos"}</strong></div>
       {events.length ? <div className="events-grid">{events.map((event) => {
         const calendar = eventDateParts(event.startsAt);
-        const targets = event.targetDepartments?.length ? event.targetDepartments : [event.department];
+        const canManageEvent = access.edit && sameDepartment(event.department, department);
         return <article className="panel event-card" key={event.id}>
           <div className="event-date"><small>{calendar.month}</small><strong>{calendar.day}</strong><span>{calendar.weekday}</span></div>
-          <div className="event-copy"><div className="event-card-top"><div className="event-meta"><span><Clock3 size={13} /> {formatEventRange(event.startsAt, event.endsAt)}</span>{event.location && <span><MapPin size={13} /> {event.location}</span>}</div>{access.edit && <div className="event-card-actions"><button type="button" onClick={() => onEdit(event)} aria-label={`Editar ${event.title}`}><Pencil size={13} /> Editar</button><button type="button" className="danger" onClick={() => onDelete(event)} aria-label={`Excluir ${event.title}`}><Trash2 size={13} /> Excluir</button></div>}</div><h2>{event.title}</h2><p>{event.description || "Sem observações adicionais."}</p><div className="event-sector-tags" aria-label={`Visível para ${targets.length} setores`}>{targets.slice(0, 3).map((target) => <span key={target}><Building2 size={11} /> {target}</span>)}{targets.length > 3 && <span>+{targets.length - 3} setores</span>}</div><footer><span className="mini-avatar">{event.creatorInitials}</span><span>Criado por <strong>{event.creatorName}</strong></span><i>{targets.length} {targets.length === 1 ? "setor" : "setores"}</i></footer></div>
+          <div className="event-copy"><div className="event-card-top"><div className="event-meta"><span><Clock3 size={13} /> {formatEventRange(event.startsAt, event.endsAt)}</span>{event.location && <span><MapPin size={13} /> {event.location}</span>}</div>{canManageEvent && <div className="event-card-actions"><button type="button" onClick={() => onEdit(event)} aria-label={`Editar ${event.title}`}><Pencil size={13} /> Editar</button><button type="button" className="danger" onClick={() => onDelete(event)} aria-label={`Excluir ${event.title}`}><Trash2 size={13} /> Excluir</button></div>}</div><h2>{event.title}</h2><p>{event.description || "Sem observações adicionais."}</p><div className="event-sector-tags" aria-label={`Visível em ${department}`}><span><Building2 size={11} /> {department}</span></div><footer><span className="mini-avatar">{event.creatorInitials}</span><span>Criado por <strong>{event.creatorName}</strong></span><i>Agenda do setor</i></footer></div>
         </article>;
       })}</div> : <div className="panel module-empty events-empty"><CalendarDays size={34} /><strong>Nenhum evento agendado</strong><p>{access.register ? "Cadastre reuniões, prazos e compromissos importantes para o seu setor." : "Os próximos compromissos autorizados aparecerão aqui."}</p>{access.register && <button type="button" className="button primary" onClick={onNew}><CalendarPlus size={15} /> Criar primeiro evento</button>}</div>}
     </section>
@@ -1660,7 +1672,7 @@ function AuditSection({ audit, department, notify }: { audit: AuditItem[]; depar
   );
 }
 
-function TicketDetailModal({ ticket, onClose, onStatus }: { ticket: Ticket; onClose: () => void; onStatus: (status: TicketStatus) => void }) {
+function TicketDetailModal({ ticket, departments = [], onClose, onStatus }: { ticket: Ticket; departments?: string[]; onClose: () => void; onStatus: (status: TicketStatus) => void }) {
   const access = useCurrentPermission();
   const [tab, setTab] = useState<"mensagens" | "interno">("mensagens");
   const [note, setNote] = useState("");
@@ -1687,23 +1699,24 @@ function TicketDetailModal({ ticket, onClose, onStatus }: { ticket: Ticket; onCl
       }
     } finally { setAiDetailBusy(null); }
   }
-  return <div className="modal-backdrop" role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget) onClose(); }}><section className="modal ticket-detail-modal" role="dialog" aria-modal="true" aria-labelledby="ticket-detail-title"><header><div><p className="eyebrow">{ticket.protocol} · {ticket.requester}</p><h2 id="ticket-detail-title">{ticket.title}</h2></div><button type="button" onClick={onClose} aria-label="Fechar"><X size={18} /></button></header><div className="ticket-detail-body"><div className="ticket-detail-meta"><StatusPill status={ticket.status} /><span className={`priority-label ${ticket.priority.toLowerCase().replace("é", "e")}`}>{ticket.priority}</span><span><Clock3 size={13} /> SLA: {formatDue(ticket.dueDate)}</span>{!access.edit && <span className="read-only-chip"><ShieldCheck size={11} /> Somente consulta</span>}</div><p className="ticket-detail-description">{ticket.description}</p><div className="ticket-ai-toolbar"><button type="button" disabled={Boolean(aiDetailBusy)} onClick={() => void aiTicketTool("summary")}><Sparkles size={13}/>{aiDetailBusy === "summary" ? "Resumindo..." : "Resumir"}</button><button type="button" disabled={Boolean(aiDetailBusy) || !access.edit} onClick={() => void aiTicketTool("checklist")}><Sparkles size={13}/>{aiDetailBusy === "checklist" ? "Criando..." : "Gerar checklist"}</button><button type="button" disabled={Boolean(aiDetailBusy) || !access.edit} onClick={() => void aiTicketTool("reply")}><Sparkles size={13}/>{aiDetailBusy === "reply" ? "Redigindo..." : "Sugerir atualização"}</button></div>{aiSummary && <div className="ticket-ai-summary"><strong><Sparkles size={13}/> Resumo da IA</strong><p>{aiSummary}</p></div>}<div className="ticket-address-card"><span><MapPin size={16} /></span><div><small>Endereço registrado</small><strong>{ticket.address || "Endereço não informado"}</strong><p>{ticket.neighborhood ? `${ticket.neighborhood} · Várzea da Palma/MG` : "Bairro não informado"}</p></div></div><div className="ticket-sla-meter"><strong>SLA operacional</strong><span><i style={{ width: `${ticket.status === "Concluído" ? 100 : ticket.priority === "Urgente" ? 82 : ticket.priority === "Alta" ? 66 : 48}%` }} /></span><em>{formatDue(ticket.dueDate)}</em></div><article className="ticket-timeline"><h3>Linha do tempo do chamado</h3><ol><li><time>08:42</time><i /><span><strong>Chamado registrado</strong>Solicitação recebida e protocolo gerado.</span></li><li><time>09:03</time><i /><span><strong>Triagem concluída</strong>Demanda encaminhada para {ticket.department}.</span></li><li><time>09:18</time><i /><span><strong>Responsável definido</strong>{ticket.assigneeName ?? "Equipe do setor"} assumiu o atendimento.</span></li><li><time>11:07</time><i /><span><strong>Execução atualizada</strong>Status atual: {ticket.status}.</span></li></ol></article><div className="ticket-ownership"><div><small>Responsável principal</small><strong><span className="mini-avatar">{ticket.assigneeInitials ?? "--"}</span>{ticket.assigneeName ?? "A definir"}</strong></div><div><small>Colaboradores</small><strong><span className="avatar-stack"><i>AK</i><i>MC</i><i>+2</i></span>4 participantes</strong></div><div><small>Aprovador</small><strong><ShieldCheck size={14} /> Responsável pelo setor</strong></div></div><div className="ticket-detail-grid"><article className="ticket-checklist"><header><div><h3>Checklist de execução</h3><p>{checklist.filter((item) => item.done).length} de {checklist.length} etapas concluídas</p></div><span>{Math.round(checklist.filter((item) => item.done).length / checklist.length * 100)}%</span></header>{checklist.map((item) => <label key={item.id} className={item.done ? "done" : ""}><input type="checkbox" checked={item.done} disabled={!access.edit} onChange={() => setChecklist((current) => current.map((entry) => entry.id === item.id ? { ...entry, done: !entry.done } : entry))} /><span>{item.label}</span></label>)}{access.edit && <button onClick={() => { setChecklist((current) => [...current, { id: `custom-${current.length + 1}`, label: `Nova etapa ${current.length + 1}`, done: false }]); setFeedback("Nova etapa adicionada ao checklist."); }}><Plus size={13} /> Adicionar etapa</button>}</article><article className="ticket-movement"><h3>Encaminhar para outro setor</h3><p>O setor de origem e todo o histórico serão preservados.</p><select aria-label="Setor de destino" disabled={!access.edit} value={forwardDepartment} onChange={(event) => setForwardDepartment(event.target.value)}><option value="">Selecione o setor de destino</option>{OFFICES.filter((office) => office.name !== ticket.department).map((office) => <option key={office.id}>{office.name}</option>)}</select><textarea aria-label="Motivo do encaminhamento" disabled={!access.edit} placeholder={access.edit ? "Justificativa do encaminhamento..." : "Alteração bloqueada pelo perfil"} />{access.edit && <button className="button secondary" disabled={!forwardDepartment} onClick={() => { setFeedback(`Encaminhamento preparado para ${forwardDepartment}.`); setForwardDepartment(""); }}>Registrar encaminhamento</button>}{feedback && <small className="ticket-inline-feedback"><Check size={11} /> {feedback}</small>}</article></div><article className="ticket-conversation"><div className="ticket-conversation-tabs"><button className={tab === "mensagens" ? "active" : ""} onClick={() => setTab("mensagens")}>Mensagens do chamado</button><button className={tab === "interno" ? "active" : ""} onClick={() => setTab("interno")}><LockKeyholeIcon /> Anotações internas</button></div><div className="ticket-note-feed">{tab === "mensagens" ? <><p><strong>Solicitante</strong><span>A solicitação foi registrada com endereço e fotografias do local.</span><small>13 ago., 08:42</small></p><p><strong>{ticket.assigneeName ?? "Equipe responsável"}</strong><span>A análise inicial foi realizada e o atendimento segue o prazo indicado.</span><small>13 ago., 11:18</small></p></> : <><p className="internal-note"><strong>Nota restrita ao setor</strong><span>Verificar disponibilidade da equipe antes de confirmar a data ao solicitante.</span><small>Somente integrantes autorizados podem visualizar</small></p></>} </div>{access.edit && <div className="ticket-note-compose"><input aria-label={tab === "interno" ? "Adicionar anotação interna" : "Escrever mensagem do chamado"} value={note} onChange={(event) => setNote(event.target.value)} placeholder={tab === "interno" ? "Adicionar anotação interna..." : "Escrever atualização para os participantes..."} /><button disabled={!note.trim()} onClick={() => { setFeedback(tab === "interno" ? "Anotação interna registrada." : "Mensagem registrada no chamado."); setNote(""); }}><Send size={14} /></button></div>}</article><footer className="ticket-detail-footer">{access.edit && <label>Etapa atual<select value={ticket.status} onChange={(event) => onStatus(event.target.value as TicketStatus)}>{statuses.map((status) => <option key={status}>{status}</option>)}</select></label>}<button className="button secondary" onClick={onClose}>Fechar</button>{access.edit && <button className="button primary" onClick={() => { onStatus("Concluído"); setFeedback("Chamado concluído e pesquisa de satisfação liberada."); }}><CheckCircle2 size={15} /> Concluir atendimento</button>}</footer></div></section></div>;
+  const forwardDepartments = departments.filter((department) => !sameDepartment(department, ticket.department));
+  return <div className="modal-backdrop" role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget) onClose(); }}><section className="modal ticket-detail-modal" role="dialog" aria-modal="true" aria-labelledby="ticket-detail-title"><header><div><p className="eyebrow">{ticket.protocol} · {ticket.requester}</p><h2 id="ticket-detail-title">{ticket.title}</h2></div><button type="button" onClick={onClose} aria-label="Fechar"><X size={18} /></button></header><div className="ticket-detail-body"><div className="ticket-detail-meta"><StatusPill status={ticket.status} /><span className={`priority-label ${ticket.priority.toLowerCase().replace("é", "e")}`}>{ticket.priority}</span><span><Clock3 size={13} /> SLA: {formatDue(ticket.dueDate)}</span>{!access.edit && <span className="read-only-chip"><ShieldCheck size={11} /> Somente consulta</span>}</div><p className="ticket-detail-description">{ticket.description}</p><div className="ticket-ai-toolbar"><button type="button" disabled={Boolean(aiDetailBusy)} onClick={() => void aiTicketTool("summary")}><Sparkles size={13}/>{aiDetailBusy === "summary" ? "Resumindo..." : "Resumir"}</button><button type="button" disabled={Boolean(aiDetailBusy) || !access.edit} onClick={() => void aiTicketTool("checklist")}><Sparkles size={13}/>{aiDetailBusy === "checklist" ? "Criando..." : "Gerar checklist"}</button><button type="button" disabled={Boolean(aiDetailBusy) || !access.edit} onClick={() => void aiTicketTool("reply")}><Sparkles size={13}/>{aiDetailBusy === "reply" ? "Redigindo..." : "Sugerir atualização"}</button></div>{aiSummary && <div className="ticket-ai-summary"><strong><Sparkles size={13}/> Resumo da IA</strong><p>{aiSummary}</p></div>}<div className="ticket-address-card"><span><MapPin size={16} /></span><div><small>Endereço registrado</small><strong>{ticket.address || "Endereço não informado"}</strong><p>{ticket.neighborhood ? `${ticket.neighborhood} · Várzea da Palma/MG` : "Bairro não informado"}</p></div></div><div className="ticket-sla-meter"><strong>SLA operacional</strong><span><i style={{ width: `${ticket.status === "Concluído" ? 100 : ticket.priority === "Urgente" ? 82 : ticket.priority === "Alta" ? 66 : 48}%` }} /></span><em>{formatDue(ticket.dueDate)}</em></div><article className="ticket-timeline"><h3>Linha do tempo do chamado</h3><ol><li><time>08:42</time><i /><span><strong>Chamado registrado</strong>Solicitação recebida e protocolo gerado.</span></li><li><time>09:03</time><i /><span><strong>Triagem concluída</strong>Demanda encaminhada para {ticket.department}.</span></li><li><time>09:18</time><i /><span><strong>Responsável definido</strong>{ticket.assigneeName ?? "Equipe do setor"} assumiu o atendimento.</span></li><li><time>11:07</time><i /><span><strong>Execução atualizada</strong>Status atual: {ticket.status}.</span></li></ol></article><div className="ticket-ownership"><div><small>Responsável principal</small><strong><span className="mini-avatar">{ticket.assigneeInitials ?? "--"}</span>{ticket.assigneeName ?? "A definir"}</strong></div><div><small>Equipe do setor</small><strong><UsersRound size={14} /> Acesso restrito à unidade</strong></div><div><small>Aprovador</small><strong><ShieldCheck size={14} /> Responsável pelo setor</strong></div></div><div className="ticket-detail-grid"><article className="ticket-checklist"><header><div><h3>Checklist de execução</h3><p>{checklist.filter((item) => item.done).length} de {checklist.length} etapas concluídas</p></div><span>{Math.round(checklist.filter((item) => item.done).length / checklist.length * 100)}%</span></header>{checklist.map((item) => <label key={item.id} className={item.done ? "done" : ""}><input type="checkbox" checked={item.done} disabled={!access.edit} onChange={() => setChecklist((current) => current.map((entry) => entry.id === item.id ? { ...entry, done: !entry.done } : entry))} /><span>{item.label}</span></label>)}{access.edit && <button onClick={() => { setChecklist((current) => [...current, { id: `custom-${current.length + 1}`, label: `Nova etapa ${current.length + 1}`, done: false }]); setFeedback("Nova etapa adicionada ao checklist."); }}><Plus size={13} /> Adicionar etapa</button>}</article>{forwardDepartments.length > 0 && <article className="ticket-movement"><h3>Encaminhar para outro setor</h3><p>O setor de origem e todo o histórico serão preservados.</p><select aria-label="Setor de destino" disabled={!access.edit} value={forwardDepartment} onChange={(event) => setForwardDepartment(event.target.value)}><option value="">Selecione o setor de destino</option>{forwardDepartments.map((department) => <option key={department}>{department}</option>)}</select><textarea aria-label="Motivo do encaminhamento" disabled={!access.edit} placeholder={access.edit ? "Justificativa do encaminhamento..." : "Alteração bloqueada pelo perfil"} />{access.edit && <button className="button secondary" disabled={!forwardDepartment} onClick={() => { setFeedback(`Encaminhamento preparado para ${forwardDepartment}.`); setForwardDepartment(""); }}>Registrar encaminhamento</button>}{feedback && <small className="ticket-inline-feedback"><Check size={11} /> {feedback}</small>}</article>}</div><article className="ticket-conversation"><div className="ticket-conversation-tabs"><button className={tab === "mensagens" ? "active" : ""} onClick={() => setTab("mensagens")}>Mensagens do chamado</button><button className={tab === "interno" ? "active" : ""} onClick={() => setTab("interno")}><LockKeyholeIcon /> Anotações internas</button></div><div className="ticket-note-feed">{tab === "mensagens" ? <><p><strong>Solicitante</strong><span>A solicitação foi registrada com endereço e fotografias do local.</span><small>13 ago., 08:42</small></p><p><strong>{ticket.assigneeName ?? "Equipe responsável"}</strong><span>A análise inicial foi realizada e o atendimento segue o prazo indicado.</span><small>13 ago., 11:18</small></p></> : <><p className="internal-note"><strong>Nota restrita ao setor</strong><span>Verificar disponibilidade da equipe antes de confirmar a data ao solicitante.</span><small>Somente integrantes autorizados podem visualizar</small></p></>} </div>{access.edit && <div className="ticket-note-compose"><input aria-label={tab === "interno" ? "Adicionar anotação interna" : "Escrever mensagem do chamado"} value={note} onChange={(event) => setNote(event.target.value)} placeholder={tab === "interno" ? "Adicionar anotação interna..." : "Escrever atualização para os participantes..."} /><button disabled={!note.trim()} onClick={() => { setFeedback(tab === "interno" ? "Anotação interna registrada." : "Mensagem registrada no chamado."); setNote(""); }}><Send size={14} /></button></div>}</article><footer className="ticket-detail-footer">{access.edit && <label>Etapa atual<select value={ticket.status} onChange={(event) => onStatus(event.target.value as TicketStatus)}>{statuses.map((status) => <option key={status}>{status}</option>)}</select></label>}<button className="button secondary" onClick={onClose}>Fechar</button>{access.edit && <button className="button primary" onClick={() => { onStatus("Concluído"); setFeedback("Chamado concluído e pesquisa de satisfação liberada."); }}><CheckCircle2 size={15} /> Concluir atendimento</button>}</footer></div></section></div>;
 }
 
 function LockKeyholeIcon() { return <ShieldCheck size={13} />; }
 
-function TicketModal({ users, onClose, onCreate }: { users: User[]; onClose: () => void; onCreate: (data: FormData) => unknown | Promise<unknown> }) {
-  const [department, setDepartment] = useState(""); const [neighborhood, setNeighborhood] = useState(""); const [address, setAddress] = useState(""); const [title, setTitle] = useState(""); const [description, setDescription] = useState(""); const [priority, setPriority] = useState<Priority>("Média"); const [dueDate, setDueDate] = useState(""); const [aiBusy, setAiBusy] = useState(false); const [aiHint, setAiHint] = useState("");
+function TicketModal({ users, departments, onClose, onCreate }: { users: User[]; departments: string[]; onClose: () => void; onCreate: (data: FormData) => unknown | Promise<unknown> }) {
+  const [department, setDepartment] = useState(departments[0] ?? ""); const [neighborhood, setNeighborhood] = useState(""); const [address, setAddress] = useState(""); const [title, setTitle] = useState(""); const [description, setDescription] = useState(""); const [priority, setPriority] = useState<Priority>("Média"); const [dueDate, setDueDate] = useState(""); const [aiBusy, setAiBusy] = useState(false); const [aiHint, setAiHint] = useState("");
   const eligibleUsers = users.filter((user) => sameDepartment(user.department, department));
   function submit(event: FormEvent<HTMLFormElement>) { event.preventDefault(); void onCreate(new FormData(event.currentTarget)); }
-  async function assistWithAi() { if (!title.trim() && !description.trim()) { setAiHint("Escreva ao menos um título ou uma descrição para a IA analisar."); return; } setAiBusy(true); setAiHint(""); try { const response = await fetch("/api/ai", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ operation: "ticket_assist", title, description, neighborhood, departments: OFFICES.map((office) => office.name) }) }); const payload = await response.json() as { result?: { title:string; description:string; department:string; priority:Priority; dueDays:number; slaHours:number; tags:string[]; checklist:string[]; source:string }; error?:string }; if (!response.ok || !payload.result) throw new Error(payload.error || "Não foi possível preparar o chamado com IA."); const result = payload.result; setTitle(result.title || title); setDescription(result.description || description); if (OFFICES.some((office) => office.name === result.department)) setDepartment(result.department); setPriority(result.priority || priority); const target = new Date(); target.setDate(target.getDate()+Math.max(0,result.dueDays||0)); setDueDate(target.toISOString().slice(0,10)); setAiHint(`IA sugeriu setor, prioridade e prazo · SLA recomendado: ${result.slaHours}h${result.tags.length ? ` · ${result.tags.slice(0,3).join(", ")}` : ""}. Revise antes de criar.`); } catch(error) { setAiHint(error instanceof Error ? error.message : "Falha ao consultar a IA."); } finally { setAiBusy(false); } }
+  async function assistWithAi() { if (!title.trim() && !description.trim()) { setAiHint("Escreva ao menos um título ou uma descrição para a IA analisar."); return; } setAiBusy(true); setAiHint(""); try { const response = await fetch("/api/ai", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ operation: "ticket_assist", title, description, neighborhood, departments }) }); const payload = await response.json() as { result?: { title:string; description:string; department:string; priority:Priority; dueDays:number; slaHours:number; tags:string[]; checklist:string[]; source:string }; error?:string }; if (!response.ok || !payload.result) throw new Error(payload.error || "Não foi possível preparar o chamado com IA."); const result = payload.result; setTitle(result.title || title); setDescription(result.description || description); if (departments.some((item) => sameDepartment(item, result.department))) setDepartment(departments.find((item) => sameDepartment(item, result.department)) ?? department); setPriority(result.priority || priority); const target = new Date(); target.setDate(target.getDate()+Math.max(0,result.dueDays||0)); setDueDate(target.toISOString().slice(0,10)); setAiHint(`IA sugeriu setor, prioridade e prazo · SLA recomendado: ${result.slaHours}h${result.tags.length ? ` · ${result.tags.slice(0,3).join(", ")}` : ""}. Revise antes de criar.`); } catch(error) { setAiHint(error instanceof Error ? error.message : "Falha ao consultar a IA."); } finally { setAiBusy(false); } }
   return <div className="modal-backdrop" role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget) onClose(); }}><section className="modal ticket-create-modal" role="dialog" aria-modal="true" aria-labelledby="ticket-modal-title"><header><div><p className="eyebrow">NOVO REGISTRO</p><h2 id="ticket-modal-title">Criar chamado</h2></div><button type="button" onClick={onClose} aria-label="Fechar"><X size={18}/></button></header><form onSubmit={submit}>
     <label className="field full"><span>Modelo da solicitação</span><select name="template" defaultValue="Solicitação geral"><option>Solicitação geral</option><option>Manutenção de veículo</option><option>Solicitação de material</option><option>Reparo em iluminação</option><option>Suporte de informática</option><option>Produção de arte e comunicação</option><option>Agendamento de espaço</option><option>Solicitação de transporte</option><option>Compra ou contratação</option><option>Vistoria técnica</option></select><small className="field-hint">O modelo define checklist, documentos obrigatórios e prazo padrão.</small></label>
     <label className="field full"><span>Título do chamado *</span><input name="title" required placeholder="Ex.: Reparo da iluminação da avenida" autoFocus value={title} onChange={(event)=>setTitle(event.target.value)}/></label>
     <label className="field full"><span>Descrição</span><textarea name="description" placeholder="Inclua contexto, entregáveis, local e observações..." value={description} onChange={(event)=>setDescription(event.target.value)}/></label>
     <div className="ticket-ai-assist full"><button type="button" disabled={aiBusy || (!title.trim() && !description.trim())} onClick={()=>void assistWithAi()}><Sparkles size={15}/>{aiBusy ? "Analisando com Groq..." : "IA: classificar e preencher"}</button>{aiHint && <small>{aiHint}</small>}</div>
     <AddressRegistrationField neighborhood={neighborhood} address={address} onNeighborhoodChange={setNeighborhood} onAddressChange={setAddress}/>
-    <label className="field"><span>Secretaria responsável *</span><select name="department" required value={department} onChange={(event)=>setDepartment(event.target.value)}><option value="" disabled>Selecione</option>{OFFICE_CATEGORIES.map((group)=><optgroup label={group} key={group}>{OFFICES.filter((office)=>office.category===group).map((office)=><option key={office.id}>{office.name}</option>)}</optgroup>)}</select></label>
+    <label className="field"><span>Setor responsável *</span><select name="department" required value={department} onChange={(event)=>setDepartment(event.target.value)}>{departments.map((item)=><option key={item}>{item}</option>)}</select></label>
     <label className="field"><span>Responsável principal</span><select name="assigneeId" defaultValue="" disabled={!department}><option value="">{department ? "A definir" : "Selecione primeiro o setor"}</option>{eligibleUsers.map((user)=><option key={user.id} value={user.id}>{user.fullName}</option>)}</select></label>
     <label className="field"><span>Prioridade</span><select name="priority" value={priority} onChange={(event)=>setPriority(event.target.value as Priority)}><option>Urgente</option><option>Alta</option><option>Média</option><option>Baixa</option></select></label>
     <label className="field"><span>Prazo ou SLA</span><input type="date" name="dueDate" value={dueDate} onChange={(event)=>setDueDate(event.target.value)}/></label>
@@ -1722,7 +1735,11 @@ function toDateTimeLocal(value?: string | null) {
 
 function EventModal({ department, departments, event, onClose, onSave }: { department: string; departments: string[]; event?: SectorEvent; onClose: () => void; onSave: (data: FormData) => unknown | Promise<unknown> }) {
   const [startsAt, setStartsAt] = useState(() => toDateTimeLocal(event?.startsAt));
-  const [selectedDepartments, setSelectedDepartments] = useState<string[]>(() => event?.targetDepartments?.length ? event.targetDepartments : [department]);
+  const [selectedDepartments, setSelectedDepartments] = useState<string[]>(() => {
+    const requested = event?.targetDepartments?.length ? event.targetDepartments : [department];
+    const allowed = departments.filter((allowedDepartment) => requested.some((target) => sameDepartment(target, allowedDepartment)));
+    return allowed.length ? allowed : [department];
+  });
   const [selectionError, setSelectionError] = useState("");
   const editing = Boolean(event);
 
@@ -1843,10 +1860,17 @@ function messageVisibleToUser(message: Message, userId: string, groups: Group[])
   if (message.conversationType === "direct") return directParticipants(message.conversationId).includes(userId);
   return Boolean(groups.find((group) => group.id === message.conversationId)?.memberUserIds?.includes(userId));
 }
-function messageTouchesDepartment(message: Message, department: string, users: User[], groups: Group[]) {
-  if (message.conversationType === "direct") return directParticipants(message.conversationId).some((userId) => users.some((user) => user.id === userId && sameDepartment(user.department, department)));
+function groupConfinedToDepartment(group: Group, department: string, users: User[]) {
+  const participantIds = Array.from(new Set([...(group.memberUserIds ?? []), ...(group.pendingUserIds ?? [])]));
+  return participantIds.length > 0 && participantIds.every((userId) => users.some((user) => user.id === userId && sameDepartment(user.department, department)));
+}
+function messageConfinedToDepartment(message: Message, department: string, users: User[], groups: Group[]) {
+  if (message.conversationType === "direct") {
+    const participantIds = directParticipants(message.conversationId);
+    return participantIds.length > 0 && participantIds.every((userId) => users.some((user) => user.id === userId && sameDepartment(user.department, department)));
+  }
   const group = groups.find((item) => item.id === message.conversationId);
-  return Boolean(group?.memberUserIds?.some((userId) => users.some((user) => user.id === userId && sameDepartment(user.department, department))));
+  return Boolean(group && groupConfinedToDepartment(group, department, users));
 }
 
 function directConversationId(firstUserId: string, secondUserId: string) { return [firstUserId, secondUserId].sort().join("::"); }

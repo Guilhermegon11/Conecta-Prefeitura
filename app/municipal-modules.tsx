@@ -27,6 +27,7 @@ import {
   LockKeyhole,
   MessageSquareText,
   MapPin,
+  MoreHorizontal,
   Plus,
   Pencil,
   Copy,
@@ -35,6 +36,7 @@ import {
   QrCode,
   Search,
   ShieldCheck,
+  SlidersHorizontal,
   Star,
   UserRound,
   Warehouse,
@@ -43,7 +45,7 @@ import {
 import type { LucideIcon } from "lucide-react";
 import { AddressRegistrationField } from "./municipal-location";
 import { useCurrentPermission } from "./permission-context";
-import { FieldOperationsPanel, WorkflowAutomationHub } from "./enhanced-features";
+import { FieldOperationsPanel } from "./enhanced-features";
 import { persistenceKey, usePersistentState } from "./persistence";
 
 type Notify = (message: string) => void;
@@ -300,6 +302,29 @@ const MANAGEMENT_DATA: Record<ManagementTab, ManagementItem[]> = {
   ],
 };
 
+const MANAGEMENT_SECTOR_BY_ID: Record<string, string> = {
+  "f-1": "Secretaria de Infraestrutura e Transporte",
+  "f-2": "Secretaria de Saúde",
+  "f-3": "Departamento de Execução de Obras",
+  "p-1": "Secretaria de Governo",
+  "p-2": "Secretaria de Comunicação e Eventos",
+  "p-3": "Secretaria de Administração e Finanças",
+  "a-1": "Secretaria de Administração e Finanças",
+  "a-2": "Secretaria de Administração e Finanças",
+  "a-3": "Departamento de Vigilância Sanitária",
+  "c-1": "Secretaria de Infraestrutura e Transporte",
+  "c-2": "Secretaria de Administração e Finanças",
+  "c-3": "Secretaria de Saúde",
+  "o-1": "Secretaria de Infraestrutura e Transporte",
+  "o-2": "Departamento de Execução de Obras",
+  "o-3": "Secretaria de Saúde",
+};
+
+function managementItemBelongsToDepartment(item: ManagementItem, department: string) {
+  const seededDepartment = MANAGEMENT_SECTOR_BY_ID[item.id];
+  return !seededDepartment || normalizeDepartmentName(seededDepartment) === normalizeDepartmentName(department);
+}
+
 const TAB_ICON: Record<ManagementTab, LucideIcon> = {
   Frota: Bus,
   Patrimônio: Archive,
@@ -516,7 +541,7 @@ export function CitizenServiceSection({ department, notify, isMayor = false, dep
 
       {tab === "Direto ao Prefeito" && isMayor && <MayorCitizenInbox notify={notify} departments={departments} />}
 
-      {tab === "Satisfação" && <div className="satisfaction-layout"><article className="panel satisfaction-score"><span><Star size={24} /></span><strong>4,7</strong><p>média de 184 avaliações em agosto</p><div>{[1,2,3,4,5].map((star) => <Star key={star} size={16} fill="currentColor" />)}</div></article><article className="panel satisfaction-breakdown"><h2>Qualidade percebida</h2>{[["Resultado do atendimento",92],["Clareza das informações",89],["Tempo de resposta",84],["Cordialidade",96]].map(([label,value]) => <div className="rating-row" key={String(label)}><span>{label}</span><div><i style={{width:`${value}%`}} /></div><strong>{value}%</strong></div>)}</article><article className="panel satisfaction-comments"><h2>Comentários recentes</h2><blockquote>“Recebi o número do protocolo e consegui acompanhar cada atualização.”<cite>Atendimento de iluminação · 12 ago.</cite></blockquote><blockquote>“A lista de documentos evitou uma segunda ida ao setor.”<cite>Matrícula escolar · 11 ago.</cite></blockquote></article></div>}
+      {tab === "Satisfação" && <div className="satisfaction-layout"><article className="panel satisfaction-score"><span><Star size={24} /></span><strong>4,7</strong><p>média das avaliações de {department} em agosto</p><div>{[1,2,3,4,5].map((star) => <Star key={star} size={16} fill="currentColor" />)}</div></article><article className="panel satisfaction-breakdown"><h2>Qualidade percebida no setor</h2>{[["Resultado do atendimento",92],["Clareza das informações",89],["Tempo de resposta",84],["Cordialidade",96]].map(([label,value]) => <div className="rating-row" key={String(label)}><span>{label}</span><div><i style={{width:`${value}%`}} /></div><strong>{value}%</strong></div>)}</article><article className="panel satisfaction-comments"><h2>Comentários recentes do setor</h2><blockquote>“Recebi o número do protocolo e consegui acompanhar cada atualização.”<cite>Atendimento do setor · 12 ago.</cite></blockquote><blockquote>“As orientações evitaram uma segunda ida à unidade.”<cite>Atendimento do setor · 11 ago.</cite></blockquote></article></div>}
 
       {modal && <ModalShell eyebrow="ATENDIMENTO AO CIDADÃO" title="Registrar novo protocolo" onClose={() => setModal(false)}><form onSubmit={createProtocol}><label className="field"><span>Tipo de manifestação *</span><select name="kind" required defaultValue="Solicitação"><option>Solicitação</option><option>Reclamação</option><option>Sugestão</option><option>Elogio</option><option>Denúncia</option><option>Acesso à informação</option></select></label><label className="field"><span>Setor responsável</span><input name="department" value={department} readOnly /></label><label className="field full"><span>Assunto *</span><input name="subject" required placeholder="Descreva o assunto principal" /></label><label className="field full"><span>Nome do solicitante</span><input name="requester" placeholder="Deixe em branco se não houver identificação" /></label><label className="field full"><span>Descrição detalhada *</span><textarea name="description" required placeholder="Registre a manifestação e as informações necessárias para a triagem" /></label><label className="municipal-check full"><input type="checkbox" name="confidential" /> <span>Restringir dados pessoais e identidade aos responsáveis autorizados</span></label><div className="modal-actions"><button type="button" className="button secondary" onClick={() => setModal(false)}>Cancelar</button><button className="button primary"><FileBadge size={15} /> Gerar protocolo</button></div></form></ModalShell>}
       {selectedService && <ModalShell eyebrow="CARTA DE SERVIÇOS" title={selectedService.title} onClose={() => setSelectedService(null)}><form onSubmit={createServiceRequest}><div className="service-request-summary full"><Landmark size={18} /><div><strong>{selectedService.department}</strong><span>{selectedService.deadline} · {selectedService.documents}</span></div></div><label className="field full"><span>Nome do solicitante</span><input name="requester" placeholder="Nome da pessoa, empresa ou entidade" /></label><AddressRegistrationField neighborhood={serviceNeighborhood} address={serviceAddress} onNeighborhoodChange={setServiceNeighborhood} onAddressChange={setServiceAddress} /><label className="field full"><span>Descrição do serviço</span><textarea name="description" placeholder="Descreva a necessidade e acrescente referências para a equipe responsável." /></label><p className="ticket-modal-privacy"><ShieldCheck size={14} /> O bairro e o endereço serão vinculados ao protocolo para orientar a triagem e o atendimento em campo.</p><div className="modal-actions"><button type="button" className="button secondary" onClick={() => setSelectedService(null)}>Cancelar</button><button className="button primary"><MapPin size={15} /> Registrar solicitação</button></div></form></ModalShell>}
@@ -544,14 +569,14 @@ export function ProcessesSection({ department, currentUser, users, departments, 
 
   useEffect(() => {
     if (!processesReady || !processes.length) return;
-    const current = processes.find((item) => item.id === selectedId && (item.originDepartment === department || item.currentDepartment === department));
+    const current = processes.find((item) => item.id === selectedId && item.currentDepartment === department);
     if (current) return;
-    const firstRelated = processes.find((item) => item.originDepartment === department || item.currentDepartment === department) ?? processes[0];
+    const firstRelated = processes.find((item) => item.currentDepartment === department);
     if (firstRelated) setSelectedId(firstRelated.id);
   }, [department, processes, processesReady, selectedId]);
 
-  const scopedProcesses = useMemo(() => processes.filter((item) => item.originDepartment === department || item.currentDepartment === department), [processes, department]);
-  const selected = processes.find((item) => item.id === selectedId) ?? scopedProcesses[0] ?? processes[0];
+  const scopedProcesses = useMemo(() => processes.filter((item) => item.currentDepartment === department), [processes, department]);
+  const selected = scopedProcesses.find((item) => item.id === selectedId) ?? scopedProcesses[0];
   const today = new Date().toISOString().slice(0, 10);
   const visibleProcesses = useMemo(() => scopedProcesses.filter((item) => {
     const haystack = [item.protocol, item.subject, item.interested, item.owner, item.status, item.currentDepartment, item.processType].join(" ").toLowerCase();
@@ -566,7 +591,6 @@ export function ProcessesSection({ department, currentUser, users, departments, 
   }), [scopedProcesses, query, statusFilter, priorityFilter, queueFilter, currentUser.fullName]);
 
   const activeCount = scopedProcesses.filter((item) => item.status !== "Concluído").length;
-  const dispatchCount = scopedProcesses.reduce((sum, item) => sum + item.dispatches.filter((dispatch) => dispatch.status === "Rascunho").length, 0);
   const signatureCount = scopedProcesses.reduce((sum, item) => sum + item.signatures.filter((signature) => signature.status === "Pendente").length, 0);
   const overdueCount = scopedProcesses.filter((item) => item.status !== "Concluído" && item.dueDate && item.dueDate < today).length;
   const statusOptions = Array.from(new Set(scopedProcesses.map((item) => item.status)));
@@ -792,29 +816,29 @@ export function ProcessesSection({ department, currentUser, users, departments, 
 
   return <section className="municipal-module-shell process-digital-v2">
     <small className={`module-sync-banner ${processSaveStatus}`}>{processSaveStatus === "carregando" ? "Carregando processos…" : processSaveStatus === "salvando" ? "Salvando alterações…" : processSaveStatus === "offline" ? "Aguardando conexão com o servidor" : "Processos sincronizados"}</small>
-    <div className="process-command-center panel">
-      <div><p className="eyebrow">CENTRAL DE PROCESSOS</p><h2>Tramitação digital do setor</h2><p>Encontre o processo, confira a próxima ação e registre a movimentação sem sair da mesma tela.</p></div>
+    <div className="process-command-center panel process-command-simple">
+      <div><p className="eyebrow">PROCESSOS DO SETOR</p><h2>Processos digitais</h2><p>Localize um processo e execute a próxima ação com menos etapas.</p></div>
       <div className="process-command-actions">{access.register && <button className="button primary" onClick={() => setProcessModal({ mode: "create" })}><Plus size={15} /> Novo processo</button>}<button className="button secondary" onClick={() => setQueueFilter("Minha fila")}><UserRound size={15} /> Minha fila</button></div>
     </div>
 
-    <div className="process-overview process-overview-v2">
-      <button className={`panel process-stat ${queueFilter === "Todos" ? "active" : ""}`} onClick={() => setQueueFilter("Todos")}><FileText size={20} /><span><strong>{activeCount}</strong><small>em tramitação</small></span></button>
-      <button className={`panel process-stat ${queueFilter === "Atrasados" ? "active danger" : ""}`} onClick={() => setQueueFilter("Atrasados")}><Clock3 size={20} /><span><strong>{overdueCount}</strong><small>prazo vencido</small></span></button>
-      <button className={`panel process-stat ${tab === "Despachos e pareceres" ? "active" : ""}`} onClick={() => setTab("Despachos e pareceres")}><FileCheck2 size={20} /><span><strong>{dispatchCount}</strong><small>minutas pendentes</small></span></button>
-      <button className={`panel process-stat ${queueFilter === "Assinatura" ? "active" : ""}`} onClick={() => { setQueueFilter("Assinatura"); setTab("Assinaturas"); }}><FileSignature size={20} /><span><strong>{signatureCount}</strong><small>assinaturas pendentes</small></span></button>
-    </div>
-
-    <div className="module-tabs wide-tabs process-tabs-v2" role="tablist" aria-label="Módulos de processos digitais">
-      {(["Processos", "Despachos e pareceres", "Documentos e versões", "Assinaturas"] as ProcessTab[]).map((item) => <button key={item} className={tab === item ? "active" : ""} onClick={() => setTab(item)}><span>{item}</span>{item === "Despachos e pareceres" && dispatchCount > 0 && <b>{dispatchCount}</b>}{item === "Assinaturas" && signatureCount > 0 && <b>{signatureCount}</b>}</button>)}
+    <div className="process-summary-strip panel" aria-label="Resumo dos processos">
+      <button className={queueFilter === "Todos" ? "active" : ""} onClick={() => { setQueueFilter("Todos"); setTab("Processos"); }}><FileText size={16} /><strong>{activeCount}</strong><span>em tramitação</span></button>
+      <button className={queueFilter === "Atrasados" ? "active danger" : ""} onClick={() => { setQueueFilter("Atrasados"); setTab("Processos"); }}><Clock3 size={16} /><strong>{overdueCount}</strong><span>com prazo vencido</span></button>
+      <button className={queueFilter === "Assinatura" ? "active" : ""} onClick={() => { setQueueFilter("Assinatura"); setTab("Assinaturas"); }}><FileSignature size={16} /><strong>{signatureCount}</strong><span>aguardando assinatura</span></button>
+      <nav className="process-view-switch" aria-label="Áreas do processo">
+        <button className={tab === "Processos" ? "active" : ""} onClick={() => setTab("Processos")}>Processos</button>
+        <button className={tab === "Documentos e versões" ? "active" : ""} onClick={() => setTab("Documentos e versões")}>Documentos</button>
+        <button className={tab === "Assinaturas" ? "active" : ""} onClick={() => setTab("Assinaturas")}>Assinaturas</button>
+        {tab === "Despachos e pareceres" && <button className="active" onClick={() => setTab("Despachos e pareceres")}>Despacho</button>}
+      </nav>
     </div>
 
     {tab === "Processos" && <div className="process-layout process-layout-v2">
       <article className="panel process-list process-list-v2">
         <div className="process-list-heading"><div><strong>Fila de processos</strong><small>{visibleProcesses.length} exibidos de {scopedProcesses.length}</small></div>{access.register && <button onClick={() => setProcessModal({ mode: "create" })}><Plus size={14} /> Novo</button>}</div>
-        <div className="process-filter-stack">
+        <div className="process-filter-stack process-filter-simple">
           <label className="module-search"><Search size={15} /><input aria-label="Buscar processo" value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Protocolo, assunto ou interessado..." /></label>
-          <div className="process-filter-row"><select aria-label="Filtrar status" value={statusFilter} onChange={(event) => setStatusFilter(event.target.value)}><option>Todos</option>{statusOptions.map((status) => <option key={status}>{status}</option>)}</select><select aria-label="Filtrar prioridade" value={priorityFilter} onChange={(event) => setPriorityFilter(event.target.value)}><option>Todas</option><option>Urgente</option><option>Alta</option><option>Normal</option><option>Baixa</option></select></div>
-          <div className="process-queue-chips">{(["Todos", "Minha fila", "Atrasados", "Assinatura"] as const).map((item) => <button key={item} className={queueFilter === item ? "active" : ""} onClick={() => setQueueFilter(item)}>{item}</button>)}</div>
+          <details className="process-filter-menu"><summary><SlidersHorizontal size={15} /> Filtros</summary><div><label>Status<select aria-label="Filtrar status" value={statusFilter} onChange={(event) => setStatusFilter(event.target.value)}><option>Todos</option>{statusOptions.map((status) => <option key={status}>{status}</option>)}</select></label><label>Prioridade<select aria-label="Filtrar prioridade" value={priorityFilter} onChange={(event) => setPriorityFilter(event.target.value)}><option>Todas</option><option>Urgente</option><option>Alta</option><option>Normal</option><option>Baixa</option></select></label><span>Fila</span><div className="process-queue-chips">{(["Todos", "Minha fila", "Atrasados", "Assinatura"] as const).map((item) => <button key={item} className={queueFilter === item ? "active" : ""} onClick={() => setQueueFilter(item)}>{item}</button>)}</div></div></details>
         </div>
         <div className="process-scroll-list">{visibleProcesses.map((item) => {
           const itemOverdue = item.status !== "Concluído" && Boolean(item.dueDate) && item.dueDate < today;
@@ -824,11 +848,10 @@ export function ProcessesSection({ department, currentUser, users, departments, 
 
       {selected && <aside className="panel process-detail process-detail-v2">
         <header className="process-detail-header"><div><div className="process-protocol-line"><span>{selected.protocol}</span><i className={`priority-${selected.priority.toLowerCase()}`}>{selected.priority}</i>{selectedOverdue && <i className="process-overdue">Prazo vencido</i>}</div><h2>{selected.subject}</h2><p>{selected.description || "Sem descrição complementar."}</p></div><StatusTag>{selected.status}</StatusTag></header>
-        <div className="process-progress-block"><div><span>Fluxo: <strong>{selected.workflowName}</strong></span><b>{progress}%</b></div><i><span style={{ width: `${progress}%` }} /></i><div className="process-stepper">{selected.workflowSteps.map((step, index) => <button key={step} className={index < selected.currentStep ? "done" : index === selected.currentStep ? "current" : ""} onClick={() => access.edit ? updateSelected((item) => ({ ...item, currentStep: index, status: step, updated: "Agora" })) : notify("Seu perfil possui acesso de consulta ao fluxo do processo.")}><span>{index < selected.currentStep ? <Check size={11} /> : index + 1}</span><small>{step}</small></button>)}</div></div>
-        <div className="process-detail-grid"><div><span>Setor atual</span><strong>{selected.currentDepartment}</strong></div><div><span>Responsável</span><strong>{selected.owner}</strong></div><div><span>Interessado</span><strong>{selected.interested}</strong></div><div><span>Prazo</span><strong>{selected.dueDate ? new Date(`${selected.dueDate}T12:00:00`).toLocaleDateString("pt-BR") : "Sem prazo"}</strong></div><div><span>Tipo</span><strong>{selected.processType}</strong></div><div><span>Acesso</span><strong><ShieldCheck size={12} /> {selected.access}</strong></div></div>
-        <div className="process-quick-actions"><button onClick={() => access.register ? setTab("Despachos e pareceres") : notify("Seu perfil pode consultar despachos, mas não registrar novos documentos.")}><FileCheck2 size={16} /><span><strong>Novo despacho</strong><small>Registrar manifestação</small></span></button><button onClick={() => access.register ? openDocumentUpload() : notify("Seu perfil não possui permissão para juntar documentos.")}><Plus size={16} /><span><strong>Juntar documento</strong><small>Arquivo ou nova versão</small></span></button><button onClick={() => access.register ? setSignatureModal(true) : notify("Seu perfil não possui permissão para solicitar assinatura.")}><FileSignature size={16} /><span><strong>Solicitar assinatura</strong><small>Definir signatário</small></span></button><button onClick={() => access.edit ? setMoveModal(true) : notify("Seu perfil não possui permissão para movimentar processos.")}><ChevronRight size={16} /><span><strong>Movimentar</strong><small>Encaminhar ao próximo setor</small></span></button></div>
-        <section className="process-timeline-section"><header><div><h3>Linha do tempo</h3><p>Histórico cronológico do processo</p></div><button onClick={() => setTab("Documentos e versões")}>Ver documentos</button></header><div className="process-timeline">{selected.movements.slice(0,6).map((movement, index) => <div className={index === 0 ? "current" : ""} key={movement.id}><i /><span><strong>{movement.action}</strong><small>{movement.createdAt} · {movement.actor}</small><em>{movement.fromDepartment !== movement.toDepartment ? `${movement.fromDepartment} → ${movement.toDepartment}` : movement.toDepartment}{movement.note ? ` · ${movement.note}` : ""}</em></span></div>)}</div></section>
-        <footer className="process-detail-actions"><button className="button secondary" onClick={() => access.register ? duplicateProcess() : notify("Seu perfil não possui permissão para duplicar processos.")}><Copy size={14} /> Duplicar</button>{access.edit && <button className="button secondary" onClick={() => setProcessModal({ mode: "edit", item: selected })}><Pencil size={14} /> Editar</button>}{access.edit && <button className="button secondary" onClick={toggleConclusion}>{selected.status === "Concluído" ? "Reabrir" : "Concluir"}</button>}{access.edit && <button className="button primary" onClick={() => setMoveModal(true)}>Movimentar <ChevronRight size={14} /></button>}</footer>
+        <div className="process-progress-block process-progress-simple"><div><span>Etapa atual: <strong>{selected.workflowSteps[selected.currentStep] ?? selected.status}</strong></span><b>{progress}%</b></div><i><span style={{ width: `${progress}%` }} /></i><small>{selected.workflowName}</small></div>
+        <div className="process-detail-grid process-detail-grid-simple"><div><span>Setor atual</span><strong>{selected.currentDepartment}</strong></div><div><span>Responsável</span><strong>{selected.owner}</strong></div><div><span>Prazo</span><strong>{selected.dueDate ? new Date(`${selected.dueDate}T12:00:00`).toLocaleDateString("pt-BR") : "Sem prazo"}</strong></div><div><span>Acesso</span><strong><ShieldCheck size={12} /> {selected.access}</strong></div></div>
+        <div className="process-primary-actions">{access.edit && <button className="button secondary" onClick={() => setProcessModal({ mode: "edit", item: selected })}><Pencil size={14} /> Editar</button>}<button className="button secondary" onClick={() => setTab("Documentos e versões")}><FileText size={14} /> Documentos</button>{access.edit && <button className="button primary" onClick={() => setMoveModal(true)}>Movimentar <ChevronRight size={14} /></button>}<details className="process-more-actions"><summary aria-label="Mais ações"><MoreHorizontal size={18} /> Mais</summary><div><button onClick={() => access.register ? setTab("Despachos e pareceres") : notify("Seu perfil pode consultar despachos, mas não registrar novos documentos.")}><FileCheck2 size={15} /> Novo despacho</button><button onClick={() => access.register ? openDocumentUpload() : notify("Seu perfil não possui permissão para juntar documentos.")}><Plus size={15} /> Juntar documento</button><button onClick={() => access.register ? setSignatureModal(true) : notify("Seu perfil não possui permissão para solicitar assinatura.")}><FileSignature size={15} /> Solicitar assinatura</button><button onClick={() => access.register ? duplicateProcess() : notify("Seu perfil não possui permissão para duplicar processos.")}><Copy size={15} /> Duplicar</button>{access.edit && <button onClick={toggleConclusion}>{selected.status === "Concluído" ? "Reabrir processo" : "Concluir processo"}</button>}</div></details></div>
+        <details className="process-history-simple"><summary>Linha do tempo <span>{selected.movements.length} movimentações</span></summary><div className="process-timeline">{selected.movements.slice(0,3).map((movement, index) => <div className={index === 0 ? "current" : ""} key={movement.id}><i /><span><strong>{movement.action}</strong><small>{movement.createdAt} · {movement.actor}</small><em>{movement.fromDepartment !== movement.toDepartment ? `${movement.fromDepartment} → ${movement.toDepartment}` : movement.toDepartment}{movement.note ? ` · ${movement.note}` : ""}</em></span></div>)}</div></details>
       </aside>}
     </div>}
 
@@ -860,7 +883,7 @@ export function MunicipalManagementSection({ department, notify }: { department:
   const [modal, setModal] = useState<{ mode: "create" | "edit"; item?: ManagementItem } | null>(null);
   const [detailItem, setDetailItem] = useState<ManagementItem | null>(null);
 
-  const tabItems = data[tab];
+  const tabItems = data[tab].filter((item) => managementItemBelongsToDepartment(item, department));
   const items = tabItems.filter((item) => {
     const matchesQuery = [item.code, item.title, item.detail, item.owner, item.status, item.metric, item.due].join(" ").toLowerCase().includes(query.toLowerCase());
     const normalized = item.status.toLowerCase();
@@ -929,7 +952,7 @@ export function MunicipalManagementSection({ department, notify }: { department:
 
   return <section className="municipal-module-shell">
     <small className={`module-sync-banner ${managementSaveStatus}`}>{managementSaveStatus === "salvando" ? "Salvando alterações…" : managementSaveStatus === "offline" ? "Aguardando conexão com o servidor" : "Gestão sincronizada"}</small>
-    <div className="management-tabs" role="tablist" aria-label="Áreas da gestão municipal">{(Object.keys(MANAGEMENT_DATA) as ManagementTab[]).map((item) => { const Icon = TAB_ICON[item]; return <button key={item} className={tab === item ? "active" : ""} onClick={() => { setTab(item); setStatusFilter("Todas as situações"); setQuery(""); }}><span><Icon size={19} /></span><strong>{item}</strong><small>{data[item].length} registros</small></button>; })}</div>
+    <div className="management-tabs" role="tablist" aria-label="Áreas da gestão municipal">{(Object.keys(MANAGEMENT_DATA) as ManagementTab[]).map((item) => { const Icon = TAB_ICON[item]; const scopedCount = data[item].filter((record) => managementItemBelongsToDepartment(record, department)).length; return <button key={item} className={tab === item ? "active" : ""} onClick={() => { setTab(item); setStatusFilter("Todas as situações"); setQuery(""); }}><span><Icon size={19} /></span><strong>{item}</strong><small>{scopedCount} registros</small></button>; })}</div>
 
     <div className="management-summary-grid">
       <article className="panel"><span className="management-summary-icon"><ActiveIcon size={18} /></span><div><small>REGISTROS EM {tab.toUpperCase()}</small><strong>{tabItems.length}</strong><p>Base operacional do módulo</p></div></article>
@@ -965,17 +988,18 @@ function managementDescription(tab: ManagementTab) {
 
 export function IndicatorsSection({ department, notify }: { department: string; notify: Notify }) {
   const [period, setPeriod] = useState("Agosto de 2026");
-  return <section className="municipal-module-shell"><article className="panel indicator-toolbar"><div><p className="eyebrow">PAINEL GERENCIAL</p><h2>{department}</h2><p>Indicadores operacionais consolidados conforme o setor e o perfil de acesso.</p></div><div><select aria-label="Período do painel" value={period} onChange={(event) => setPeriod(event.target.value)}><option>Agosto de 2026</option><option>Julho de 2026</option><option>2º trimestre de 2026</option><option>1º semestre de 2026</option></select><button className="button secondary" onClick={() => notify(`Relatório de ${period.toLowerCase()} preparado em PDF e planilha.`)}>Exportar PDF/Excel</button></div></article><div className="municipal-kpis indicator-kpis"><MetricCard icon={ClipboardCheck} label="Demandas concluídas" value="87%" detail="Meta mensal: 85%" tone="green" /><MetricCard icon={Clock3} label="Tempo médio" value="2,4 dias" detail="0,6 dia abaixo de julho" tone="blue" /><MetricCard icon={Gauge} label="Dentro do prazo" value="92%" detail="8 demandas com risco" tone="teal" /><MetricCard icon={Star} label="Satisfação" value="4,7/5" detail="184 avaliações" tone="amber" /></div><div className="analytics-grid"><article className="panel analytics-card"><header><div><h2>Demandas recebidas e concluídas</h2><p>Últimos seis meses</p></div><BarChart3 size={18} /></header><div className="bar-chart">{[["Mar",76,68],["Abr",84,75],["Mai",90,81],["Jun",82,79],["Jul",98,88],["Ago",104,92]].map(([month,received,done]) => <div key={String(month)}><div><i style={{height:`${Number(received)}%`}} /><i style={{height:`${Number(done)}%`}} /></div><span>{month}</span></div>)}</div><footer><span><i className="received" /> Recebidas</span><span><i className="done" /> Concluídas</span></footer></article><article className="panel analytics-card"><header><div><h2>Distribuição por categoria</h2><p>Chamados do setor</p></div><CircleDollarSign size={18} /></header><div className="category-bars">{[["Manutenção",38],["Atendimento",26],["Administrativo",19],["Eventos",10],["Outros",7]].map(([label,value]) => <div key={String(label)}><span>{label}</span><div><i style={{width:`${value}%`}} /></div><strong>{value}%</strong></div>)}</div></article><article className="panel analytics-card risk-card"><header><div><h2>Riscos e alertas</h2><p>Itens que requerem decisão</p></div><Clock3 size={18} /></header>{[["3 contratos vencem em até 45 dias","Revisar responsáveis"],["8 chamados próximos do prazo","Priorizar atendimento"],["2 itens abaixo do estoque mínimo","Gerar requisição"]].map((item,index) => <button key={item[0]} onClick={() => notify(item[1])}><span className={index === 0 ? "risk-high" : "risk-medium"}>{index + 1}</span><span><strong>{item[0]}</strong><small>{item[1]}</small></span><ChevronRight size={14} /></button>)}</article></div></section>;
+  return <section className="municipal-module-shell"><article className="panel indicator-toolbar"><div><p className="eyebrow">PAINEL GERENCIAL</p><h2>{department}</h2><p>Indicadores operacionais consolidados exclusivamente para o setor e o perfil de acesso.</p></div><div><select aria-label="Período do painel" value={period} onChange={(event) => setPeriod(event.target.value)}><option>Agosto de 2026</option><option>Julho de 2026</option><option>2º trimestre de 2026</option><option>1º semestre de 2026</option></select><button className="button secondary" onClick={() => notify(`Relatório de ${period.toLowerCase()} preparado em PDF e planilha.`)}>Exportar PDF/Excel</button></div></article><div className="municipal-kpis indicator-kpis"><MetricCard icon={ClipboardCheck} label="Demandas concluídas" value="87%" detail="Meta mensal: 85%" tone="green" /><MetricCard icon={Clock3} label="Tempo médio" value="2,4 dias" detail="0,6 dia abaixo de julho" tone="blue" /><MetricCard icon={Gauge} label="Dentro do prazo" value="92%" detail="8 demandas com risco" tone="teal" /><MetricCard icon={Star} label="Satisfação" value="4,7/5" detail="Avaliações deste setor" tone="amber" /></div><div className="analytics-grid"><article className="panel analytics-card"><header><div><h2>Demandas recebidas e concluídas</h2><p>Últimos seis meses</p></div><BarChart3 size={18} /></header><div className="bar-chart">{[["Mar",76,68],["Abr",84,75],["Mai",90,81],["Jun",82,79],["Jul",98,88],["Ago",104,92]].map(([month,received,done]) => <div key={String(month)}><div><i style={{height:`${Number(received)}%`}} /><i style={{height:`${Number(done)}%`}} /></div><span>{month}</span></div>)}</div><footer><span><i className="received" /> Recebidas</span><span><i className="done" /> Concluídas</span></footer></article><article className="panel analytics-card"><header><div><h2>Distribuição por categoria</h2><p>Chamados do setor</p></div><CircleDollarSign size={18} /></header><div className="category-bars">{[["Operacional",38],["Atendimento",26],["Administrativo",19],["Planejamento",10],["Outros",7]].map(([label,value]) => <div key={String(label)}><span>{label}</span><div><i style={{width:`${value}%`}} /></div><strong>{value}%</strong></div>)}</div></article><article className="panel analytics-card risk-card"><header><div><h2>Riscos e alertas</h2><p>Itens do setor que requerem decisão</p></div><Clock3 size={18} /></header>{[["3 registros vencem em até 45 dias","Revisar responsáveis"],["8 chamados próximos do prazo","Priorizar atendimento"],["2 recursos abaixo do nível previsto","Revisar necessidade"]].map((item,index) => <button key={item[0]} onClick={() => notify(item[1])}><span className={index === 0 ? "risk-high" : "risk-medium"}>{index + 1}</span><span><strong>{item[0]}</strong><small>{item[1]}</small></span><ChevronRight size={14} /></button>)}</article></div></section>;
 }
 
 export function SecuritySection({ department, notify }: { department: string; notify: Notify }) {
   const [settings, setSettings, securitySaveStatus] = usePersistentState(persistenceKey("security-settings", department, "v1"), { session:true,sensitive:true,exportLog:true,retention:false,notifications:true });
   const toggle = (key: keyof typeof settings) => { setSettings((current) => ({...current,[key]:!current[key]})); notify("Política atualizada e salva."); };
   const roles = [
-    ["Administrador geral","Total","Total","Total","Total","Total"],
+    ["Prefeito / Vice-prefeito","Executivo","Total","Total","Total","Total"],
+    ["Administrador do setor","Setor","Criar e editar","Aprovar","Setor","Setor"],
     ["Responsável pelo setor","Setor","Criar e editar","Aprovar","Setor","Setor"],
     ["Funcionário","Setor","Criar e editar","Não","Setor","Não"],
-    ["Fiscal ou auditor","Autorizado","Somente leitura","Não","Autorizado","Sim"],
+    ["Fiscal ou auditor","Setor","Somente leitura","Não","Setor","Não"],
     ["Visualizador","Setor","Somente leitura","Não","Não","Não"],
   ];
   return <section className="municipal-module-shell"><small className={`module-sync-banner ${securitySaveStatus}`}>{securitySaveStatus === "salvando" ? "Salvando políticas…" : securitySaveStatus === "offline" ? "Aguardando conexão" : "Políticas sincronizadas"}</small><div className="security-hero"><span><ShieldCheck size={26} /></span><div><p className="eyebrow">GOVERNANÇA E PROTEÇÃO DE DADOS</p><h2>Segurança, LGPD e permissões</h2><p>Controles aplicados a {department}, com acesso mínimo necessário e rastreabilidade das operações.</p></div><div><strong>Proteção ativa</strong><small>Última revisão: 13 ago. 2026</small></div></div><div className="security-grid"><article className="panel permission-panel"><header><div><h2>Matriz de permissões</h2><p>Quem pode visualizar, editar, aprovar, exportar e administrar registros.</p></div><LockKeyhole size={18} /></header><div className="permission-table"><div><span>Perfil</span><span>Visualizar</span><span>Editar</span><span>Aprovar</span><span>Exportar</span><span>Administrar</span></div>{roles.map((row) => <div key={row[0]}>{row.map((value,index) => <span key={index} className={value === "Não" ? "denied" : index > 0 ? "allowed" : ""}>{index > 0 && value !== "Não" && <Check size={11} />}{value}</span>)}</div>)}</div></article><aside className="panel lgpd-panel"><header><div><h2>Políticas e preferências</h2><p>Configurações do ambiente e dos alertas</p></div><ShieldCheck size={18} /></header>{[["session","Encerrar sessões inativas","Após 30 minutos sem atividade"],["sensitive","Mascarar dados pessoais","CPF, telefone e endereço"],["exportLog","Registrar exportações","Usuário, data, filtro e finalidade"],["retention","Descarte automático","Aplicar tabela de temporalidade"],["notifications","Alertas operacionais","Prazos, aprovações, mensagens e documentos"]].map(([key,title,detail]) => <button key={key} onClick={() => toggle(key as keyof typeof settings)}><span><strong>{title}</strong><small>{detail}</small></span><i className={settings[key as keyof typeof settings] ? "toggle active" : "toggle"}><b /></i></button>)}</aside></div><div className="compliance-grid"><FeaturePanel icon={LockKeyhole} title="Dados pessoais" description="Classifique registros comuns, sensíveis, restritos ou sigilosos e aplique acesso compatível." items={["Finalidade e base de tratamento","Responsável pelo dado","Prazo de retenção","Registro de compartilhamento"]} action="Revisar cadastros" onAction={() => notify("Inventário de dados pessoais aberto para revisão.")} /><FeaturePanel icon={FileClock} title="Retenção e descarte" description="Defina prazos de guarda e acompanhe documentos que exigem eliminação ou recolhimento permanente." items={["Tabela de temporalidade","Bloqueio por litígio","Termo de eliminação","Preservação permanente"]} action="Abrir temporalidade" onAction={() => notify("Tabela de temporalidade aberta.")} /><FeaturePanel icon={ShieldCheck} title="Incidentes de segurança" description="Registre perda, exposição ou acesso indevido e acompanhe as providências adotadas." items={["Classificação do impacto","Dados e titulares afetados","Plano de resposta","Comunicações e evidências"]} action="Registrar incidente" onAction={() => notify("Formulário de incidente aberto com acesso restrito.")} /></div><article className="panel accessibility-panel"><span><Accessibility size={22} /></span><div><h2>Acessibilidade e inclusão digital</h2><p>Navegação por teclado, rótulos acessíveis, contraste adequado, foco visível e conteúdo compatível com leitores de tela.</p></div><StatusTag>Conformidade monitorada</StatusTag></article></section>;
