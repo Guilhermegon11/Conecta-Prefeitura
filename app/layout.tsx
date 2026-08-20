@@ -3,13 +3,12 @@ import "./globals.css";
 import { PwaRegistrar } from "./platform-experience";
 
 export const metadata: Metadata = {
-  title: "Prefeitura Conecta IA",
+  title: "Prefeitura Conecta",
   description: "Gestão municipal inteligente, integrada e próxima do cidadão.",
-  other: { "codex-preview": "development" },
   manifest: "/manifest.webmanifest",
-  applicationName: "Prefeitura Conecta IA",
+  applicationName: "Prefeitura Conecta",
   openGraph: {
-    title: "Prefeitura Conecta IA",
+    title: "Prefeitura Conecta",
     description: "Gestão municipal inteligente, integrada e próxima do cidadão.",
     type: "website",
     images: [
@@ -17,13 +16,13 @@ export const metadata: Metadata = {
         url: "/og.png",
         width: 1200,
         height: 630,
-        alt: "Prefeitura Conecta IA",
+        alt: "Prefeitura Conecta",
       },
     ],
   },
   twitter: {
     card: "summary_large_image",
-    title: "Prefeitura Conecta IA",
+    title: "Prefeitura Conecta",
     description: "Gestão municipal inteligente, integrada e próxima do cidadão.",
     images: ["/og.png"],
   },

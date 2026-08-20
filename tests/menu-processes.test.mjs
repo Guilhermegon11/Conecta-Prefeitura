@@ -57,13 +57,15 @@ test("adds accessible dashboard progress and motion-aware visual feedback", asyn
   assert.match(styles, /@media \(prefers-reduced-motion: reduce\)/);
 });
 
-test("keeps Gunterz with the original interface type scale", async () => {
+test("uses Inter with the original interface type scale", async () => {
   const [layout, styles] = await Promise.all([
     readSource("layout.tsx"),
     readSource("globals.css"),
   ]);
-  assert.match(styles, /font-family: "Gunterz"/);
-  assert.match(styles, /--font-interface: "Gunterz"/);
+  assert.match(styles, /font-family: "Inter Variable"/);
+  assert.match(styles, /\/fonts\/inter\/inter-latin-wght-normal\.woff2/);
+  assert.match(styles, /--font-interface: "Inter Variable"/);
+  assert.doesNotMatch(styles, /font-family: "Gunterz"/);
   assert.match(styles, /tamanhos originais e movimento funcional/);
   assert.doesNotMatch(styles, /\.my-day-heading h2 \{ font-size: 1\.45rem/);
   assert.doesNotMatch(styles, /\.content-wrap \.integrated-shell \{ font-size: 15px/);

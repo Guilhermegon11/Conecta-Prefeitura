@@ -1,6 +1,6 @@
 {
   "name": "prefeitura-conecta",
-  "version": "4.9.7",
+  "version": "4.9.8",
   "private": true,
   "engines": {
     "node": "22.x"
@@ -43,5 +43,5 @@
     "wrangler": "4.92.0"
   },
   "type": "module",
-  "displayName": "Prefeitura Conecta IA"
+  "displayName": "Prefeitura Conecta"
 }
