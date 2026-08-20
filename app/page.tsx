@@ -283,8 +283,8 @@ export default function Home() {
   const [clockNow, setClockNow] = useState(() => new Date());
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [expandedNavGroup, setExpandedNavGroup] = useState<string | null>(null);
-  const [currentUserId, setCurrentUserId] = useState("u-ana");
-  const [viewedDepartment, setViewedDepartment] = useState("Secretaria de Governo");
+  const [currentUserId, setCurrentUserId] = useState("u-prefeito");
+  const [viewedDepartment, setViewedDepartment] = useState("Gabinete do Prefeito");
   const [search, setSearch] = useState("");
   const [ticketData, setTicketData] = useState(INITIAL_TICKETS);
   const [users, setUsers] = useState(USERS);
@@ -363,7 +363,6 @@ export default function Home() {
   const canManageEmployees = isSectorManager(currentUser);
   const sectorUsers = users.filter((user) => sameDepartment(user.department, activeDepartment));
   const scopedActiveUsers = activeUsers.filter((user) => sameDepartment(user.department, activeDepartment));
-  const crossSectorUsers = activeUsers.filter((user) => !sameDepartment(user.department, activeDepartment));
   const scopedOffices = OFFICES.filter((office) => sameDepartment(office.name, activeDepartment));
   const availableDepartments = executiveAccess ? allDepartments : [activeDepartment];
   const sectorEmployees = sectorUsers.filter((user) => !isSectorManager(user));
@@ -572,10 +571,7 @@ export default function Home() {
 
   function switchUser(userId: string) {
     const nextUser = users.find((user) => user.id === userId);
-    if (!nextUser || (!executiveAccess && !sameDepartment(nextUser.department, currentUser.department))) {
-      notify("A troca de perfil foi bloqueada: somente Prefeito e Vice-prefeito podem acessar outro setor.");
-      return;
-    }
+    if (!nextUser) return;
     setCurrentUserId(userId);
     setViewedDepartment(nextUser.department);
   }
@@ -988,7 +984,7 @@ export default function Home() {
             <button className="top-ai-button" type="button" onClick={() => openMunicipalAi()}><Sparkles size={15}/> IA Conecta</button>
             <button className="icon-button notification-button" aria-label={`Notificações${unreadCount + (mayorAccess ? citizenFeedbackUnread : 0) ? `: ${unreadCount + (mayorAccess ? citizenFeedbackUnread : 0)} novas` : ""}`} onClick={() => setActiveNav(mayorAccess && citizenFeedbackUnread > 0 ? "Atendimento ao Cidadão" : "Notificações")}><Bell size={18} />{unreadCount + (mayorAccess ? citizenFeedbackUnread : 0) > 0 && <span />}</button>
             <button className="icon-button logout-button" aria-label="Sair do sistema" title="Sair" onClick={() => void logout()}><LogOut size={18} /></button>
-            <label className="account-switch"><div className="avatar">{currentUser.initials}</div><span><small>{executiveAccess ? "VISUALIZAR COMO" : "PERFIS CADASTRADOS"}</small><select aria-label="Visualizar como usuário" value={currentUserId} onChange={(event) => switchUser(event.target.value)}>{executiveAccess ? activeUsers.map((user) => <option key={user.id} value={user.id}>{user.fullName} — {user.department}</option>) : <><optgroup label="Meu setor">{scopedActiveUsers.map((user) => <option key={user.id} value={user.id}>{user.fullName} — {user.department}</option>)}</optgroup><optgroup label="Outros setores — somente Prefeito e Vice">{crossSectorUsers.map((user) => <option key={user.id} value={user.id} disabled>{user.fullName} — {user.department}</option>)}</optgroup></>}</select></span></label>
+            <label className="account-switch"><div className="avatar">{currentUser.initials}</div><span><small>{executiveAccess ? "VISUALIZAR COMO" : "PERFIS CADASTRADOS"}</small><select aria-label="Visualizar como usuário" value={currentUserId} onChange={(event) => switchUser(event.target.value)}>{activeUsers.map((user) => <option key={user.id} value={user.id}>{user.fullName} — {user.department}</option>)}</select></span></label>
           </div>
         </header>
 

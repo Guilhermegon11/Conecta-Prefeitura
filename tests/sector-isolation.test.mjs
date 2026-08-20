@@ -4,13 +4,20 @@ import test from "node:test";
 
 const readSource = (file) => readFile(new URL(`../app/${file}`, import.meta.url), "utf8");
 
-test("restricts cross-sector navigation to Prefeito and Vice-prefeito", async () => {
+test("starts the demonstration with the Prefeito profile", async () => {
+  const source = await readSource("page.tsx");
+  assert.match(source, /useState\("u-prefeito"\)/);
+  assert.match(source, /useState\("Gabinete do Prefeito"\)/);
+});
+
+test("allows every demonstration profile while keeping sector navigation executive-only", async () => {
   const source = await readSource("page.tsx");
   assert.match(source, /role === "prefeito" \|\| role === "vice-prefeito"/);
   assert.match(source, /availableDepartments = executiveAccess \? allDepartments : \[activeDepartment\]/);
-  assert.match(source, /!executiveAccess && !sameDepartment\(nextUser\.department, currentUser\.department\)/);
-  assert.match(source, /Outros setores — somente Prefeito e Vice/);
-  assert.match(source, /crossSectorUsers\.map\(\(user\) => <option[^>]+disabled>/);
+  assert.match(source, /activeDepartment = executiveAccess \? viewedDepartment : currentUser\.department/);
+  assert.match(source, /activeUsers\.map\(\(user\) => <option/);
+  assert.doesNotMatch(source, /<option[^>]+disabled>/);
+  assert.doesNotMatch(source, /troca de perfil foi bloqueada/);
 });
 
 test("restores the complete historical user registry", async () => {
