@@ -221,10 +221,10 @@ function serviceBelongsToDepartment(serviceDepartment: string, activeDepartment:
 }
 
 const INITIAL_PROTOCOLS: CitizenProtocol[] = [
-  { id: "pc-1", protocol: "PROT-2026-00481", subject: "Lâmpada apagada na Rua das Palmeiras", requester: "Mariana A. Silva", channel: "Portal do cidadão", kind: "Solicitação", status: "Em atendimento", department: "Secretaria de Infraestrutura e Transporte", due: "18 ago. 2026" },
-  { id: "pc-2", protocol: "OUV-2026-00139", subject: "Sugestão de ampliação da coleta seletiva", requester: "Carlos Henrique", channel: "Ouvidoria", kind: "Sugestão", status: "Em análise", department: "Meio Ambiente", due: "24 ago. 2026" },
-  { id: "pc-3", protocol: "ESIC-2026-00052", subject: "Relação de contratos vigentes em 2026", requester: "Fernanda Moreira", channel: "e-SIC", kind: "Acesso à informação", status: "Aguardando resposta", department: "Administração e Finanças", due: "02 set. 2026" },
-  { id: "pc-4", protocol: "DEN-2026-00021", subject: "Relato sigiloso sobre descarte irregular", requester: "Identidade protegida", channel: "Ouvidoria", kind: "Denúncia", status: "Triagem sigilosa", department: "Controle Interno", due: "20 ago. 2026", confidential: true },
+  { id: "pc-1", protocol: "PROT-2026-00481", subject: "Lâmpada apagada na Avenida Dr. Mallard", requester: "Mariana A. Silva", channel: "Portal do cidadão", kind: "Solicitação", status: "Em atendimento", department: "Secretaria de Infraestrutura e Transporte", due: "18 ago. 2026" },
+  { id: "pc-2", protocol: "OUV-2026-00139", subject: "Coleta seletiva na Barra do Guaicuí", requester: "Carlos Henrique", channel: "Ouvidoria", kind: "Sugestão", status: "Em análise", department: "Meio Ambiente", due: "24 ago. 2026" },
+  { id: "pc-3", protocol: "ESIC-2026-00052", subject: "Contratos vigentes da Prefeitura de Várzea da Palma", requester: "Fernanda Moreira", channel: "e-SIC", kind: "Acesso à informação", status: "Aguardando resposta", department: "Administração e Finanças", due: "02 set. 2026" },
+  { id: "pc-4", protocol: "DEN-2026-00021", subject: "Descarte irregular no bairro Planalto", requester: "Identidade protegida", channel: "Ouvidoria", kind: "Denúncia", status: "Triagem sigilosa", department: "Controle Interno", due: "20 ago. 2026", confidential: true },
 ];
 
 const PROCESS_WORKFLOWS: Record<string,string[]> = {
@@ -282,7 +282,7 @@ const MANAGEMENT_DATA: Record<ManagementTab, ManagementItem[]> = {
   ],
   Patrimônio: [
     { id: "p-1", code: "PAT-018723", title: "Notebook Dell Latitude 5440", detail: "Gabinete · Sala 03 · Estado: bom", owner: "Artur Fagundes", status: "Em uso", metric: "Inventariado em jul. 2026", due: "Garantia até 2028" },
-    { id: "p-2", code: "PAT-015804", title: "Projetor Epson PowerLite", detail: "Auditório municipal · Estado: regular", owner: "Comunicação e Eventos", status: "Em uso", metric: "Manutenção preventiva pendente", due: "23 ago. 2026" },
+    { id: "p-2", code: "PAT-015804", title: "Projetor Epson PowerLite", detail: "Paço Municipal — Pinlar I · Estado: regular", owner: "Comunicação e Eventos", status: "Em uso", metric: "Manutenção preventiva pendente", due: "23 ago. 2026" },
     { id: "p-3", code: "PAT-009421", title: "Arquivo de aço com 4 gavetas", detail: "Administração · Arquivo central", owner: "Seção de Patrimônio", status: "Transferência", metric: "Destino: Almoxarifado", due: "15 ago. 2026" },
   ],
   Almoxarifado: [
@@ -296,9 +296,9 @@ const MANAGEMENT_DATA: Record<ManagementTab, ManagementItem[]> = {
     { id: "c-3", code: "CV-2026-009", title: "Convênio de atendimento hospitalar", detail: "Consórcio Intermunicipal de Saúde", owner: "Secretaria de Saúde", status: "Vigente", metric: "3ª prestação de contas em análise", due: "Parcela em 25 ago." },
   ],
   "Obras e campo": [
-    { id: "o-1", code: "OB-2026-014", title: "Revitalização da Praça Central", detail: "Praça Central · Coordenadas registradas · 48 fotos", owner: "Alan Kelve", status: "Em execução", metric: "68% concluído · R$ 492 mil", due: "Previsão 30 set." },
+    { id: "o-1", code: "OB-2026-014", title: "Qualificação do entorno da Estação Ferroviária", detail: "Centro de Várzea da Palma · Coordenadas registradas · 48 fotos", owner: "Alan Kelve", status: "Em execução", metric: "68% concluído · R$ 492 mil", due: "Previsão 30 set." },
     { id: "o-2", code: "OS-2026-392", title: "Recuperação de drenagem pluvial", detail: "Bairro Planalto · Equipe de 6 servidores", owner: "Departamento de Obras", status: "Vistoria", metric: "Laudo fotográfico anexado", due: "Início 19 ago." },
-    { id: "o-3", code: "OB-2026-007", title: "Reforma da UBS Norte", detail: "Av. Adelino Aguiar · Medição nº 04", owner: "Fiscalização de Obras", status: "Medição", metric: "42% concluído · Sem atraso", due: "Previsão 15 dez." },
+    { id: "o-3", code: "OB-2026-007", title: "Adequação da unidade de saúde do Planalto", detail: "Rua Reinaldo Rodrigues, 305 · Medição nº 04", owner: "Fiscalização de Obras", status: "Medição", metric: "42% concluído · Sem atraso", due: "Previsão 15 dez." },
   ],
 };
 
@@ -972,7 +972,7 @@ export function MunicipalManagementSection({ department, notify }: { department:
 
     {detailItem && <ModalShell eyebrow={`${tab.toUpperCase()} · ${detailItem.code}`} title={detailItem.title} onClose={() => setDetailItem(null)}><div className="management-detail-modal"><div className="management-detail-status"><StatusTag>{detailItem.status}</StatusTag><span>{detailItem.owner}</span></div><p>{detailItem.detail}</p><dl><div><dt>Indicador atual</dt><dd>{detailItem.metric}</dd></div><div><dt>Prazo / validade</dt><dd>{detailItem.due}</dd></div><div><dt>Setor visualizado</dt><dd>{department}</dd></div></dl><div className="management-timeline"><strong>Movimentações do registro</strong><span><i /><div><b>Registro disponível para acompanhamento</b><small>Histórico preservado nesta ficha.</small></div></span><span><i /><div><b>Situação atual: {detailItem.status}</b><small>Atualize o status conforme a execução do trabalho.</small></div></span></div>{access.edit && <div className="management-quick-actions"><button className="button secondary" onClick={() => quickStatus(detailItem, "Requer atenção")}>Marcar atenção</button><button className="button secondary" onClick={() => quickStatus(detailItem, "Em andamento")}>Em andamento</button><button className="button secondary" onClick={() => quickStatus(detailItem, "Regular")}>Marcar regular</button><button className="button primary" onClick={() => { setModal({ mode: "edit", item: detailItem }); setDetailItem(null); }}><Pencil size={14} /> Editar registro</button></div>}</div></ModalShell>}
 
-    <div className="management-upgrades"><FieldOperationsPanel department={department} notify={notify} /></div>
+    {access.register&&<div className="management-upgrades"><FieldOperationsPanel department={department} notify={notify} /></div>}
   </section>;
 }
 

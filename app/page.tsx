@@ -166,23 +166,23 @@ const USERS: User[] = [
 ];
 
 const INITIAL_TICKETS: Ticket[] = [
-  { id: "t-190", protocol: "CH-2026-0190", title: "Consolidar prioridades para a reunião do secretariado", description: "Reunir os pontos críticos enviados pelos setores e preparar a pauta executiva.", requester: "Gabinete do Prefeito", department: "Secretaria de Governo", priority: "Alta", status: "Recebido", dueDate: "2026-08-14T16:00:00.000Z", assigneeId: "u-ana", assigneeName: "Artur Paulo Fagundes Rabelo", assigneeInitials: "AR", neighborhood: "Pinlar I", address: "Rua Cláudio Manoel da Costa, 1000", createdAt: "2026-08-13T15:05:00.000Z", updatedAt: "2026-08-13T15:05:00.000Z" },
-  { id: "t-189", protocol: "CH-2026-0189", title: "Revisar comunicado sobre serviços municipais", description: "Validar as informações recebidas antes da publicação nos canais oficiais.", requester: "Secretaria de Comunicação e Eventos", department: "Secretaria de Governo", priority: "Média", status: "Em análise", dueDate: "2026-08-14T18:00:00.000Z", assigneeId: "u-mariana", assigneeName: "Mariana Castro", assigneeInitials: "MC", neighborhood: "Pinlar I", address: "Rua Cláudio Manoel da Costa, 1000", createdAt: "2026-08-13T13:20:00.000Z", updatedAt: "2026-08-13T15:12:00.000Z" },
-  { id: "t-188", protocol: "CH-2026-0188", title: "Validar cronograma da audiência pública", description: "Conferir responsáveis, local, acessibilidade e etapas de divulgação.", requester: "Assessoria do Gabinete", department: "Secretaria de Governo", priority: "Média", status: "Aguardando aprovação", dueDate: "2026-08-15T17:00:00.000Z", assigneeId: "u-andre", assigneeName: "André Lima", assigneeInitials: "AL", neighborhood: "Pinlar I", address: "Rua Cláudio Manoel da Costa, 1000", createdAt: "2026-08-12T16:00:00.000Z", updatedAt: "2026-08-13T14:48:00.000Z" },
-  { id: "t-187", protocol: "CH-2026-0187", title: "Manutenção da iluminação na Praça Central", description: "Substituição de luminárias e revisão do quadro elétrico.", requester: "Ouvidoria Municipal", department: "Secretaria de Infraestrutura e Transporte", priority: "Alta", status: "Em execução", dueDate: "2026-08-13T19:00:00.000Z", assigneeId: "u-rafael", assigneeName: "Bruno Gonçalves da Fonseca", assigneeInitials: "BF", neighborhood: "Centro", address: "Avenida Dr. Mallard", createdAt: "2026-08-13T10:00:00.000Z", updatedAt: "2026-08-13T14:36:00.000Z" },
-  { id: "t-186", protocol: "CH-2026-0186", title: "Revisão do calendário de vacinação", description: "Validar datas, locais e comunicação da campanha.", requester: "Gabinete do Prefeito", department: "Secretaria de Saúde", priority: "Média", status: "Aguardando aprovação", dueDate: "2026-08-14T18:00:00.000Z", assigneeId: "u-lucas", assigneeName: "Natália Cristina Pedrosa Cabral", assigneeInitials: "NC", neighborhood: "Planalto", address: "Rua Reinaldo Rodrigues, 305", createdAt: "2026-08-12T13:00:00.000Z", updatedAt: "2026-08-13T14:52:00.000Z" },
-  { id: "t-185", protocol: "CH-2026-0185", title: "Atualização do transporte escolar — Zona Norte", description: "Revisar itinerários antes da volta às aulas.", requester: "Secretaria de Educação", department: "Secretaria de Educação", priority: "Alta", status: "Recebido", dueDate: "2026-08-15T18:00:00.000Z", assigneeId: "u-amanda", assigneeName: "Leila Cibeli Silveira Mendes", assigneeInitials: "LM", neighborhood: "Centro", address: "Rua Safira, 1244", createdAt: "2026-08-12T11:00:00.000Z", updatedAt: "2026-08-12T11:00:00.000Z" },
+  { id: "t-190", protocol: "CH-2026-0190", title: "Consolidar prioridades de Várzea da Palma", description: "Reunir pontos críticos da sede e da Barra do Guaicuí para preparar a reunião do secretariado municipal.", requester: "Gabinete do Prefeito", department: "Secretaria de Governo", priority: "Alta", status: "Recebido", dueDate: "2026-08-14T16:00:00.000Z", assigneeId: "u-ana", assigneeName: "Artur Paulo Fagundes Rabelo", assigneeInitials: "AR", neighborhood: "Pinlar I", address: "Rua Cláudio Manoel da Costa, 1000 — Várzea da Palma/MG", createdAt: "2026-08-13T15:05:00.000Z", updatedAt: "2026-08-13T15:05:00.000Z" },
+  { id: "t-189", protocol: "CH-2026-0189", title: "Revisar comunicado de serviços de Várzea da Palma", description: "Validar horários, endereços e contatos municipais antes da publicação nos canais oficiais.", requester: "Secretaria de Comunicação e Eventos", department: "Secretaria de Governo", priority: "Média", status: "Em análise", dueDate: "2026-08-14T18:00:00.000Z", assigneeId: "u-mariana", assigneeName: "Mariana Castro", assigneeInitials: "MC", neighborhood: "Pinlar I", address: "Rua Cláudio Manoel da Costa, 1000 — Várzea da Palma/MG", createdAt: "2026-08-13T13:20:00.000Z", updatedAt: "2026-08-13T15:12:00.000Z" },
+  { id: "t-188", protocol: "CH-2026-0188", title: "Validar audiência pública no Paço Municipal", description: "Conferir responsáveis, acessibilidade, pauta e divulgação do encontro no Pinlar I.", requester: "Assessoria do Gabinete", department: "Secretaria de Governo", priority: "Média", status: "Aguardando aprovação", dueDate: "2026-08-15T17:00:00.000Z", assigneeId: "u-andre", assigneeName: "André Lima", assigneeInitials: "AL", neighborhood: "Pinlar I", address: "Rua Cláudio Manoel da Costa, 1000 — Várzea da Palma/MG", createdAt: "2026-08-12T16:00:00.000Z", updatedAt: "2026-08-13T14:48:00.000Z" },
+  { id: "t-187", protocol: "CH-2026-0187", title: "Iluminação no entorno da Estação Ferroviária", description: "Substituir luminárias e revisar o quadro elétrico no equipamento cultural do Centro.", requester: "Ouvidoria Municipal", department: "Secretaria de Infraestrutura e Transporte", priority: "Alta", status: "Em execução", dueDate: "2026-08-13T19:00:00.000Z", assigneeId: "u-rafael", assigneeName: "Bruno Gonçalves da Fonseca", assigneeInitials: "BF", neighborhood: "Centro", address: "Estação Ferroviária — Centro — Várzea da Palma/MG", createdAt: "2026-08-13T10:00:00.000Z", updatedAt: "2026-08-13T14:36:00.000Z" },
+  { id: "t-186", protocol: "CH-2026-0186", title: "Calendário de vacinação na sede e em Guaicuí", description: "Validar datas, pontos de atendimento e comunicação da campanha em Várzea da Palma e Barra do Guaicuí.", requester: "Gabinete do Prefeito", department: "Secretaria de Saúde", priority: "Média", status: "Aguardando aprovação", dueDate: "2026-08-14T18:00:00.000Z", assigneeId: "u-lucas", assigneeName: "Natália Cristina Pedrosa Cabral", assigneeInitials: "NC", neighborhood: "Planalto", address: "Rua Reinaldo Rodrigues, 305 — Várzea da Palma/MG", createdAt: "2026-08-12T13:00:00.000Z", updatedAt: "2026-08-13T14:52:00.000Z" },
+  { id: "t-185", protocol: "CH-2026-0185", title: "Transporte escolar — Barra do Guaicuí", description: "Revisar itinerários do distrito antes da volta às aulas da rede municipal.", requester: "Secretaria de Educação", department: "Secretaria de Educação", priority: "Alta", status: "Recebido", dueDate: "2026-08-15T18:00:00.000Z", assigneeId: "u-amanda", assigneeName: "Leila Cibeli Silveira Mendes", assigneeInitials: "LM", neighborhood: "Barra do Guaicuí", address: "Rua S. Pedro, 40 — Guaicuí — Várzea da Palma/MG", createdAt: "2026-08-12T11:00:00.000Z", updatedAt: "2026-08-12T11:00:00.000Z" },
   { id: "t-184", protocol: "CH-2026-0184", title: "Parecer sobre contratação emergencial", description: "Análise administrativa concluída.", requester: "Secretaria de Governo", department: "Secretaria de Administração e Finanças", priority: "Baixa", status: "Concluído", dueDate: "2026-08-12T18:00:00.000Z", assigneeId: "u-carla", assigneeName: "Jaime de Souza", assigneeInitials: "JS", neighborhood: "Pinlar I", address: "Rua Cláudio Manoel da Costa, 1000", createdAt: "2026-08-10T09:00:00.000Z", updatedAt: "2026-08-13T12:00:00.000Z" },
-  { id: "t-183", protocol: "CH-2026-0183", title: "Liberação de área para feira de produtores", description: "Avaliação ambiental e autorização de uso.", requester: "Gabinete do Prefeito", department: "Secretaria Municipal de Desenvolvimento Econômico, Agricultura e Meio Ambiente", priority: "Média", status: "Em execução", dueDate: "2026-08-16T18:00:00.000Z", assigneeId: "u-felipe", assigneeName: "Lucas Fontinelli de Oliveira da Silva", assigneeInitials: "LS", neighborhood: "Centro", address: "Rua Pedro Rodrigues de Menezes, 1474", createdAt: "2026-08-11T15:00:00.000Z", updatedAt: "2026-08-13T11:00:00.000Z" },
+  { id: "t-183", protocol: "CH-2026-0183", title: "Feira da agricultura familiar de Várzea da Palma", description: "Avaliar a estrutura e a autorização de uso para produtores da sede e da Barra do Guaicuí.", requester: "Gabinete do Prefeito", department: "Secretaria Municipal de Desenvolvimento Econômico, Agricultura e Meio Ambiente", priority: "Média", status: "Em execução", dueDate: "2026-08-16T18:00:00.000Z", assigneeId: "u-felipe", assigneeName: "Lucas Fontinelli de Oliveira da Silva", assigneeInitials: "LS", neighborhood: "Centro", address: "Rua Pedro Rodrigues de Menezes, 1474 — Várzea da Palma/MG", createdAt: "2026-08-11T15:00:00.000Z", updatedAt: "2026-08-13T11:00:00.000Z" },
 ];
 
 const TICKET_LOCATION_DEFAULTS: Record<string,{address:string;neighborhood:string}> = {
   "t-190": { address: "Rua Cláudio Manoel da Costa, 1000", neighborhood: "Pinlar I" },
   "t-189": { address: "Rua Cláudio Manoel da Costa, 1000", neighborhood: "Pinlar I" },
   "t-188": { address: "Rua Cláudio Manoel da Costa, 1000", neighborhood: "Pinlar I" },
-  "t-187": { address: "Avenida Dr. Mallard", neighborhood: "Centro" },
+  "t-187": { address: "Estação Ferroviária — Centro — Várzea da Palma/MG", neighborhood: "Centro" },
   "t-186": { address: "Rua Reinaldo Rodrigues, 305", neighborhood: "Planalto" },
-  "t-185": { address: "Rua Safira, 1244", neighborhood: "Centro" },
+  "t-185": { address: "Rua S. Pedro, 40 — Guaicuí — Várzea da Palma/MG", neighborhood: "Barra do Guaicuí" },
   "t-184": { address: "Rua Cláudio Manoel da Costa, 1000", neighborhood: "Pinlar I" },
   "t-183": { address: "Rua Pedro Rodrigues de Menezes, 1474", neighborhood: "Centro" },
 };
@@ -260,29 +260,29 @@ function restoreSectorMessages(items: Message[], users: User[]) {
 }
 
 const INITIAL_GROUPS: Group[] = [
-  { id: "g-volta-aulas", name: "Operação Volta às Aulas 2026", description: "Educação, Mobilidade e Governo", memberCount: 3, createdAt: "2026-08-13T14:00:00.000Z", memberUserIds: ["u-ana", "u-amanda"], pendingUserIds: ["u-rafael"] },
-  { id: "g-centro", name: "Revitalização do Centro", description: "Obras e comunicação institucional", memberCount: 3, createdAt: "2026-08-11T10:00:00.000Z", memberUserIds: ["u-ana", "u-rafael", "u-carla"], pendingUserIds: [] },
-  { id: "g-saude-digital", name: "Comitê de Saúde Digital", description: "Integração dos atendimentos e sistemas da rede municipal.", memberCount: 1, createdAt: "2026-08-13T14:45:00.000Z", memberUserIds: ["u-lucas"], pendingUserIds: ["u-ana"] },
+  { id: "g-volta-aulas", name: "Volta às Aulas — Várzea da Palma 2026", description: "Educação e transporte escolar da sede e da Barra do Guaicuí", memberCount: 3, createdAt: "2026-08-13T14:00:00.000Z", memberUserIds: ["u-ana", "u-amanda"], pendingUserIds: ["u-rafael"] },
+  { id: "g-centro", name: "Entorno da Estação Ferroviária", description: "Obras, cultura e comunicação institucional de Várzea da Palma", memberCount: 3, createdAt: "2026-08-11T10:00:00.000Z", memberUserIds: ["u-ana", "u-rafael", "u-carla"], pendingUserIds: [] },
+  { id: "g-saude-digital", name: "Saúde Digital — Várzea da Palma", description: "Integração dos atendimentos e sistemas da rede municipal.", memberCount: 1, createdAt: "2026-08-13T14:45:00.000Z", memberUserIds: ["u-lucas"], pendingUserIds: ["u-ana"] },
   ...buildSectorChannelGroups(USERS),
 ];
 
 const INITIAL_NOTIFICATIONS: NotificationItem[] = [
   { id: "n-governo-aprovacao", userId: "u-ana", type: "ticket", title: "Cronograma pronto para aprovação", body: "André Lima concluiu a conferência do chamado CH-2026-0188.", relatedEntityId: "t-188", readAt: null, createdAt: "2026-08-13T14:48:00.000Z", actorName: "André Lima", actorInitials: "AL" },
-  { id: "n-convite-saude", userId: "u-ana", type: "group_invite", title: "Novo convite para grupo", body: "Natália Cristina Pedrosa Cabral convidou você para o Comitê de Saúde Digital.", relatedEntityId: "g-saude-digital", readAt: null, createdAt: "2026-08-13T14:45:00.000Z", actorName: "Natália Cristina Pedrosa Cabral", actorInitials: "NC" },
-  { id: "n-convite-volta-aulas", userId: "u-rafael", type: "group_invite", title: "Novo convite para grupo", body: "Leila Cibeli Silveira Mendes convidou você para Operação Volta às Aulas 2026.", relatedEntityId: "g-volta-aulas", readAt: null, createdAt: "2026-08-13T14:00:00.000Z", actorName: "Leila Cibeli Silveira Mendes", actorInitials: "LM" },
+  { id: "n-convite-saude", userId: "u-ana", type: "group_invite", title: "Novo convite para grupo", body: "Natália Cristina Pedrosa Cabral convidou você para Saúde Digital — Várzea da Palma.", relatedEntityId: "g-saude-digital", readAt: null, createdAt: "2026-08-13T14:45:00.000Z", actorName: "Natália Cristina Pedrosa Cabral", actorInitials: "NC" },
+  { id: "n-convite-volta-aulas", userId: "u-rafael", type: "group_invite", title: "Novo convite para grupo", body: "Leila Cibeli Silveira Mendes convidou você para Volta às Aulas — Várzea da Palma 2026.", relatedEntityId: "g-volta-aulas", readAt: null, createdAt: "2026-08-13T14:00:00.000Z", actorName: "Leila Cibeli Silveira Mendes", actorInitials: "LM" },
   { id: "n-aprovacao", userId: "u-ana", type: "ticket", title: "Chamado aguardando aprovação", body: "O chamado CH-2026-0186 está pronto para sua análise.", relatedEntityId: "t-186", readAt: null, createdAt: "2026-08-13T14:52:00.000Z", actorName: "Natália Cristina Pedrosa Cabral", actorInitials: "NC" },
   { id: "n-documento", userId: "u-ana", type: "message", title: "Documento recebido", body: "Bruno Gonçalves da Fonseca enviou o Relatório técnico — Iluminação.pdf.", relatedEntityId: "m-3", readAt: "2026-08-13T14:40:00.000Z", createdAt: "2026-08-13T14:36:00.000Z", actorName: "Bruno Gonçalves da Fonseca", actorInitials: "BF" },
 ];
 
 const INITIAL_INVITATIONS: GroupInvitation[] = [
-  { groupId: "g-saude-digital", userId: "u-ana", groupName: "Comitê de Saúde Digital", description: "Integração dos atendimentos e sistemas da rede municipal.", invitedByName: "Natália Cristina Pedrosa Cabral", invitedByInitials: "NC", memberCount: 1, status: "convidado", createdAt: "2026-08-13T14:45:00.000Z" },
-  { groupId: "g-volta-aulas", userId: "u-rafael", groupName: "Operação Volta às Aulas 2026", description: "Educação, Mobilidade e Governo", invitedByName: "Leila Cibeli Silveira Mendes", invitedByInitials: "LM", memberCount: 2, status: "convidado", createdAt: "2026-08-13T14:00:00.000Z" },
+  { groupId: "g-saude-digital", userId: "u-ana", groupName: "Saúde Digital — Várzea da Palma", description: "Integração dos atendimentos e sistemas da rede municipal.", invitedByName: "Natália Cristina Pedrosa Cabral", invitedByInitials: "NC", memberCount: 1, status: "convidado", createdAt: "2026-08-13T14:45:00.000Z" },
+  { groupId: "g-volta-aulas", userId: "u-rafael", groupName: "Volta às Aulas — Várzea da Palma 2026", description: "Educação e transporte escolar da sede e da Barra do Guaicuí", invitedByName: "Leila Cibeli Silveira Mendes", invitedByInitials: "LM", memberCount: 2, status: "convidado", createdAt: "2026-08-13T14:00:00.000Z" },
 ];
 
 const INITIAL_MESSAGES: Message[] = [
   { id: "m-gov-1", conversationType: "direct", conversationId: "u-ana::u-mariana", senderId: "u-mariana", senderName: "Mariana Castro", senderInitials: "MC", body: "Revisei o comunicado e sinalizei dois trechos que ainda precisam de confirmação.", ticketId: "t-189", createdAt: "2026-08-13T15:12:00.000Z" },
   { id: "m-gov-2", conversationType: "direct", conversationId: "u-ana::u-andre", senderId: "u-andre", senderName: "André Lima", senderInitials: "AL", body: "O cronograma da audiência está pronto para sua aprovação.", ticketId: "t-188", createdAt: "2026-08-13T14:48:00.000Z" },
-  { id: "m-1", conversationType: "direct", conversationId: "u-ana::u-rafael", senderId: "u-rafael", senderName: "Bruno Gonçalves da Fonseca", senderInitials: "BF", body: "Bom dia, Artur. A equipe já iniciou a vistoria na Praça Central.", ticketId: "t-187", createdAt: "2026-08-13T14:20:00.000Z" },
+  { id: "m-1", conversationType: "direct", conversationId: "u-ana::u-rafael", senderId: "u-rafael", senderName: "Bruno Gonçalves da Fonseca", senderInitials: "BF", body: "Bom dia, Artur. A equipe já iniciou a vistoria no entorno da Estação Ferroviária.", ticketId: "t-187", createdAt: "2026-08-13T14:20:00.000Z" },
   { id: "m-2", conversationType: "direct", conversationId: "u-ana::u-rafael", senderId: "u-ana", senderName: "Artur Paulo Fagundes Rabelo", senderInitials: "AR", body: "Ótimo. Por favor, envie o relatório técnico assim que estiver pronto.", ticketId: "t-187", createdAt: "2026-08-13T14:24:00.000Z" },
   { id: "m-3", conversationType: "direct", conversationId: "u-ana::u-rafael", senderId: "u-rafael", senderName: "Bruno Gonçalves da Fonseca", senderInitials: "BF", body: "Segue a primeira versão para conferência.", attachmentId: "d-1", attachmentName: "Relatório técnico — Iluminação.pdf", attachmentSize: 2480000, attachmentContentType: "application/pdf", ticketId: "t-187", createdAt: "2026-08-13T14:36:00.000Z" },
   { id: "m-4", conversationType: "group", conversationId: "g-volta-aulas", senderId: "u-amanda", senderName: "Leila Cibeli Silveira Mendes", senderInitials: "LM", body: "Incluí a planilha com os novos itinerários. Precisamos da validação até amanhã.", ticketId: "t-185", createdAt: "2026-08-13T14:10:00.000Z" },
@@ -291,22 +291,22 @@ const INITIAL_MESSAGES: Message[] = [
 
 const INITIAL_DOCS: DocumentItem[] = [
   { id: "d-1", name: "Relatório técnico — Iluminação.pdf", category: "Relatório técnico", ownerId: "u-rafael", ownerName: "Bruno Gonçalves da Fonseca", department: "Secretaria de Infraestrutura e Transporte", ticketId: "t-187", contentType: "application/pdf", size: 2480000, createdAt: "2026-08-13T14:36:00.000Z" },
-  { id: "d-2", name: "Itinerários escolares — Zona Norte.xlsx", category: "Planilha", ownerId: "u-amanda", ownerName: "Leila Cibeli Silveira Mendes", department: "Secretaria de Educação", ticketId: "t-185", contentType: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", size: 840000, createdAt: "2026-08-13T14:10:00.000Z" },
+  { id: "d-2", name: "Itinerários escolares — Barra do Guaicuí.xlsx", category: "Planilha", ownerId: "u-amanda", ownerName: "Leila Cibeli Silveira Mendes", department: "Secretaria de Educação", ticketId: "t-185", contentType: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", size: 840000, createdAt: "2026-08-13T14:10:00.000Z" },
   { id: "d-3", name: "Planejamento semanal do gabinete.pdf", category: "Planejamento", ownerId: "u-ana", ownerName: "Artur Paulo Fagundes Rabelo", department: "Secretaria de Governo", contentType: "application/pdf", size: 620000, createdAt: "2026-08-13T12:00:00.000Z" },
 ];
 
 const INITIAL_EVENTS: SectorEvent[] = [
-  { id: "e-governo-1", title: "Reunião de alinhamento do gabinete", description: "Revisão das prioridades e dos chamados em andamento.", department: "Secretaria de Governo", targetDepartments: ["Secretaria de Governo", "Gabinete do Prefeito"], location: "Sala de reuniões do gabinete", startsAt: "2026-08-14T12:30:00.000Z", endsAt: "2026-08-14T13:30:00.000Z", createdBy: "u-ana", creatorName: "Artur Paulo Fagundes Rabelo", creatorInitials: "AR", createdAt: "2026-08-13T12:00:00.000Z" },
-  { id: "e-governo-2", title: "Despacho com chefias de setor", description: "Consolidação das demandas para a próxima semana.", department: "Secretaria de Governo", targetDepartments: ["Secretaria de Governo", "Secretaria de Administração e Finanças", "Secretaria de Infraestrutura e Transporte", "Secretaria de Saúde", "Secretaria de Educação"], location: "Auditório municipal", startsAt: "2026-08-17T13:00:00.000Z", endsAt: "2026-08-17T14:30:00.000Z", createdBy: "u-ana", creatorName: "Artur Paulo Fagundes Rabelo", creatorInitials: "AR", createdAt: "2026-08-13T12:30:00.000Z" },
-  { id: "e-saude-1", title: "Revisão da campanha de vacinação", description: "Validação final do calendário e dos pontos de atendimento.", department: "Secretaria de Saúde", targetDepartments: ["Secretaria de Saúde", "Secretaria de Comunicação e Eventos"], location: "Sala técnica da Saúde", startsAt: "2026-08-15T12:00:00.000Z", endsAt: null, createdBy: "u-lucas", creatorName: "Natália Cristina Pedrosa Cabral", creatorInitials: "NC", createdAt: "2026-08-13T13:00:00.000Z" },
+  { id: "e-governo-1", title: "Reunião de prioridades de Várzea da Palma", description: "Revisão das prioridades e dos chamados da sede e da Barra do Guaicuí.", department: "Secretaria de Governo", targetDepartments: ["Secretaria de Governo", "Gabinete do Prefeito"], location: "Paço Municipal — Rua Cláudio Manoel da Costa, 1000 — Pinlar I", startsAt: "2026-08-14T12:30:00.000Z", endsAt: "2026-08-14T13:30:00.000Z", createdBy: "u-ana", creatorName: "Artur Paulo Fagundes Rabelo", creatorInitials: "AR", createdAt: "2026-08-13T12:00:00.000Z" },
+  { id: "e-governo-2", title: "Despacho com chefias municipais", description: "Consolidação das demandas de Várzea da Palma para a próxima semana.", department: "Secretaria de Governo", targetDepartments: ["Secretaria de Governo", "Secretaria de Administração e Finanças", "Secretaria de Infraestrutura e Transporte", "Secretaria de Saúde", "Secretaria de Educação"], location: "Paço Municipal — Pinlar I — Várzea da Palma/MG", startsAt: "2026-08-17T13:00:00.000Z", endsAt: "2026-08-17T14:30:00.000Z", createdBy: "u-ana", creatorName: "Artur Paulo Fagundes Rabelo", creatorInitials: "AR", createdAt: "2026-08-13T12:30:00.000Z" },
+  { id: "e-saude-1", title: "Vacinação na sede e na Barra do Guaicuí", description: "Validação final do calendário e dos pontos de atendimento municipais.", department: "Secretaria de Saúde", targetDepartments: ["Secretaria de Saúde", "Secretaria de Comunicação e Eventos"], location: "Secretaria Municipal de Saúde — Rua Reinaldo Rodrigues, 305 — Planalto", startsAt: "2026-08-15T12:00:00.000Z", endsAt: null, createdBy: "u-lucas", creatorName: "Natália Cristina Pedrosa Cabral", creatorInitials: "NC", createdAt: "2026-08-13T13:00:00.000Z" },
 ];
 
 const INITIAL_AUDIT: AuditItem[] = [
   { id: "a-gov-1", action: "status_atualizado", entityType: "chamado", entityId: "t-188", detail: "Cronograma da audiência movido para Aguardando aprovação", createdAt: "2026-08-13T14:48:00.000Z", actorName: "André Lima", actorInitials: "AL" },
-  { id: "a-gov-2", action: "chamado_criado", entityType: "chamado", entityId: "t-190", detail: "Prioridades da reunião do secretariado registradas", createdAt: "2026-08-13T15:05:00.000Z", actorName: "Artur Paulo Fagundes Rabelo", actorInitials: "AR" },
+  { id: "a-gov-2", action: "chamado_criado", entityType: "chamado", entityId: "t-190", detail: "Prioridades de Várzea da Palma registradas para a reunião do secretariado", createdAt: "2026-08-13T15:05:00.000Z", actorName: "Artur Paulo Fagundes Rabelo", actorInitials: "AR" },
   { id: "a-1", action: "status_atualizado", entityType: "chamado", entityId: "t-186", detail: "Calendário de vacinação movido para Aguardando aprovação", createdAt: "2026-08-13T14:52:00.000Z", actorName: "Natália Cristina Pedrosa Cabral", actorInitials: "NC" },
   { id: "a-2", action: "documento_enviado", entityType: "mensagem", entityId: "m-3", detail: "Relatório técnico — Iluminação.pdf enviado no chat", createdAt: "2026-08-13T14:36:00.000Z", actorName: "Bruno Gonçalves da Fonseca", actorInitials: "BF" },
-  { id: "a-3", action: "grupo_criado", entityType: "grupo", entityId: "g-volta-aulas", detail: "Grupo Operação Volta às Aulas 2026 criado", createdAt: "2026-08-13T14:00:00.000Z", actorName: "Leila Cibeli Silveira Mendes", actorInitials: "LM" },
+  { id: "a-3", action: "grupo_criado", entityType: "grupo", entityId: "g-volta-aulas", detail: "Grupo Volta às Aulas — Várzea da Palma 2026 criado", createdAt: "2026-08-13T14:00:00.000Z", actorName: "Leila Cibeli Silveira Mendes", actorInitials: "LM" },
   { id: "a-4", action: "chamado_finalizado", entityType: "chamado", entityId: "t-184", detail: "Parecer sobre contratação emergencial finalizado", createdAt: "2026-08-13T12:00:00.000Z", actorName: "Jaime de Souza", actorInitials: "JS" },
 ];
 
@@ -407,6 +407,7 @@ export default function Home() {
   const currentEventIds = new Set(currentEvents.map((event) => event.id));
   const ownCommunicationMessages = messages.filter((message) => messageVisibleToUser(message, currentUserId, groups) && messageAllowedInCommunication(message, activeDepartment, users, groups));
   const viewingOtherDepartment = executiveAccess && !sameDepartment(activeDepartment, currentUser.department);
+  const executiveReadOnlyScope = executiveAccess && (activeNav === "Central Executiva" || viewingOtherDepartment);
   const executiveCommunicationMonitor = executiveAccess && executiveCommunicationAccess && viewingOtherDepartment;
   const communicationLocked = viewingOtherDepartment && !executiveCommunicationMonitor;
   const communicationMessages = executiveCommunicationMonitor
@@ -436,12 +437,12 @@ export default function Home() {
   const pendingCount = currentInvitations.length + pendingTickets.length;
   const accessibleGroups = groups.filter((group) => groupConfinedToDepartment(group, activeDepartment, users) && (executiveCommunicationMonitor || !group.memberUserIds || group.memberUserIds.includes(currentUserId)));
   const activeUsers = users.filter((user) => (user.accountStatus ?? "Ativo") === "Ativo");
-  const canManageEmployees = isSectorManager(currentUser);
+  const canManageEmployees = isSectorManager(currentUser) && !viewingOtherDepartment;
   const sectorUsers = users.filter((user) => sameDepartment(user.department, activeDepartment));
   const scopedActiveUsers = activeUsers.filter((user) => sameDepartment(user.department, activeDepartment));
   const communicationDirectoryUsers = activeUsers.filter((user) => sameDepartment(user.department, activeDepartment) || (isSectorManager(currentUser) && isSectorManager(user)));
   const scopedOffices = OFFICES.filter((office) => sameDepartment(office.name, activeDepartment));
-  const availableDepartments = executiveAccess ? allDepartments : [activeDepartment];
+  const availableDepartments = executiveAccess && !viewingOtherDepartment ? allDepartments : [activeDepartment];
   const sectorEmployees = sectorUsers.filter((user) => !isSectorManager(user));
   const departmentPermissionSettings = (() => {
     const configured = permissionConfigs[activeDepartment];
@@ -454,15 +455,17 @@ export default function Home() {
     return defaults;
   })();
   const currentPermission = activeNav === "Central Executiva"
-    ? executiveAccess ? FULL_PERMISSION : NO_PERMISSION
+    ? executiveAccess ? PUBLIC_READ_PERMISSION : NO_PERMISSION
     : activeNav === "Últimas Notícias Prefeitura"
+    ? PUBLIC_READ_PERMISSION
+    : viewingOtherDepartment
     ? PUBLIC_READ_PERMISSION
     : activeNav === "Funcionários" || activeNav === "Configurações"
     ? canManageEmployees ? FULL_PERMISSION : NO_PERMISSION
     : permissionFor(activeNav, canManageEmployees, currentUser.id, departmentPermissionSettings);
-  const ticketPermission = permissionFor("Chamados", canManageEmployees, currentUser.id, departmentPermissionSettings);
-  const eventPermission = permissionFor("Próximos Eventos", canManageEmployees, currentUser.id, departmentPermissionSettings);
-  const communicationPermission = permissionFor("Comunicação", canManageEmployees, currentUser.id, departmentPermissionSettings);
+  const ticketPermission = viewingOtherDepartment ? PUBLIC_READ_PERMISSION : permissionFor("Chamados", canManageEmployees, currentUser.id, departmentPermissionSettings);
+  const eventPermission = viewingOtherDepartment ? PUBLIC_READ_PERMISSION : permissionFor("Próximos Eventos", canManageEmployees, currentUser.id, departmentPermissionSettings);
+  const communicationPermission = viewingOtherDepartment ? PUBLIC_READ_PERMISSION : permissionFor("Comunicação", canManageEmployees, currentUser.id, departmentPermissionSettings);
 
   useNotificationChime(unreadCount + (mayorAccess ? citizenFeedbackUnread : 0), soundEnabled);
 
@@ -699,6 +702,7 @@ export default function Home() {
   }
 
   async function createTicket(form: FormData) {
+    if (executiveReadOnlyScope || !ticketPermission.register) { notify("O modo executivo permite apenas consultar dados consolidados ou de outros setores."); return null; }
     const now = new Date().toISOString();
     const assigneeId = String(form.get("assigneeId") || "") || null;
     const requestedDepartment = String(form.get("department") || "");
@@ -726,6 +730,7 @@ export default function Home() {
       const navMap: Record<string, NavItem> = { "Início": "Visão geral", "Demandas": "Chamados", "Tarefas": "Central Integrada", "Agenda": "Próximos Eventos", "Gestão": "Central Integrada", "Configurações": "Configurações", "Chamados": "Chamados", "Atendimento ao Cidadão": "Atendimento ao Cidadão", "Central Integrada": "Central Integrada", "Próximos Eventos": "Próximos Eventos" };
       const target = navMap[payload.navTarget] || navMap[payload.title]; if (!target) return { ok:false, message:"Não encontrei essa área na navegação disponível." }; setActiveNav(target); return { ok:true, message:`Abri a área “${payload.navTarget || payload.title}”.` };
     }
+    if (executiveReadOnlyScope) return { ok:false, message:"O modo de consulta executiva não permite que Prefeito ou Vice-Prefeito alterem dados consolidados ou de outros setores." };
     if (action.type === "create_ticket") {
       if (!ticketPermission.register) return { ok:false, message:"Seu perfil não possui permissão para criar chamados." };
       const targetDepartment = validDepartment(payload.department) || activeDepartment;
@@ -765,25 +770,6 @@ export default function Home() {
     setTicketData((current) => current.map((item) => item.id === id ? { ...item, status, updatedAt: new Date().toISOString() } : item));
     addAudit("status_atualizado", "chamado", id, `${ticket?.protocol ?? "Chamado"} movido para ${status}`);
     notify(`Chamado movido para “${status}”.`);
-  }
-
-  function updateExecutiveTicketStatus(id: string, status: TicketStatus) {
-    const ticket = ticketData.find((item) => item.id === id);
-    if (!executiveAccess || !ticket) { notify("Este chamado não está disponível na Central Executiva."); return; }
-    const updatedAt = new Date().toISOString();
-    setTicketData((current) => current.map((item) => item.id === id ? { ...item, status, updatedAt } : item));
-    setAudit((current) => [{
-      id: makeId(),
-      action: "status_executivo_atualizado",
-      entityType: "chamado",
-      entityId: id,
-      detail: `${ticket.protocol} movido para ${status} pela Central Executiva`,
-      department: ticket.department,
-      createdAt: updatedAt,
-      actorName: currentUser.fullName,
-      actorInitials: currentUser.initials,
-    }, ...current]);
-    notify(`Chamado ${ticket.protocol} atualizado para “${status}”.`);
   }
 
   function addAudit(action: string, entityType: string, entityId: string, detail: string) {
@@ -1038,6 +1024,7 @@ export default function Home() {
     if (item === "Central Executiva") return executiveAccess;
     if (item === "Últimas Notícias Prefeitura") return true;
     if (item === "Funcionários" || item === "Configurações") return canManageEmployees;
+    if (viewingOtherDepartment) return true;
     return permissionFor(item, canManageEmployees, currentUser.id, departmentPermissionSettings).view;
   };
   const cleanNavSections: Array<{ label: string; items: NavItem[] }> = [
@@ -1133,12 +1120,14 @@ export default function Home() {
           {executiveAccess && activeNav !== "Central Executiva" && <label className="executive-sector-switch"><span className="executive-switch-icon"><Crown size={17} /></span><span><small>PAINEL SETORIAL</small><select aria-label="Selecionar setor para a visão executiva" value={activeDepartment} onChange={(event) => switchDepartment(event.target.value)}>{allDepartments.map((department) => <option key={department}>{department}</option>)}</select></span></label>}
           <div className="top-actions">
             <span className={`persistence-status ${persistenceStatus}`} title="Persistência central do sistema"><i />{persistenceStatus === "carregando" ? "Conectando" : persistenceStatus === "salvando" ? "Salvando" : persistenceStatus === "offline" ? "Aguardando conexão" : "Salvo"}</span>
-            <button className="top-ai-button" type="button" onClick={() => openMunicipalAi()}><Sparkles size={15}/> IA Conecta</button>
+            <button className="top-ai-button" type="button" disabled={executiveReadOnlyScope} title={executiveReadOnlyScope ? "IA de execução indisponível no modo de consulta executiva" : "Abrir IA Conecta"} onClick={() => openMunicipalAi()}><Sparkles size={15}/> IA Conecta</button>
             <button className="icon-button notification-button" aria-label={`Notificações${unreadCount + (mayorAccess ? citizenFeedbackUnread : 0) ? `: ${unreadCount + (mayorAccess ? citizenFeedbackUnread : 0)} novas` : ""}`} onClick={() => setActiveNav(mayorAccess && citizenFeedbackUnread > 0 ? "Atendimento ao Cidadão" : "Notificações")}><Bell size={18} />{unreadCount + (mayorAccess ? citizenFeedbackUnread : 0) > 0 && <span />}</button>
             <button className="icon-button logout-button" aria-label="Sair do sistema" title="Sair" onClick={() => void logout()}><LogOut size={18} /></button>
             <label className="account-switch"><div className="avatar">{currentUser.initials}</div><span><small>{executiveAccess ? "VISUALIZAR COMO" : "PERFIS CADASTRADOS"}</small><select aria-label="Visualizar como usuário" value={currentUserId} onChange={(event) => switchUser(event.target.value)}>{activeUsers.map((user) => <option key={user.id} value={user.id}>{user.fullName} — {user.department}</option>)}</select></span></label>
           </div>
         </header>
+
+        <div className="demo-banner municipal-demo-context" role="note"><span className="demo-banner-mark"><MapPin size={14}/></span><span><strong>Ambiente demonstrativo municipal</strong><small>Cenários, locais e serviços de Várzea da Palma–MG</small></span></div>
 
         <PermissionProvider key={`${currentUser.id}-${activeDepartment}`} permission={currentPermission}>
         <div className={`content-wrap ${activeNav === "Comunicação" ? "chat-content" : ""} ${currentPermission.register ? "can-register" : "read-only-register"} ${currentPermission.edit ? "can-edit" : "read-only-edit"}`}>
@@ -1154,7 +1143,7 @@ export default function Home() {
               ) : activeNav === "Funcionários" ? (
                 <button type="button" className="button secondary" onClick={() => setEmployeeModal(true)}><UserPlus size={15} /> Convidar funcionário</button>
               ) : activeNav === "Notificações" ? (
-                <button className="button secondary" onClick={markAllNotifications}><CheckCheck size={15} /> Marcar todas como lidas</button>
+                currentPermission.edit && <button className="button secondary" onClick={markAllNotifications}><CheckCheck size={15} /> Marcar todas como lidas</button>
               ) : activeNav === "Pendências" ? (
                 <button className="button secondary" onClick={() => setActiveNav("Chamados")}><ClipboardList size={15} /> Ver chamados</button>
               ) : activeNav === "Indicadores" || activeNav === "Auditoria" || activeNav === "Gestão Municipal" || activeNav === "Processos Digitais" ? (
@@ -1166,14 +1155,14 @@ export default function Home() {
             </div>
           </section>
 
-          {/* v4.2 CLEAN: contexto executivo e permissões continuam disponíveis no topo/configurações, sem banners repetitivos em todas as telas. */}
+          {viewingOtherDepartment && activeNav !== "Central Executiva" && <div className="executive-sector-readonly" role="status"><ShieldCheck size={19}/><span><strong>Modo de consulta executiva · {activeDepartment}</strong><small>Prefeito e Vice-Prefeito podem visualizar e abrir as informações deste setor, mas não podem criar, editar, mover, comentar, excluir ou executar ações por IA.</small></span></div>}
 
-          {activeNav !== "Visão geral" && activeNav !== "Central Executiva" && <ContextualAiBar activeModule={activeNav} department={activeDepartment} tickets={privateTickets} events={currentEvents} />}
+          {!executiveReadOnlyScope && activeNav !== "Visão geral" && activeNav !== "Central Executiva" && <ContextualAiBar activeModule={activeNav} department={activeDepartment} tickets={privateTickets} events={currentEvents} />}
 
           {activeNav === "Visão geral" && <Dashboard tickets={filteredTickets} allTickets={privateTickets} audit={privateAudit} executive={executiveAccess} department={activeDepartment} userName={currentUser.fullName} onNavigate={setActiveNav} />}
-          {activeNav === "Central Executiva" && executiveAccess && <ExecutiveCommandCenter tickets={ticketData} departments={allDepartments} currentUser={{ fullName: currentUser.fullName, role: currentUser.role }} onOpenDepartment={openExecutiveDepartment} onTicketStatus={updateExecutiveTicketStatus} onNewTicket={() => setTicketModal(true)} notify={notify} />}
+          {activeNav === "Central Executiva" && executiveAccess && <ExecutiveCommandCenter tickets={ticketData} departments={allDepartments} currentUser={{ fullName: currentUser.fullName, role: currentUser.role }} onOpenDepartment={openExecutiveDepartment} notify={notify} />}
           {activeNav === "Últimas Notícias Prefeitura" && <PrefeituraNewsSection />}
-          {activeNav === "Área do Setor" && <><SectorWorkspaceSection key={activeDepartment} department={activeDepartment} userName={currentUser.fullName} userRole={currentUser.role} departments={availableDepartments} notify={notify} /><FormBuilderPanel department={activeDepartment} notify={notify} /></>}
+          {activeNav === "Área do Setor" && <><SectorWorkspaceSection key={activeDepartment} department={activeDepartment} userName={currentUser.fullName} userRole={currentUser.role} departments={availableDepartments} notify={notify} />{!viewingOtherDepartment&&<FormBuilderPanel department={activeDepartment} notify={notify} />}</>}
           {activeNav === "Fluxos e Anotações" && <SectorNotesSection key={activeDepartment} department={activeDepartment} userName={currentUser.fullName} team={sectorUsers.map((user) => ({ id: user.id, name: user.fullName, role: user.role }))} notify={notify} />}
           {activeNav === "Chamados" && <TicketsSection tickets={filteredTickets} department={activeDepartment} departments={availableDepartments} onStatus={updateStatus} onNew={() => setTicketModal(true)} />}
           {activeNav === "Comunicação" && (communicationLocked
@@ -1182,12 +1171,12 @@ export default function Home() {
               ? <ExecutiveCommunicationViewer department={activeDepartment} users={scopedActiveUsers} groups={accessibleGroups} messages={communicationMessages} />
               : <CommunicationSection key={`${currentUser.id}-${activeDepartment}`} currentUser={currentUser} users={communicationDirectoryUsers} groups={accessibleGroups} messages={communicationMessages} tickets={privateTickets} onSend={sendMessage} onSendAttachment={sendChatAttachment} onNewGroup={() => setGroupModal(true)} onTicketStatus={updateStatus} />)}
           {activeNav === "Atendimento ao Cidadão" && <CitizenServiceSection department={activeDepartment} notify={notify} isMayor={executiveAccess} departments={availableDepartments} />}
-          {activeNav === "Central Integrada" && <IntegratedManagementSection key={activeDepartment} initialTab="Tarefas" department={activeDepartment} currentUser={{ id: currentUser.id, fullName: currentUser.fullName, department: currentUser.department, role: currentUser.role, initials: currentUser.initials }} tickets={privateTickets} users={scopedActiveUsers.map((user) => ({ id: user.id, fullName: user.fullName, department: user.department, role: user.role, initials: user.initials }))} offices={scopedOffices} events={currentEvents} departments={availableDepartments} notify={notify} />}
+          {activeNav === "Central Integrada" && <IntegratedManagementSection key={activeDepartment} initialTab="Tarefas" department={activeDepartment} currentUser={{ id: currentUser.id, fullName: currentUser.fullName, department: currentUser.department, role: currentUser.role, initials: currentUser.initials }} tickets={privateTickets} users={scopedActiveUsers.map((user) => ({ id: user.id, fullName: user.fullName, department: user.department, role: user.role, initials: user.initials }))} offices={scopedOffices} events={currentEvents} departments={availableDepartments} notify={notify} readOnly={viewingOtherDepartment} />}
           {activeNav === "Processos Digitais" && <ProcessesSection key={`${activeDepartment}-${currentUser.id}`} department={activeDepartment} currentUser={{ id: currentUser.id, fullName: currentUser.fullName, department: currentUser.department, role: currentUser.role }} users={scopedActiveUsers.map((user) => ({ id: user.id, fullName: user.fullName, department: user.department, role: user.role }))} departments={availableDepartments} notify={notify} />}
           {activeNav === "Gestão Municipal" && <MunicipalManagementSection department={activeDepartment} notify={notify} />}
           {activeNav === "Indicadores" && <IndicatorsSection department={activeDepartment} notify={notify} />}
-          {activeNav === "Notificações" && <><NotificationsSection notifications={currentNotifications} onRead={markNotification} onOpenPending={() => setActiveNav("Pendências")} /><SmartNotificationRules department={activeDepartment} notify={notify} /></>}
-          {activeNav === "Pendências" && <><PendingSection invitations={currentInvitations} tickets={pendingTickets} onRespond={respondInvitation} onOpenTickets={() => setActiveNav("Chamados")} /><ApprovalCenterPanel department={activeDepartment} notify={notify} /></>}
+          {activeNav === "Notificações" && <><NotificationsSection notifications={currentNotifications} onRead={markNotification} onOpenPending={() => setActiveNav("Pendências")} />{!viewingOtherDepartment&&<SmartNotificationRules department={activeDepartment} notify={notify} />}</>}
+          {activeNav === "Pendências" && <><PendingSection invitations={currentInvitations} tickets={pendingTickets} onRespond={respondInvitation} onOpenTickets={() => setActiveNav("Chamados")} />{!viewingOtherDepartment&&<ApprovalCenterPanel department={activeDepartment} notify={notify} />}</>}
           {activeNav === "Anexos e Arquivos" && <><DocumentsSection documents={privateDocuments} department={activeDepartment} currentUserId={currentUser.id} onUpload={() => fileInput.current?.click()} /><DocumentGovernancePanel department={activeDepartment} notify={notify} /></>}
           {activeNav === "Próximos Eventos" && <EventsSection events={currentEvents} department={activeDepartment} onNew={() => setEventModal("new")} onEdit={setEventModal} onDelete={setEventToDelete} />}
           {activeNav === "Funcionários" && canManageEmployees && <EmployeesSection users={sectorUsers} department={activeDepartment} onInvite={() => setEmployeeModal(true)} onResend={resendEmployeeInvite} />}
@@ -1206,9 +1195,9 @@ export default function Home() {
       {eventToDelete && <EventDeleteModal event={eventToDelete} onClose={() => setEventToDelete(null)} onConfirm={() => deleteEvent(eventToDelete)} />}
       {employeeModal && canManageEmployees && <EmployeeInviteModal department={activeDepartment} onClose={() => setEmployeeModal(false)} onInvite={inviteEmployee} />}
       {interactionModal && <div className="modal-backdrop" role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget) setInteractionModal(null); }}><section className="modal interaction-action-modal" role="dialog" aria-modal="true" aria-labelledby="interaction-action-title"><header><div><p className="eyebrow">FUNÇÃO DO SISTEMA</p><h2 id="interaction-action-title">{interactionModal.title}</h2></div><button type="button" aria-label="Fechar" onClick={() => setInteractionModal(null)}><X size={18} /></button></header><div className="interaction-action-body"><span className="interaction-action-icon"><ArrowUpRight size={22} /></span><div><strong>Recurso aberto</strong><p>{interactionModal.message}</p><small>Use esta janela para revisar a função e seguir para as orientações do módulo.</small></div></div><footer><button className="button secondary" onClick={() => setInteractionModal(null)}>Fechar</button><button className="button primary" onClick={() => { setInteractionModal(null); setActiveNav("Central de Ajuda"); }}>Ver orientações</button></footer></section></div>}
-      <MunicipalAiCopilot activeModule={activeNav} department={activeDepartment} user={{ id: currentUser.id, fullName: currentUser.fullName, role: currentUser.role }} tickets={privateTickets} events={currentEvents} departments={availableDepartments} unreadNotifications={unreadCount + (mayorAccess ? citizenFeedbackUnread : 0)} onExecuteAction={executeMunicipalAgentAction} />
+      {!executiveReadOnlyScope && <MunicipalAiCopilot activeModule={activeNav} department={activeDepartment} user={{ id: currentUser.id, fullName: currentUser.fullName, role: currentUser.role }} tickets={privateTickets} events={currentEvents} departments={availableDepartments} unreadNotifications={unreadCount + (mayorAccess ? citizenFeedbackUnread : 0)} onExecuteAction={executeMunicipalAgentAction} />}
       <OnboardingTour userName={currentUser.fullName} role={currentUser.role} department={activeDepartment} onNavigate={(nav) => setActiveNav(nav as NavItem)} />
-      <QuickActionDock onNavigate={(nav) => setActiveNav(nav as NavItem)} onNewTicket={() => { setTicketModal(true); setActiveNav("Chamados"); }} onNewEvent={() => { setEventModal("new"); setActiveNav("Próximos Eventos"); }} />
+      {!executiveReadOnlyScope && <QuickActionDock onNavigate={(nav) => setActiveNav(nav as NavItem)} onNewTicket={() => { setTicketModal(true); setActiveNav("Chamados"); }} onNewEvent={() => { setEventModal("new"); setActiveNav("Próximos Eventos"); }} />}
       <MobileBottomNavigation active={activeNav} onNavigate={(nav) => { setActiveNav(nav as NavItem); setSidebarOpen(false); }} onMenu={() => setSidebarOpen(true)} />
       {recentlyDeletedEvent && <div className="undo-toast" role="status"><span><strong>Evento excluído</strong><small>{recentlyDeletedEvent.title}</small></span><button type="button" onClick={restoreDeletedEvent}>Desfazer</button></div>}
       {toast && <div className="toast" role="status"><span><Check size={14} strokeWidth={2.5} /></span>{toast}</div>}

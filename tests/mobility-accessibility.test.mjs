@@ -4,10 +4,12 @@ import test from "node:test";
 
 const read = (path) => readFile(new URL(`../${path}`, import.meta.url), "utf8");
 
-test("ships an installable PWA manifest and offline shell", async () => {
-  const [manifestSource, platform, worker] = await Promise.all([
+test("ships an installable PWA with silent background synchronization", async () => {
+  const [manifestSource, platform, layout, styles, worker] = await Promise.all([
     read("public/manifest.webmanifest"),
     read("app/platform-experience.tsx"),
+    read("app/layout.tsx"),
+    read("app/globals.css"),
     read("public/sw.js"),
   ]);
   const manifest = JSON.parse(manifestSource);
@@ -15,9 +17,24 @@ test("ships an installable PWA manifest and offline shell", async () => {
   assert.equal(manifest.start_url, "/");
   assert.equal(manifest.icons.length, 2);
   assert.match(platform, /export function PwaInstallCard/);
-  assert.match(platform, /export function OfflineStatusBar/);
-  assert.match(platform, /getOfflinePendingCount/);
-  assert.match(worker, /prefeitura-conecta-offline-v49/);
+  assert.match(platform, /window\.addEventListener\("online", sync\)/);
+  assert.doesNotMatch(platform, /OfflineStatusBar|Conexão restaurada|Sincronizar agora/);
+  assert.doesNotMatch(layout, /OfflineStatusBar/);
+  assert.doesNotMatch(styles, /offline-global-bar/);
+  assert.match(worker, /prefeitura-conecta-offline-v493/);
+});
+
+test("keeps IA Conecta only inside the floating plus menu", async () => {
+  const [platform, copilot, styles] = await Promise.all([
+    read("app/platform-experience.tsx"),
+    read("app/municipal-ai-copilot.tsx"),
+    read("app/globals.css"),
+  ]);
+  assert.match(platform, /className="quick-action-ai"/);
+  assert.match(platform, /<span>IA Conecta<\/span>/);
+  assert.match(platform, /aria-expanded=\{open\}/);
+  assert.doesNotMatch(copilot, /municipal-ai-fab/);
+  assert.doesNotMatch(styles, /\.municipal-ai-fab/);
 });
 
 test("adds mobile navigation and accessibility controls", async () => {

@@ -2,8 +2,10 @@
 
 import { Dispatch, SetStateAction, useEffect, useRef, useState } from "react";
 import { flushOfflineQueue, queuePersistentWrite } from "./offline-sync";
+import { useCurrentPermission } from "./permission-context";
 
 export type PersistenceStatus = "carregando" | "salvando" | "salvo" | "offline";
+type PersistentStateOptions = { readOnly?: boolean };
 
 const saveChains = new Map<string, Promise<{ ok: true; updatedAt?: string; queued?: boolean }>>();
 
@@ -77,7 +79,9 @@ export function savePersistentValue<T>(key: string, value: T): Promise<{ ok: tru
   return next;
 }
 
-export function usePersistentState<T>(key: string, initialValue: T): [T, Dispatch<SetStateAction<T>>, PersistenceStatus, boolean] {
+export function usePersistentState<T>(key: string, initialValue: T, options: PersistentStateOptions = {}): [T, Dispatch<SetStateAction<T>>, PersistenceStatus, boolean] {
+  const permission = useCurrentPermission();
+  const readOnly = Boolean(options.readOnly) || (!permission.register && !permission.edit);
   const [value, setValue] = useState<T>(initialValue);
   const [status, setStatus] = useState<PersistenceStatus>("carregando");
   const [ready, setReady] = useState(false);
@@ -99,7 +103,7 @@ export function usePersistentState<T>(key: string, initialValue: T): [T, Dispatc
       else {
         const cached = loadCachedPersistentValue<T>(key);
         if (cached !== null) setValue(cached);
-        await savePersistentValue(key, cached ?? initialValue);
+        if (!readOnly) await savePersistentValue(key, cached ?? initialValue);
       }
       if (!cancelled) { setStatus("salvo"); setReady(true); }
     }).catch(() => {
@@ -109,23 +113,23 @@ export function usePersistentState<T>(key: string, initialValue: T): [T, Dispatc
       setStatus("offline"); setReady(true);
     });
     return () => { cancelled = true; };
-  }, [key]);
+  }, [key, readOnly]);
 
   useEffect(() => {
-    if (!ready) return;
+    if (!ready || readOnly) return;
     if (skipNextSave.current) { skipNextSave.current = false; return; }
     cachePersistentValue(key, value);
     setStatus("salvando");
     // Sem debounce longo: a chamada começa imediatamente e `keepalive` permite
     // que o navegador conclua a requisição mesmo durante uma atualização da página.
     void savePersistentValue(key, value).then((result) => setStatus(result.queued ? "offline" : "salvo")).catch(() => setStatus("offline"));
-  }, [key, ready, value]);
+  }, [key, readOnly, ready, value]);
 
   useEffect(() => {
-    if (status !== "offline" || !ready) return;
+    if (status !== "offline" || !ready || readOnly) return;
     const timer = window.setInterval(() => { void savePersistentValue(key, latestValue.current).then((result) => setStatus(result.queued ? "offline" : "salvo")).catch(() => undefined); }, 8000);
     return () => window.clearInterval(timer);
-  }, [key, ready, status]);
+  }, [key, readOnly, ready, status]);
 
   return [value, setValue, status, ready];
 }

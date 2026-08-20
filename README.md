@@ -118,7 +118,7 @@ As notícias são públicas e aparecem para todos os perfis. Essa exceção não
 
 As mensagens diretas agora exibem os gestores cadastrados de todas as secretarias, permitindo contato intersetorial entre Prefeito, Vice-prefeito, secretários e responsáveis. Grupos, chamados, contratos, documentos, processos e demais dados operacionais continuam isolados pelo setor visualizado.
 
-A experiência móvel ganhou manifesto PWA instalável, navegação inferior, estado offline e fila de sincronização visíveis, recuperação automática do rascunho de chamado, exclusão de evento com opção de desfazer e formulário de campo preparado para GPS, câmera e confirmação do responsável.
+A experiência móvel ganhou manifesto PWA instalável, navegação inferior, funcionamento offline e fila de sincronização automática em segundo plano, recuperação automática do rascunho de chamado, exclusão de evento com opção de desfazer e formulário de campo preparado para GPS, câmera e confirmação do responsável.
 
 Em **Configurações › Preferências**, o usuário pode ativar alto contraste, aumentar o tamanho do texto, reduzir animações, reiniciar a apresentação guiada e instalar o aplicativo. A versão também inclui atalho de teclado para o conteúdo principal e foco visível.
 
@@ -128,6 +128,20 @@ Esta entrega não altera a lógica da Inteligência Artificial, nem aplica mudan
 
 Os perfis **Prefeito** e **Vice-prefeito** agora possuem uma aba exclusiva chamada **Pendências gerais**, dentro do grupo **Prefeito e Vice**. A Central Executiva consolida chamados e tarefas de todos os setores, sem depender do setor selecionado no painel comum.
 
-O novo painel inclui prioridades do dia e dos próximos sete dias, itens vencidos, urgentes, aguardando decisão e sem responsável, metas abaixo do esperado, projetos em risco, filtros combináveis, exportação CSV e cards separados por setor. Também permite abrir diretamente o ambiente responsável e atualizar a situação de chamados e tarefas com persistência e histórico.
+O novo painel inclui prioridades do dia e dos próximos sete dias, itens vencidos, urgentes, aguardando decisão e sem responsável, metas abaixo do esperado, projetos em risco, filtros combináveis, exportação CSV e cards separados por setor. Também permite abrir diretamente o ambiente responsável para consultar os detalhes.
 
 Usuários que não sejam Prefeito ou Vice-prefeito não visualizam a aba e são redirecionados para a página inicial caso tentem manter esse módulo aberto após uma troca de perfil. Veja `VERSAO-4.9.0-CENTRAL-EXECUTIVA.md`.
+
+## Versão 4.9.1 — Consulta executiva e demonstração municipal
+
+A Central Executiva e toda navegação do Prefeito/Vice em setores diferentes do Gabinete funcionam agora em **modo estritamente somente leitura**. Foram removidos seletores de status, criação de chamados, movimentação de tarefas, atualização de projetos e metas, comentários, atalhos de ação e execuções da IA nesse escopo. A camada de persistência também deixa de inicializar ou gravar dados quando a permissão atual é apenas de consulta.
+
+Os cenários demonstrativos foram localizados em **Várzea da Palma–MG**, com referências ao Paço Municipal no Pinlar, Estação Ferroviária, Planalto, Avenida Dr. Mallard, rede municipal e Barra do Guaicuí. Um aviso permanente identifica o ambiente demonstrativo. Veja `VERSAO-4.9.1-LEITURA-EXECUTIVA-VARZEA-DA-PALMA.md`.
+
+## Versão 4.9.2 — Sincronização discreta
+
+O aviso flutuante de conexão, a contagem de alterações pendentes e o botão **Sincronizar agora** foram removidos da interface. A fila offline continua sendo enviada automaticamente em segundo plano quando a conexão é restabelecida, sem ocupar espaço sobre as telas do sistema. Veja `VERSAO-4.9.2-SINCRONIZACAO-DISCRETA.md`.
+
+## Versão 4.9.3 — IA dentro das ações rápidas
+
+O botão flutuante independente **IA Conecta** foi removido para não cobrir campos e botões, especialmente o envio de mensagens em **Comunicação**. O acesso à IA permanece disponível dentro do menu aberto pelo botão flutuante **+**, além dos atalhos contextuais já existentes no sistema. Veja `VERSAO-4.9.3-IA-NO-MENU-MAIS.md`.

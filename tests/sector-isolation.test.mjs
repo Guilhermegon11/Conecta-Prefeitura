@@ -10,11 +10,13 @@ test("starts the demonstration with the Prefeito profile", async () => {
   assert.match(source, /useState\("Gabinete do Prefeito"\)/);
 });
 
-test("allows every demonstration profile while keeping sector navigation executive-only", async () => {
+test("allows every demonstration profile while keeping cross-sector editing blocked", async () => {
   const source = await readSource("page.tsx");
   assert.match(source, /role === "prefeito" \|\| role === "vice-prefeito"/);
-  assert.match(source, /availableDepartments = executiveAccess \? allDepartments : \[activeDepartment\]/);
+  assert.match(source, /availableDepartments = executiveAccess && !viewingOtherDepartment \? allDepartments : \[activeDepartment\]/);
   assert.match(source, /activeDepartment = executiveAccess \? viewedDepartment : currentUser\.department/);
+  assert.match(source, /canManageEmployees = isSectorManager\(currentUser\) && !viewingOtherDepartment/);
+  assert.match(source, /ticketPermission = viewingOtherDepartment \? PUBLIC_READ_PERMISSION/);
   assert.match(source, /activeUsers\.map\(\(user\) => <option/);
   assert.doesNotMatch(source, /<option[^>]+disabled>/);
   assert.doesNotMatch(source, /troca de perfil foi bloqueada/);

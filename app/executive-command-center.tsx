@@ -15,7 +15,6 @@ import {
   Filter,
   Gauge,
   ListTodo,
-  Plus,
   Search,
   ShieldCheck,
   Target,
@@ -27,9 +26,8 @@ import {
   type Goal,
   type IntegratedTask,
   type Project,
-  type WorkStatus,
 } from "./integrated-platform";
-import { usePersistentState } from "./persistence";
+import { loadCachedPersistentValue, loadPersistentValue } from "./persistence";
 
 export type ExecutiveTicketStatus =
   | "Recebido"
@@ -69,16 +67,6 @@ type ExecutiveItem = {
 type PeriodFilter = "Todos" | "Atenção" | "Hoje" | "7 dias";
 type SourceFilter = "Todos" | "Chamados" | "Tarefas";
 
-const TICKET_STATUSES: ExecutiveTicketStatus[] = [
-  "Recebido",
-  "Em análise",
-  "Aguardando aprovação",
-  "Em execução",
-  "Aguardando resposta",
-  "Concluído",
-  "Cancelado",
-];
-const TASK_STATUSES: WorkStatus[] = ["A fazer", "Em andamento", "Aguardando", "Concluído"];
 const DAY_MS = 86_400_000;
 const TIME_ZONE = "America/Sao_Paulo";
 
@@ -205,21 +193,18 @@ export function ExecutiveCommandCenter({
   departments,
   currentUser,
   onOpenDepartment,
-  onTicketStatus,
-  onNewTicket,
   notify,
 }: {
   tickets: ExecutiveTicket[];
   departments: string[];
   currentUser: { fullName: string; role: string };
   onOpenDepartment: (department: string, target: "Chamados" | "Central Integrada") => void;
-  onTicketStatus: (id: string, status: ExecutiveTicketStatus) => void;
-  onNewTicket: () => void;
   notify: (message: string) => void;
 }) {
-  const [tasks, setTasks, taskSaveStatus] = usePersistentState<IntegratedTask[]>("integrated:tasks:v2", INITIAL_TASKS);
-  const [projects, , projectSaveStatus] = usePersistentState<Project[]>("integrated:projects:v2", INITIAL_PROJECTS);
-  const [goals, , goalSaveStatus] = usePersistentState<Goal[]>("integrated:goals:v2", INITIAL_GOALS);
+  const [tasks, setTasks] = useState<IntegratedTask[]>(INITIAL_TASKS);
+  const [projects, setProjects] = useState<Project[]>(INITIAL_PROJECTS);
+  const [goals, setGoals] = useState<Goal[]>(INITIAL_GOALS);
+  const [dataStatus, setDataStatus] = useState<"carregando" | "sincronizado" | "offline">("carregando");
   const [now, setNow] = useState(() => new Date());
   const [query, setQuery] = useState("");
   const [departmentFilter, setDepartmentFilter] = useState("Todos os setores");
@@ -231,6 +216,30 @@ export function ExecutiveCommandCenter({
   useEffect(() => {
     const timer = window.setInterval(() => setNow(new Date()), 60_000);
     return () => window.clearInterval(timer);
+  }, []);
+
+  useEffect(() => {
+    let cancelled = false;
+    async function readOnlyLoad<T>(key: string, fallback: T) {
+      try {
+        const stored = await loadPersistentValue<T>(key);
+        return { value: stored ?? loadCachedPersistentValue<T>(key) ?? fallback, offline: false };
+      } catch {
+        return { value: loadCachedPersistentValue<T>(key) ?? fallback, offline: true };
+      }
+    }
+    void Promise.all([
+      readOnlyLoad<IntegratedTask[]>("integrated:tasks:v2", INITIAL_TASKS),
+      readOnlyLoad<Project[]>("integrated:projects:v2", INITIAL_PROJECTS),
+      readOnlyLoad<Goal[]>("integrated:goals:v2", INITIAL_GOALS),
+    ]).then(([taskResult, projectResult, goalResult]) => {
+      if (cancelled) return;
+      setTasks(taskResult.value);
+      setProjects(projectResult.value);
+      setGoals(goalResult.value);
+      setDataStatus(taskResult.offline || projectResult.offline || goalResult.offline ? "offline" : "sincronizado");
+    });
+    return () => { cancelled = true; };
   }, []);
 
   const allItems = useMemo<ExecutiveItem[]>(() => [
@@ -338,23 +347,11 @@ export function ExecutiveCommandCenter({
     || projectsInAttention.some((item) => normalize(item.department) === normalize(department)),
   ).length;
   const topSector = sectorCards[0];
-  const syncState = [taskSaveStatus, projectSaveStatus, goalSaveStatus].includes("offline")
-    ? "Aguardando conexão"
-    : [taskSaveStatus, projectSaveStatus, goalSaveStatus].includes("salvando")
-      ? "Salvando alterações"
-      : [taskSaveStatus, projectSaveStatus, goalSaveStatus].includes("carregando")
-        ? "Atualizando dados"
-        : "Dados sincronizados";
-
-  function updateTaskStatus(id: string, status: WorkStatus) {
-    setTasks((current) => current.map((task) => task.id === id ? {
-      ...task,
-      status,
-      updatedAt: new Date().toISOString(),
-      history: [...task.history, { at: new Date().toISOString(), action: `Situação alterada para ${status} pela Central Executiva` }],
-    } : task));
-    notify(`Tarefa atualizada para “${status}”.`);
-  }
+  const syncState = dataStatus === "offline"
+    ? "Consulta com dados locais"
+    : dataStatus === "carregando"
+      ? "Atualizando dados"
+      : "Dados sincronizados";
 
   function exportExecutiveSummary() {
     const header = ["Tipo", "Identificação", "Assunto", "Setor", "Prioridade", "Situação", "Responsável", "Prazo"];
@@ -382,11 +379,10 @@ export function ExecutiveCommandCenter({
         <p className="eyebrow">GABINETE EXECUTIVO · VISÃO MUNICIPAL</p>
         <h2>Todas as pendências, em um só lugar</h2>
         <p>Chamados, tarefas, aprovações, prazos e riscos de todos os setores, organizados para decisão do Prefeito e do Vice-Prefeito.</p>
-        <div><span><ShieldCheck size={13} /> Acesso exclusivo: {currentUser.role}</span><span><Clock3 size={13} /> {syncState}</span></div>
+        <div><span><ShieldCheck size={13} /> {currentUser.role} · modo somente consulta</span><span><Clock3 size={13} /> {syncState}</span></div>
       </div>
       <div className="exec-central-hero-actions">
         <button type="button" className="button secondary" onClick={exportExecutiveSummary}><Download size={15} /> Exportar resumo</button>
-        <button type="button" className="button primary" onClick={onNewTicket}><Plus size={15} /> Novo chamado</button>
       </div>
     </article>
 
@@ -457,12 +453,12 @@ export function ExecutiveCommandCenter({
     </section>
 
     <section className="panel exec-central-queue">
-      <header><div><p className="eyebrow">FILA CONSOLIDADA</p><h2>Chamados e tarefas que exigem acompanhamento</h2><p>Atualize a situação ou abra o ambiente responsável para consultar todos os detalhes.</p></div><span>{filteredItems.length} em exibição</span></header>
+      <header><div><p className="eyebrow">FILA CONSOLIDADA · SOMENTE CONSULTA</p><h2>Chamados e tarefas que exigem acompanhamento</h2><p>Consulte a situação ou abra o ambiente responsável para visualizar todos os detalhes, sem alterar dados do setor.</p></div><span>{filteredItems.length} em exibição</span></header>
       <div className="exec-central-queue-list">{filteredItems.slice(0, 14).map((item) => <article key={`${item.kind}-${item.id}`} className={isOverdue(item, now) ? "overdue" : ""}>
         <span className={`exec-queue-source ${item.kind === "Chamado" ? "ticket" : "task"}`}>{item.kind === "Chamado" ? <ClipboardList size={15} /> : <ListTodo size={15} />}</span>
         <div className="exec-queue-copy"><div><b className={`exec-priority ${priorityClass(item.priority)}`}>{item.priority}</b><small>{sourceLabel(item)}</small></div><strong>{item.title}</strong><p>{item.department} · {item.owner}</p></div>
         <span className={`exec-queue-due ${isOverdue(item, now) ? "overdue" : isDueToday(item, now) ? "today" : ""}`}><Clock3 size={13} /> {dueLabel(item, now)}</span>
-        {item.kind === "Chamado" ? <select aria-label={`Alterar situação de ${item.title}`} value={item.status} onChange={(event) => onTicketStatus(item.id, event.target.value as ExecutiveTicketStatus)}>{TICKET_STATUSES.map((status) => <option key={status}>{status}</option>)}</select> : <select aria-label={`Alterar situação de ${item.title}`} value={item.status} onChange={(event) => updateTaskStatus(item.id, event.target.value as WorkStatus)}>{TASK_STATUSES.map((status) => <option key={status}>{status}</option>)}</select>}
+        <span className="exec-queue-status"><ShieldCheck size={12} /> {item.status}</span>
         <button type="button" aria-label={`Abrir ${item.title} no setor responsável`} onClick={() => openItem(item)}><ChevronRight size={16} /></button>
       </article>)}</div>
       {!filteredItems.length && <div className="exec-central-empty inline"><CheckCircle2 size={24} /><strong>Nenhuma pendência neste recorte</strong><p>Os filtros atuais não retornaram chamados ou tarefas abertas.</p></div>}

@@ -1,8 +1,8 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { CalendarDays, CalendarPlus, Check, ClipboardList, Download, Home, Landmark, Menu, MessageSquare, Plus, RefreshCw, Smartphone, Sparkles, Wifi, WifiOff, Workflow, X } from "lucide-react";
-import { flushOfflineQueue, getOfflinePendingCount, subscribeOfflineQueue } from "./offline-sync";
+import { CalendarDays, CalendarPlus, Check, ClipboardList, Download, Home, Landmark, Menu, MessageSquare, Plus, Smartphone, Sparkles, Workflow, X } from "lucide-react";
+import { flushOfflineQueue } from "./offline-sync";
 import { flushPendingOfflineLogout } from "./offline-auth";
 
 type InstallPromptEvent = Event & { prompt: () => Promise<void>; userChoice: Promise<{ outcome: "accepted" | "dismissed" }> };
@@ -24,49 +24,6 @@ export function PwaRegistrar() {
     return () => { window.removeEventListener("load", register); window.removeEventListener("online", sync); };
   }, []);
   return null;
-}
-
-export function OfflineStatusBar() {
-  const [online, setOnline] = useState(true);
-  const [pending, setPending] = useState(0);
-  const [syncing, setSyncing] = useState(false);
-
-  useEffect(() => {
-    let active = true;
-    const update = async () => {
-      if (!active) return;
-      setOnline(navigator.onLine);
-      setPending(await getOfflinePendingCount());
-    };
-    const sync = () => {
-      void update();
-      if (navigator.onLine) void runSync();
-    };
-    const runSync = async () => {
-      setSyncing(true);
-      try {
-        const result = await flushOfflineQueue();
-        if (active) setPending(result.remaining);
-      } catch { /* a fila permanece visível para nova tentativa */ }
-      finally { if (active) setSyncing(false); }
-    };
-    void update();
-    window.addEventListener("online", sync);
-    window.addEventListener("offline", update);
-    const unsubscribe = subscribeOfflineQueue(() => { void update(); });
-    return () => {
-      active = false;
-      unsubscribe();
-      window.removeEventListener("online", sync);
-      window.removeEventListener("offline", update);
-    };
-  }, []);
-
-  if (online && pending === 0) return null;
-  return <aside className={`offline-global-bar ${online ? "online" : "offline"}`} role="status" aria-live="polite">
-    <span className="offline-global-main">{online ? <Wifi size={19} /> : <WifiOff size={19} />}<strong>{online ? "Conexão restaurada" : "Você está sem internet"}</strong><small>{pending ? `${pending} ${pending === 1 ? "alteração aguarda" : "alterações aguardam"} sincronização.` : "Você pode continuar consultando as áreas já carregadas."}</small></span>
-    <span className="offline-global-actions">{online && pending > 0 && <button type="button" disabled={syncing} onClick={() => { setSyncing(true); void flushOfflineQueue().then((result) => setPending(result.remaining)).finally(() => setSyncing(false)); }}><RefreshCw size={14} className={syncing ? "spinning" : ""} />{syncing ? "Sincronizando" : "Sincronizar agora"}</button>}</span>
-  </aside>;
 }
 
 export function PwaInstallCard() {
@@ -120,7 +77,7 @@ export function OnboardingTour({ userName, role, department, onNavigate }: { use
 export function QuickActionDock({ onNavigate, onNewTicket, onNewEvent }: { onNavigate: (nav: string) => void; onNewTicket: () => void; onNewEvent: () => void }) {
   const [open,setOpen]=useState(false);
   function openAi(){window.dispatchEvent(new CustomEvent("prefeitura:open-ai",{detail:{prompt:"Analise o contexto atual e me ajude a decidir o próximo passo."}}));setOpen(false)}
-  return <div className={`quick-action-dock ${open?"open":""}`}><div className="quick-action-menu"><button onClick={()=>{onNewTicket();setOpen(false)}}><ClipboardList size={15}/><span>Novo chamado</span></button><button onClick={()=>{onNewEvent();setOpen(false)}}><CalendarPlus size={15}/><span>Novo evento</span></button><button onClick={()=>{onNavigate("Central Integrada");setOpen(false)}}><Workflow size={15}/><span>Nova tarefa</span></button><button className="quick-action-ai" onClick={openAi}><Sparkles size={15}/><span>Perguntar à IA</span></button></div><button className="quick-action-trigger" aria-label="Ações rápidas" onClick={()=>setOpen(!open)}><Plus size={22}/></button></div>;
+  return <div className={`quick-action-dock ${open?"open":""}`}><div id="quick-action-menu" className="quick-action-menu" aria-hidden={!open}><button type="button" onClick={()=>{onNewTicket();setOpen(false)}}><ClipboardList size={15}/><span>Novo chamado</span></button><button type="button" onClick={()=>{onNewEvent();setOpen(false)}}><CalendarPlus size={15}/><span>Novo evento</span></button><button type="button" onClick={()=>{onNavigate("Central Integrada");setOpen(false)}}><Workflow size={15}/><span>Nova tarefa</span></button><button type="button" className="quick-action-ai" onClick={openAi}><Sparkles size={15}/><span>IA Conecta</span></button></div><button type="button" className="quick-action-trigger" aria-label={open?"Fechar ações rápidas":"Abrir ações rápidas"} aria-expanded={open} aria-controls="quick-action-menu" onClick={()=>setOpen(!open)}><Plus size={22}/></button></div>;
 }
 
 export function MobileBottomNavigation({ active, onNavigate, onMenu }: { active: string; onNavigate: (nav: string) => void; onMenu: () => void }) {

@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
-import { OfflineStatusBar, PwaRegistrar } from "./platform-experience";
+import { PwaRegistrar } from "./platform-experience";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -56,7 +56,6 @@ export default function RootLayout({
       >
         <a className="skip-link" href="#main-content">Pular para o conteúdo principal</a>
         <PwaRegistrar />
-        <OfflineStatusBar />
         {children}
       </body>
     </html>
