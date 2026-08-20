@@ -9,6 +9,16 @@ test("restricts cross-sector navigation to Prefeito and Vice-prefeito", async ()
   assert.match(source, /role === "prefeito" \|\| role === "vice-prefeito"/);
   assert.match(source, /availableDepartments = executiveAccess \? allDepartments : \[activeDepartment\]/);
   assert.match(source, /!executiveAccess && !sameDepartment\(nextUser\.department, currentUser\.department\)/);
+  assert.match(source, /Outros setores — somente Prefeito e Vice/);
+  assert.match(source, /crossSectorUsers\.map\(\(user\) => <option[^>]+disabled>/);
+});
+
+test("restores the complete historical user registry", async () => {
+  const source = await readSource("page.tsx");
+  assert.match(source, /setUsers\(restoreRegisteredUsers\(stored\.users\)\)/);
+  assert.match(source, /setUsers\(restoreRegisteredUsers\(cached\.users\)\)/);
+  assert.match(source, /const restoredDefaults = USERS\.map/);
+  assert.match(source, /return \[\.\.\.restoredDefaults, \.\.\.sanitized\.filter/);
 });
 
 test("passes only sector-scoped collections to global views", async () => {

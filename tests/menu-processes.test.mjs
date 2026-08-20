@@ -10,7 +10,7 @@ test("restores the previous header and sidebar identity", async () => {
   assert.match(source, /Gestão Integrada \+ IA/);
   assert.match(source, /Buscar somente no setor atual\.\.\./);
   assert.match(source, /> IA Conecta</);
-  assert.match(source, /"VISUALIZAR COMO" : "PERFIL DO SETOR"/);
+  assert.match(source, /"VISUALIZAR COMO" : "PERFIS CADASTRADOS"/);
   assert.doesNotMatch(source, /className="topbar-brand"/);
   assert.doesNotMatch(source, /NÚCLEO MUNICIPAL|Perguntar à IA|PERFIL ATIVO/);
 });

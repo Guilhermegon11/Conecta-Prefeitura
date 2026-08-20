@@ -363,7 +363,7 @@ export default function Home() {
   const canManageEmployees = isSectorManager(currentUser);
   const sectorUsers = users.filter((user) => sameDepartment(user.department, activeDepartment));
   const scopedActiveUsers = activeUsers.filter((user) => sameDepartment(user.department, activeDepartment));
-  const switchableUsers = executiveAccess ? activeUsers : scopedActiveUsers;
+  const crossSectorUsers = activeUsers.filter((user) => !sameDepartment(user.department, activeDepartment));
   const scopedOffices = OFFICES.filter((office) => sameDepartment(office.name, activeDepartment));
   const availableDepartments = executiveAccess ? allDepartments : [activeDepartment];
   const sectorEmployees = sectorUsers.filter((user) => !isSectorManager(user));
@@ -426,7 +426,7 @@ export default function Home() {
       if (savedPermissions) setPermissionConfigs(savedPermissions);
       if (stored) {
         if (Array.isArray(stored.ticketData)) setTicketData(backfillTicketLocations(stored.ticketData));
-        if (Array.isArray(stored.users)) setUsers(backfillExecutiveUsers(stored.users));
+        if (Array.isArray(stored.users)) setUsers(restoreRegisteredUsers(stored.users));
         if (Array.isArray(stored.groups)) setGroups(stored.groups);
         if (Array.isArray(stored.messages)) setMessages(stored.messages);
         if (Array.isArray(stored.documents)) setDocuments(stored.documents);
@@ -452,7 +452,7 @@ export default function Home() {
       if (cachedPermissions) setPermissionConfigs(cachedPermissions);
       if (cached) {
         if (Array.isArray(cached.ticketData)) setTicketData(backfillTicketLocations(cached.ticketData));
-        if (Array.isArray(cached.users)) setUsers(backfillExecutiveUsers(cached.users));
+        if (Array.isArray(cached.users)) setUsers(restoreRegisteredUsers(cached.users));
         if (Array.isArray(cached.groups)) setGroups(cached.groups);
         if (Array.isArray(cached.messages)) setMessages(cached.messages);
         if (Array.isArray(cached.documents)) setDocuments(cached.documents);
@@ -988,7 +988,7 @@ export default function Home() {
             <button className="top-ai-button" type="button" onClick={() => openMunicipalAi()}><Sparkles size={15}/> IA Conecta</button>
             <button className="icon-button notification-button" aria-label={`Notificações${unreadCount + (mayorAccess ? citizenFeedbackUnread : 0) ? `: ${unreadCount + (mayorAccess ? citizenFeedbackUnread : 0)} novas` : ""}`} onClick={() => setActiveNav(mayorAccess && citizenFeedbackUnread > 0 ? "Atendimento ao Cidadão" : "Notificações")}><Bell size={18} />{unreadCount + (mayorAccess ? citizenFeedbackUnread : 0) > 0 && <span />}</button>
             <button className="icon-button logout-button" aria-label="Sair do sistema" title="Sair" onClick={() => void logout()}><LogOut size={18} /></button>
-            <label className="account-switch"><div className="avatar">{currentUser.initials}</div><span><small>{executiveAccess ? "VISUALIZAR COMO" : "PERFIL DO SETOR"}</small><select aria-label="Visualizar como usuário" value={currentUserId} onChange={(event) => switchUser(event.target.value)}>{switchableUsers.map((user) => <option key={user.id} value={user.id}>{user.fullName} — {user.department}</option>)}</select></span></label>
+            <label className="account-switch"><div className="avatar">{currentUser.initials}</div><span><small>{executiveAccess ? "VISUALIZAR COMO" : "PERFIS CADASTRADOS"}</small><select aria-label="Visualizar como usuário" value={currentUserId} onChange={(event) => switchUser(event.target.value)}>{executiveAccess ? activeUsers.map((user) => <option key={user.id} value={user.id}>{user.fullName} — {user.department}</option>) : <><optgroup label="Meu setor">{scopedActiveUsers.map((user) => <option key={user.id} value={user.id}>{user.fullName} — {user.department}</option>)}</optgroup><optgroup label="Outros setores — somente Prefeito e Vice">{crossSectorUsers.map((user) => <option key={user.id} value={user.id} disabled>{user.fullName} — {user.department}</option>)}</optgroup></>}</select></span></label>
           </div>
         </header>
 
@@ -1854,6 +1854,16 @@ function backfillExecutiveUsers(items: User[]) {
       : user.id === "u-vice"
         ? { ...user, fullName: "Jaime de Souza", department: "Gabinete do Prefeito", role: "Vice-prefeito", initials: "JS" }
         : user);
+}
+
+function restoreRegisteredUsers(items: User[]) {
+  const sanitized = backfillExecutiveUsers(items);
+  const defaultIds = new Set(USERS.map((user) => user.id));
+  const restoredDefaults = USERS.map((defaultUser) => {
+    const savedUser = sanitized.find((user) => user.id === defaultUser.id);
+    return savedUser ? { ...defaultUser, ...savedUser } : defaultUser;
+  });
+  return [...restoredDefaults, ...sanitized.filter((user) => !defaultIds.has(user.id))];
 }
 
 function isExecutiveAccess(user: User) { const role = normalizeText(user.role).replaceAll(" ", "-"); return role === "prefeito" || role === "vice-prefeito"; }
