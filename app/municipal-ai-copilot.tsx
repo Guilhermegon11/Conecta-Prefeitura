@@ -48,6 +48,7 @@ export function ContextualAiBar({ activeModule, department, tickets, events }: {
     "Atendimento ao Cidadão": { title: "Triagem inteligente disponível", body: "A IA pode resumir manifestações, sugerir destino, identificar urgência e preparar uma resposta clara para revisão." },
     "Central Integrada": { title: "Planejamento assistido em tempo real", body: "Transforme prioridades em tarefas, planos de ação, reuniões, projetos e metas usando linguagem natural." },
     "Processos Digitais": { title: "Leitura inteligente de processos", body: "Peça um resumo executivo, uma minuta de despacho, uma lista de pendências ou a próxima movimentação recomendada." },
+    "Últimas Notícias Prefeitura": { title: "Leitura executiva das notícias oficiais", body: "Resuma manchetes, identifique setores envolvidos e transforme informações públicas relevantes em pontos de acompanhamento interno." },
     Comunicação: { title: "Comunicação mais rápida e objetiva", body: "Resuma conversas, melhore mensagens e transforme decisões em tarefas acompanháveis." },
     Indicadores: { title: "A IA interpreta os números com você", body: "Identifique variações, gargalos e perguntas que precisam ser respondidas antes da próxima reunião." },
     "Próximos Eventos": { title: `${futureEvents.length} compromisso(s) no contexto atual`, body: "Prepare pauta, participantes, decisões esperadas e próximos passos para cada encontro." },

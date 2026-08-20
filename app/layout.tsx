@@ -54,6 +54,7 @@ export default function RootLayout({
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
       >
+        <a className="skip-link" href="#main-content">Pular para o conteúdo principal</a>
         <PwaRegistrar />
         <OfflineStatusBar />
         {children}

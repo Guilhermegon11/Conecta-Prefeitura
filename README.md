@@ -18,6 +18,7 @@ Sistema interno de gestão municipal em Next.js, React e TypeScript, com persist
 - Histórico de atividades
 - Central de ajuda
 - Configurações
+- Últimas Notícias Prefeitura
 
 ## Persistência central
 
@@ -105,3 +106,19 @@ Esta demonstração deixa a IA visível e acionável nos principais momentos da 
 - identidade visual mais clara para recursos inteligentes, mantendo a linguagem institucional do produto.
 
 As respostas da demonstração usam os recursos de IA já existentes no projeto e mantêm contingência local quando o serviço externo não estiver configurado.
+
+## Versão 4.7.9 — Notícias oficiais integradas
+
+A área **Últimas Notícias Prefeitura** consulta o RSS do portal oficial de Várzea da Palma por uma rota server-side, organiza publicações por categoria e oferece busca, atualização manual, acesso à matéria original e análise assistiva por IA. Uma lista oficial previamente verificada mantém a área utilizável quando a fonte externa estiver temporariamente indisponível.
+
+As notícias são públicas e aparecem para todos os perfis. Essa exceção não altera o isolamento setorial dos dados internos. Veja `VERSAO-4.7.9-NOTICIAS-PREFEITURA.md` e `SUGESTOES-COMPLETAS-PREFEITURA-CONECTA.md`.
+
+## Versão 4.8.0 — Mobilidade, acessibilidade e contatos entre secretários
+
+As mensagens diretas agora exibem os gestores cadastrados de todas as secretarias, permitindo contato intersetorial entre Prefeito, Vice-prefeito, secretários e responsáveis. Grupos, chamados, contratos, documentos, processos e demais dados operacionais continuam isolados pelo setor visualizado.
+
+A experiência móvel ganhou manifesto PWA instalável, navegação inferior, estado offline e fila de sincronização visíveis, recuperação automática do rascunho de chamado, exclusão de evento com opção de desfazer e formulário de campo preparado para GPS, câmera e confirmação do responsável.
+
+Em **Configurações › Preferências**, o usuário pode ativar alto contraste, aumentar o tamanho do texto, reduzir animações, reiniciar a apresentação guiada e instalar o aplicativo. A versão também inclui atalho de teclado para o conteúdo principal e foco visível.
+
+Esta entrega não altera a lógica da Inteligência Artificial, nem aplica mudanças na área de Segurança e LGPD. Veja `VERSAO-4.8.0-MOBILIDADE-ACESSIBILIDADE.md`.

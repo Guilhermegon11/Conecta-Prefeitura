@@ -36,10 +36,12 @@ import {
   Menu,
   MessagesSquare,
   MoreHorizontal,
+  Newspaper,
   Paperclip,
   Pencil,
   Plus,
   Phone,
+  RefreshCw,
   Search,
   Send,
   Sparkles,
@@ -89,13 +91,14 @@ import { clearOfflineSession, hasValidOfflineSession, rememberOfflineSession } f
 import { queueFormRequest } from "./offline-sync";
 import { LoginLoadingScreen, TestLoginScreen } from "./test-login";
 import { IntegratedManagementSection } from "./integrated-platform";
-import { OnboardingTour, QuickActionDock } from "./platform-experience";
+import { MobileBottomNavigation, OnboardingTour, QuickActionDock } from "./platform-experience";
 import { ContextualAiBar, DashboardAiBrief, MunicipalAiCopilot, openMunicipalAi } from "./municipal-ai-copilot";
+import { PrefeituraNewsSection } from "./prefeitura-news";
 import type { MunicipalAgentAction, MunicipalAgentExecutionResult } from "./municipal-agent-types";
 
 type TicketStatus = "Recebido" | "Em análise" | "Aguardando aprovação" | "Em execução" | "Aguardando resposta" | "Concluído" | "Cancelado";
 type Priority = "Urgente" | "Alta" | "Média" | "Baixa";
-type NavItem = PermissionModule | "Funcionários" | "Configurações";
+type NavItem = PermissionModule | "Funcionários" | "Configurações" | "Últimas Notícias Prefeitura";
 type ChatTab = "direct" | "group";
 type OfficeCategory = "Prefeitura e apoio" | "Secretarias" | "Departamentos" | "Seções e subprefeitura";
 
@@ -327,6 +330,7 @@ const navIcons: Record<NavItem, LucideIcon> = {
   Auditoria: History,
   "Central de Ajuda": HelpCircle,
   Configurações: Settings,
+  "Últimas Notícias Prefeitura": Newspaper,
 };
 const statusMeta: Record<TicketStatus, { color: string; short: string; icon: LucideIcon }> = {
   Recebido: { color: "blue", short: "Recebidos", icon: Inbox },
@@ -342,6 +346,7 @@ const APP_STATE_KEY = "app:global:v1";
 const PERMISSION_SETTINGS_KEY = "settings:permissions:v1";
 const EXPERIENCE_SETTINGS_KEY = "settings:experience:v1";
 const EXECUTIVE_COMMUNICATION_KEY = "settings:executive-communication:v1";
+const PUBLIC_READ_PERMISSION = { view: true, register: false, edit: false } as const;
 
 export default function Home() {
   const [activeNav, setActiveNav] = useState<NavItem>("Visão geral");
@@ -371,7 +376,10 @@ export default function Home() {
   const [searchOpen, setSearchOpen] = useState(false);
   const [soundEnabled, setSoundEnabled] = useState(true);
   const [motionEnabled, setMotionEnabled] = useState(true);
+  const [contrastEnabled, setContrastEnabled] = useState(false);
+  const [textScale, setTextScale] = useState<"normal" | "large" | "larger">("normal");
   const [executiveCommunicationAccess, setExecutiveCommunicationAccess] = useState(false);
+  const [recentlyDeletedEvent, setRecentlyDeletedEvent] = useState<SectorEvent | null>(null);
   const [citizenFeedbackUnread, setCitizenFeedbackUnread] = useState(0);
   const [permissionConfigs, setPermissionConfigs] = useState<Record<string, DepartmentPermissionSettings>>({});
   const [appReady, setAppReady] = useState(false);
@@ -395,7 +403,7 @@ export default function Home() {
     .filter((event) => (event.targetDepartments?.length ? event.targetDepartments : [event.department]).some((department) => sameDepartment(department, activeDepartment)))
     .sort((first, second) => new Date(first.startsAt).getTime() - new Date(second.startsAt).getTime());
   const currentEventIds = new Set(currentEvents.map((event) => event.id));
-  const ownCommunicationMessages = messages.filter((message) => messageVisibleToUser(message, currentUserId, groups) && messageConfinedToDepartment(message, activeDepartment, users, groups));
+  const ownCommunicationMessages = messages.filter((message) => messageVisibleToUser(message, currentUserId, groups) && messageAllowedInCommunication(message, activeDepartment, users, groups));
   const viewingOtherDepartment = executiveAccess && !sameDepartment(activeDepartment, currentUser.department);
   const executiveCommunicationMonitor = executiveAccess && executiveCommunicationAccess && viewingOtherDepartment;
   const communicationLocked = viewingOtherDepartment && !executiveCommunicationMonitor;
@@ -429,6 +437,7 @@ export default function Home() {
   const canManageEmployees = isSectorManager(currentUser);
   const sectorUsers = users.filter((user) => sameDepartment(user.department, activeDepartment));
   const scopedActiveUsers = activeUsers.filter((user) => sameDepartment(user.department, activeDepartment));
+  const communicationDirectoryUsers = activeUsers.filter((user) => sameDepartment(user.department, activeDepartment) || (isSectorManager(currentUser) && isSectorManager(user)));
   const scopedOffices = OFFICES.filter((office) => sameDepartment(office.name, activeDepartment));
   const availableDepartments = executiveAccess ? allDepartments : [activeDepartment];
   const sectorEmployees = sectorUsers.filter((user) => !isSectorManager(user));
@@ -442,7 +451,9 @@ export default function Home() {
     });
     return defaults;
   })();
-  const currentPermission = activeNav === "Funcionários" || activeNav === "Configurações"
+  const currentPermission = activeNav === "Últimas Notícias Prefeitura"
+    ? PUBLIC_READ_PERMISSION
+    : activeNav === "Funcionários" || activeNav === "Configurações"
     ? canManageEmployees ? FULL_PERMISSION : NO_PERMISSION
     : permissionFor(activeNav, canManageEmployees, currentUser.id, departmentPermissionSettings);
   const ticketPermission = permissionFor("Chamados", canManageEmployees, currentUser.id, departmentPermissionSettings);
@@ -472,11 +483,17 @@ export default function Home() {
   }, []);
 
   useEffect(() => {
+    if (!recentlyDeletedEvent) return;
+    const timer = window.setTimeout(() => setRecentlyDeletedEvent(null), 10000);
+    return () => window.clearTimeout(timer);
+  }, [recentlyDeletedEvent]);
+
+  useEffect(() => {
     if (authState !== "authenticated") return;
     let cancelled = false;
     setPersistenceStatus("carregando");
     void Promise.all([
-      loadPersistentValue<{ soundEnabled?: boolean; motionEnabled?: boolean }>(EXPERIENCE_SETTINGS_KEY),
+      loadPersistentValue<{ soundEnabled?: boolean; motionEnabled?: boolean; contrastEnabled?: boolean; textScale?: "normal" | "large" | "larger" }>(EXPERIENCE_SETTINGS_KEY),
       loadPersistentValue<{ enabled?: boolean }>(EXECUTIVE_COMMUNICATION_KEY),
       loadPersistentValue<Record<string, DepartmentPermissionSettings>>(PERMISSION_SETTINGS_KEY),
       loadPersistentValue<{
@@ -487,6 +504,8 @@ export default function Home() {
       if (cancelled) return;
       if (typeof experience?.soundEnabled === "boolean") setSoundEnabled(experience.soundEnabled);
       if (typeof experience?.motionEnabled === "boolean") setMotionEnabled(experience.motionEnabled);
+      if (typeof experience?.contrastEnabled === "boolean") setContrastEnabled(experience.contrastEnabled);
+      if (experience?.textScale === "normal" || experience?.textScale === "large" || experience?.textScale === "larger") setTextScale(experience.textScale);
       setExecutiveCommunicationAccess(executiveCommunication?.enabled === true);
       if (savedPermissions) setPermissionConfigs(savedPermissions);
       if (stored) {
@@ -505,7 +524,7 @@ export default function Home() {
       setAppReady(true);
     }).catch(() => {
       if (cancelled) return;
-      const cachedExperience = loadCachedPersistentValue<{ soundEnabled?: boolean; motionEnabled?: boolean }>(EXPERIENCE_SETTINGS_KEY);
+      const cachedExperience = loadCachedPersistentValue<{ soundEnabled?: boolean; motionEnabled?: boolean; contrastEnabled?: boolean; textScale?: "normal" | "large" | "larger" }>(EXPERIENCE_SETTINGS_KEY);
       const cachedExecutive = loadCachedPersistentValue<{ enabled?: boolean }>(EXECUTIVE_COMMUNICATION_KEY);
       const cachedPermissions = loadCachedPersistentValue<Record<string, DepartmentPermissionSettings>>(PERMISSION_SETTINGS_KEY);
       const cached = loadCachedPersistentValue<{
@@ -514,6 +533,8 @@ export default function Home() {
       }>(APP_STATE_KEY);
       if (typeof cachedExperience?.soundEnabled === "boolean") setSoundEnabled(cachedExperience.soundEnabled);
       if (typeof cachedExperience?.motionEnabled === "boolean") setMotionEnabled(cachedExperience.motionEnabled);
+      if (typeof cachedExperience?.contrastEnabled === "boolean") setContrastEnabled(cachedExperience.contrastEnabled);
+      if (cachedExperience?.textScale === "normal" || cachedExperience?.textScale === "large" || cachedExperience?.textScale === "larger") setTextScale(cachedExperience.textScale);
       if (cachedExecutive) setExecutiveCommunicationAccess(cachedExecutive.enabled === true);
       if (cachedPermissions) setPermissionConfigs(cachedPermissions);
       if (cached) {
@@ -538,10 +559,10 @@ export default function Home() {
     if (authState !== "authenticated" || !appReady) return;
     const timer = window.setTimeout(() => {
       setPersistenceStatus("salvando");
-      void savePersistentValue(EXPERIENCE_SETTINGS_KEY, { soundEnabled, motionEnabled }).then((result) => setPersistenceStatus(result.queued ? "offline" : "salvo")).catch(() => setPersistenceStatus("offline"));
+      void savePersistentValue(EXPERIENCE_SETTINGS_KEY, { soundEnabled, motionEnabled, contrastEnabled, textScale }).then((result) => setPersistenceStatus(result.queued ? "offline" : "salvo")).catch(() => setPersistenceStatus("offline"));
     }, 350);
     return () => window.clearTimeout(timer);
-  }, [appReady, authState, motionEnabled, soundEnabled]);
+  }, [appReady, authState, contrastEnabled, motionEnabled, soundEnabled, textScale]);
 
   useEffect(() => {
     if (authState !== "authenticated" || !appReady) return;
@@ -816,14 +837,24 @@ export default function Home() {
   function deleteEvent(item: SectorEvent) {
     if (!eventPermission.edit || !currentEventIds.has(item.id) || !sameDepartment(item.department, activeDepartment)) { notify("Somente o setor que criou o evento pode excluí-lo."); return; }
     setEvents((current) => current.filter((event) => event.id !== item.id));
+    setRecentlyDeletedEvent(item);
     addAudit("evento_excluido", "evento", item.id, `${item.title} removido da agenda`);
     addEventNotifications(item, "cancelado");
     setEventToDelete(null);
-    notify("Evento excluído das agendas autorizadas.");
+    notify("Evento excluído. Você pode desfazer por 10 segundos.");
+  }
+
+  function restoreDeletedEvent() {
+    if (!recentlyDeletedEvent) return;
+    const restored = recentlyDeletedEvent;
+    setEvents((current) => current.some((item) => item.id === restored.id) ? current : [...current, restored]);
+    addAudit("evento_restaurado", "evento", restored.id, `${restored.title} restaurado após exclusão`);
+    setRecentlyDeletedEvent(null);
+    notify("Evento restaurado nas agendas autorizadas.");
   }
 
   function recipientIds(conversationType: ChatTab, conversationId: string, recipientId?: string) {
-    if (conversationType === "direct") return recipientId && recipientId !== currentUserId && scopedActiveUsers.some((user) => user.id === recipientId) ? [recipientId] : [];
+    if (conversationType === "direct") return recipientId && recipientId !== currentUserId && communicationDirectoryUsers.some((user) => user.id === recipientId) ? [recipientId] : [];
     return (groups.find((group) => group.id === conversationId)?.memberUserIds ?? []).filter((id) => id !== currentUserId && scopedActiveUsers.some((user) => user.id === id));
   }
 
@@ -840,7 +871,7 @@ export default function Home() {
   }
 
   function sendMessage(message: Message, recipientId?: string) {
-    if (!messageConfinedToDepartment(message, activeDepartment, users, groups)) { notify("A mensagem foi bloqueada porque o destinatário não pertence ao setor visualizado."); return; }
+    if (!messageAllowedInCommunication(message, activeDepartment, users, groups)) { notify("A mensagem direta só pode ser enviada a colegas do setor ou entre secretários. Os grupos continuam restritos ao setor."); return; }
     setMessages((current) => [...current, message]);
     addMessageNotifications(message, recipientId);
     addAudit("mensagem_enviada", "mensagem", message.id, `Mensagem enviada por ${currentUser.fullName}`);
@@ -854,6 +885,7 @@ export default function Home() {
     const localUrl = URL.createObjectURL(file);
     const documentItem: DocumentItem = { id: tempDocumentId, name: file.name, category: "Documento do chat", ownerId: currentUser.id, ownerName: currentUser.fullName, department: activeDepartment, contentType: file.type || "application/octet-stream", size: file.size, createdAt: now };
     const message: Message = { id: tempMessageId, conversationType: context.conversationType, conversationId: context.conversationId, senderId: currentUser.id, senderName: currentUser.fullName, senderInitials: currentUser.initials, body: context.body.trim(), attachmentId: tempDocumentId, attachmentName: file.name, attachmentSize: file.size, attachmentContentType: file.type || "application/octet-stream", attachmentUrl: localUrl, ticketId: context.ticketId ?? null, createdAt: now };
+    if (!messageAllowedInCommunication(message, activeDepartment, users, groups)) { URL.revokeObjectURL(localUrl); notify("O documento não pode ser enviado: mensagens diretas são liberadas entre secretários, mas grupos permanecem restritos ao setor."); return false; }
     setDocuments((current) => [documentItem, ...current]);
     setMessages((current) => [...current, message]);
     addMessageNotifications(message, context.recipientId);
@@ -973,11 +1005,12 @@ export default function Home() {
   const headingTitle = activeNav === "Visão geral" ? `${greetingFor(clockNow)}, ${currentUser.fullName.split(" ")[0]}.` : activeNav === "Área do Setor" ? activeDepartment : heading.title;
 
   const canViewMenuItem = (item: NavItem) => {
+    if (item === "Últimas Notícias Prefeitura") return true;
     if (item === "Funcionários" || item === "Configurações") return canManageEmployees;
     return permissionFor(item, canManageEmployees, currentUser.id, departmentPermissionSettings).view;
   };
   const cleanNavSections: Array<{ label: string; items: NavItem[] }> = [
-    { label: "Geral", items: ["Visão geral"] },
+    { label: "Geral", items: ["Visão geral", "Últimas Notícias Prefeitura"] },
     { label: "Demandas e atendimento", items: ["Chamados", "Atendimento ao Cidadão", "Pendências"] },
     { label: "Rotina operacional", items: ["Central Integrada", "Próximos Eventos", "Comunicação", "Fluxos e Anotações"] },
     { label: "Gestão administrativa", items: ["Área do Setor", "Processos Digitais", "Gestão Municipal", "Indicadores", "Anexos e Arquivos", "Funcionários"] },
@@ -995,10 +1028,11 @@ export default function Home() {
     "Anexos e Arquivos": "Arquivos",
     "Segurança e LGPD": "Segurança e LGPD",
     "Central de Ajuda": "Ajuda",
+    "Últimas Notícias Prefeitura": "Últimas notícias",
   };
 
   return (
-    <div className={`app-shell ${motionEnabled ? "motion-enabled" : "motion-reduced"}`}>
+    <div className={`app-shell ${motionEnabled ? "motion-enabled" : "motion-reduced"} ${contrastEnabled ? "contrast-enabled" : ""} text-scale-${textScale}`}>
       <aside className={`sidebar ${sidebarOpen ? "sidebar-open" : ""}`}>
         <div className="brand">
           <div className="brand-mark" aria-hidden="true"><Landmark size={21} strokeWidth={2.2} /></div>
@@ -1052,7 +1086,7 @@ export default function Home() {
       </aside>
       {sidebarOpen && <button className="sidebar-scrim" aria-label="Fechar menu" onClick={() => setSidebarOpen(false)} />}
 
-      <main className="main-area">
+      <main id="main-content" className="main-area" tabIndex={-1}>
         <header className={`topbar ${executiveAccess ? "executive-topbar" : ""}`}>
           <button className="mobile-menu" aria-label="Abrir menu" onClick={() => setSidebarOpen(true)}><Menu size={21} /></button>
           <div className="global-search-wrap">
@@ -1104,6 +1138,7 @@ export default function Home() {
           {activeNav !== "Visão geral" && <ContextualAiBar activeModule={activeNav} department={activeDepartment} tickets={privateTickets} events={currentEvents} />}
 
           {activeNav === "Visão geral" && <Dashboard tickets={filteredTickets} allTickets={privateTickets} audit={privateAudit} executive={executiveAccess} department={activeDepartment} userName={currentUser.fullName} onNavigate={setActiveNav} />}
+          {activeNav === "Últimas Notícias Prefeitura" && <PrefeituraNewsSection />}
           {activeNav === "Área do Setor" && <><SectorWorkspaceSection key={activeDepartment} department={activeDepartment} userName={currentUser.fullName} userRole={currentUser.role} departments={availableDepartments} notify={notify} /><FormBuilderPanel department={activeDepartment} notify={notify} /></>}
           {activeNav === "Fluxos e Anotações" && <SectorNotesSection key={activeDepartment} department={activeDepartment} userName={currentUser.fullName} team={sectorUsers.map((user) => ({ id: user.id, name: user.fullName, role: user.role }))} notify={notify} />}
           {activeNav === "Chamados" && <TicketsSection tickets={filteredTickets} department={activeDepartment} departments={availableDepartments} onStatus={updateStatus} onNew={() => setTicketModal(true)} />}
@@ -1111,7 +1146,7 @@ export default function Home() {
             ? <CommunicationPrivacyGate department={activeDepartment} isMayor={mayorAccess} onOpenSettings={() => setActiveNav("Configurações")} />
             : executiveCommunicationMonitor
               ? <ExecutiveCommunicationViewer department={activeDepartment} users={scopedActiveUsers} groups={accessibleGroups} messages={communicationMessages} />
-              : <CommunicationSection key={`${currentUser.id}-${activeDepartment}`} currentUser={currentUser} users={scopedActiveUsers} groups={accessibleGroups} messages={communicationMessages} tickets={privateTickets} onSend={sendMessage} onSendAttachment={sendChatAttachment} onNewGroup={() => setGroupModal(true)} onTicketStatus={updateStatus} />)}
+              : <CommunicationSection key={`${currentUser.id}-${activeDepartment}`} currentUser={currentUser} users={communicationDirectoryUsers} groups={accessibleGroups} messages={communicationMessages} tickets={privateTickets} onSend={sendMessage} onSendAttachment={sendChatAttachment} onNewGroup={() => setGroupModal(true)} onTicketStatus={updateStatus} />)}
           {activeNav === "Atendimento ao Cidadão" && <CitizenServiceSection department={activeDepartment} notify={notify} isMayor={executiveAccess} departments={availableDepartments} />}
           {activeNav === "Central Integrada" && <IntegratedManagementSection key={activeDepartment} initialTab="Tarefas" department={activeDepartment} currentUser={{ id: currentUser.id, fullName: currentUser.fullName, department: currentUser.department, role: currentUser.role, initials: currentUser.initials }} tickets={privateTickets} users={scopedActiveUsers.map((user) => ({ id: user.id, fullName: user.fullName, department: user.department, role: user.role, initials: user.initials }))} offices={scopedOffices} events={currentEvents} departments={availableDepartments} notify={notify} />}
           {activeNav === "Processos Digitais" && <ProcessesSection key={`${activeDepartment}-${currentUser.id}`} department={activeDepartment} currentUser={{ id: currentUser.id, fullName: currentUser.fullName, department: currentUser.department, role: currentUser.role }} users={scopedActiveUsers.map((user) => ({ id: user.id, fullName: user.fullName, department: user.department, role: user.role }))} departments={availableDepartments} notify={notify} />}
@@ -1125,7 +1160,7 @@ export default function Home() {
           {activeNav === "Segurança e LGPD" && <SecuritySection department={activeDepartment} notify={notify} />}
           {activeNav === "Auditoria" && <AuditSection audit={privateAudit} department={activeDepartment} notify={notify} />}
           {activeNav === "Central de Ajuda" && <HelpCenterSection notify={notify} />}
-          {activeNav === "Configurações" && canManageEmployees && <SettingsSection key={activeDepartment} department={activeDepartment} managerName={currentUser.fullName} employees={sectorEmployees} settings={departmentPermissionSettings} soundEnabled={soundEnabled} motionEnabled={motionEnabled} isMayor={executiveAccess} crossSectorCommunicationEnabled={executiveCommunicationAccess} secretariatsContent={<TeamSection offices={scopedOffices} />} onExportContacts={exportContacts} onSettingsChange={updatePermissionSettings} onSoundChange={setSoundEnabled} onMotionChange={setMotionEnabled} onCrossSectorCommunicationChange={(enabled) => { setExecutiveCommunicationAccess(enabled); notify(enabled ? "Acesso executivo à comunicação de outros setores habilitado." : "Comunicações de outros setores voltaram ao modo privado."); }} onTestSound={() => { playNotificationChime(); notify("Som de notificação reproduzido."); }} notify={notify} />}
+          {activeNav === "Configurações" && canManageEmployees && <SettingsSection key={activeDepartment} department={activeDepartment} managerName={currentUser.fullName} employees={sectorEmployees} settings={departmentPermissionSettings} soundEnabled={soundEnabled} motionEnabled={motionEnabled} contrastEnabled={contrastEnabled} textScale={textScale} isMayor={executiveAccess} crossSectorCommunicationEnabled={executiveCommunicationAccess} secretariatsContent={<TeamSection offices={scopedOffices} />} onExportContacts={exportContacts} onSettingsChange={updatePermissionSettings} onSoundChange={setSoundEnabled} onMotionChange={setMotionEnabled} onContrastChange={setContrastEnabled} onTextScaleChange={setTextScale} onCrossSectorCommunicationChange={(enabled) => { setExecutiveCommunicationAccess(enabled); notify(enabled ? "Acesso executivo à comunicação de outros setores habilitado." : "Comunicações de outros setores voltaram ao modo privado."); }} onTestSound={() => { playNotificationChime(); notify("Som de notificação reproduzido."); }} notify={notify} />}
         </div>
         </PermissionProvider>
       </main>
@@ -1140,6 +1175,8 @@ export default function Home() {
       <MunicipalAiCopilot activeModule={activeNav} department={activeDepartment} user={{ id: currentUser.id, fullName: currentUser.fullName, role: currentUser.role }} tickets={privateTickets} events={currentEvents} departments={availableDepartments} unreadNotifications={unreadCount + (mayorAccess ? citizenFeedbackUnread : 0)} onExecuteAction={executeMunicipalAgentAction} />
       <OnboardingTour userName={currentUser.fullName} role={currentUser.role} department={activeDepartment} onNavigate={(nav) => setActiveNav(nav as NavItem)} />
       <QuickActionDock onNavigate={(nav) => setActiveNav(nav as NavItem)} onNewTicket={() => { setTicketModal(true); setActiveNav("Chamados"); }} onNewEvent={() => { setEventModal("new"); setActiveNav("Próximos Eventos"); }} />
+      <MobileBottomNavigation active={activeNav} onNavigate={(nav) => { setActiveNav(nav as NavItem); setSidebarOpen(false); }} onMenu={() => setSidebarOpen(true)} />
+      {recentlyDeletedEvent && <div className="undo-toast" role="status"><span><strong>Evento excluído</strong><small>{recentlyDeletedEvent.title}</small></span><button type="button" onClick={restoreDeletedEvent}>Desfazer</button></div>}
       {toast && <div className="toast" role="status"><span><Check size={14} strokeWidth={2.5} /></span>{toast}</div>}
     </div>
   );
@@ -1148,6 +1185,7 @@ export default function Home() {
 function getHeading(active: NavItem) {
   const headings: Record<NavItem, { eyebrow: string; title: string; subtitle: string }> = {
     "Visão geral": { eyebrow: "", title: "Bom dia.", subtitle: "Acompanhe as demandas e mantenha as secretarias alinhadas." },
+    "Últimas Notícias Prefeitura": { eyebrow: "PORTAL OFICIAL DE VÁRZEA DA PALMA", title: "Últimas Notícias Prefeitura", subtitle: "Acompanhe as publicações mais recentes da Prefeitura, filtre por assunto e abra a matéria completa na fonte oficial." },
     "Área do Setor": { eyebrow: "AMBIENTE ESPECIALIZADO", title: "Área do Setor", subtitle: "Formulários, endereços, indicadores, equipes e fluxos adaptados às responsabilidades da unidade selecionada." },
     "Fluxos e Anotações": { eyebrow: "MEMÓRIA OPERACIONAL", title: "Fluxos e Anotações", subtitle: "Organize decisões, providências e registros internos em etapas próprias para cada setor." },
     Chamados: { eyebrow: "GESTÃO DE DEMANDAS", title: "Chamados", subtitle: "Organize cada solicitação do recebimento à entrega final." },
@@ -1477,8 +1515,9 @@ function CommunicationSection({ currentUser, users, groups, messages, tickets, o
         <div className="conversation-items">
           {tab === "direct" ? filteredDirectUsers.map((user, index) => {
             const last = lastConversationMessage("direct", user.id);
+            const intersectoral = !sameDepartment(user.department, currentUser.department);
             return <button key={user.id} className={effectiveSelected === user.id ? "conversation active" : "conversation"} onClick={() => selectConversation(user.id)}>
-              <span className="avatar conversation-avatar">{user.initials}<b /></span><span><strong>{user.fullName}</strong><small>{last?.body || last?.attachmentName || user.department}</small></span><span className="conversation-side"><time>{last ? formatTime(last.createdAt) : ""}</time>{index < 2 && <i>{index + 1}</i>}</span>
+              <span className="avatar conversation-avatar">{user.initials}<b /></span><span><strong>{user.fullName}</strong><small>{last?.body || last?.attachmentName || user.department}</small>{intersectoral && <em className="intersectoral-contact">{user.role} · {user.department}</em>}</span><span className="conversation-side"><time>{last ? formatTime(last.createdAt) : ""}</time>{index < 2 && <i>{index + 1}</i>}</span>
             </button>;
           }) : filteredGroups.map((group) => {
             const last = lastConversationMessage("group", group.id);
@@ -1486,7 +1525,7 @@ function CommunicationSection({ currentUser, users, groups, messages, tickets, o
               <span className="group-avatar"><Hash size={16} /></span><span><strong>{group.name}</strong><small>{last?.body || last?.attachmentName || `${group.memberCount} participantes`}</small></span><span className="conversation-side"><time>{last ? formatTime(last.createdAt) : ""}</time></span>
             </button>;
           })}
-          {tab === "direct" && !filteredDirectUsers.length && <div className="chat-panel-empty"><UserRound size={24} /><strong>Nenhum colega disponível</strong><p>Use o canal interno do setor na aba Grupos.</p></div>}
+          {tab === "direct" && !filteredDirectUsers.length && <div className="chat-panel-empty"><UserRound size={24} /><strong>Nenhum contato encontrado</strong><p>Busque pelo nome do secretário ou pela secretaria.</p></div>}
           {tab === "group" && !filteredGroups.length && <div className="chat-panel-empty"><UsersRound size={24} /><strong>Nenhum grupo disponível</strong><p>Os canais internos válidos do setor aparecerão aqui.</p></div>}
         </div>
       </aside>
@@ -1794,11 +1833,38 @@ function TicketDetailModal({ ticket, departments = [], onClose, onStatus }: { ti
 function LockKeyholeIcon() { return <ShieldCheck size={13} />; }
 
 function TicketModal({ users, departments, onClose, onCreate }: { users: User[]; departments: string[]; onClose: () => void; onCreate: (data: FormData) => unknown | Promise<unknown> }) {
-  const [department, setDepartment] = useState(departments[0] ?? ""); const [neighborhood, setNeighborhood] = useState(""); const [address, setAddress] = useState(""); const [title, setTitle] = useState(""); const [description, setDescription] = useState(""); const [priority, setPriority] = useState<Priority>("Média"); const [dueDate, setDueDate] = useState(""); const [aiBusy, setAiBusy] = useState(false); const [aiHint, setAiHint] = useState("");
+  type TicketDraft = { department: string; neighborhood: string; address: string; title: string; description: string; priority: Priority; dueDate: string };
+  const draftKey = "prefeitura:draft:new-ticket:v1";
+  const [department, setDepartment] = useState(departments[0] ?? ""); const [neighborhood, setNeighborhood] = useState(""); const [address, setAddress] = useState(""); const [title, setTitle] = useState(""); const [description, setDescription] = useState(""); const [priority, setPriority] = useState<Priority>("Média"); const [dueDate, setDueDate] = useState(""); const [draftRecovered, setDraftRecovered] = useState(false); const [aiBusy, setAiBusy] = useState(false); const [aiHint, setAiHint] = useState("");
+  const skipNextDraftSave = useRef(false);
+  const draftLoaded = useRef(false);
   const eligibleUsers = users.filter((user) => sameDepartment(user.department, department));
-  function submit(event: FormEvent<HTMLFormElement>) { event.preventDefault(); void onCreate(new FormData(event.currentTarget)); }
+  useEffect(() => {
+    const timer = window.setTimeout(() => {
+      try {
+        const raw = localStorage.getItem(draftKey);
+        const saved = raw ? JSON.parse(raw) as TicketDraft : null;
+        if (saved) {
+          const restoredDepartment = departments.find((item) => sameDepartment(item, saved.department));
+          setDepartment(restoredDepartment ?? departments[0] ?? ""); setNeighborhood(saved.neighborhood ?? ""); setAddress(saved.address ?? ""); setTitle(saved.title ?? ""); setDescription(saved.description ?? ""); setPriority(saved.priority ?? "Média"); setDueDate(saved.dueDate ?? ""); setDraftRecovered(true);
+        }
+      } catch { /* rascunho inválido ou indisponível */ }
+      draftLoaded.current = true;
+    }, 0);
+    return () => window.clearTimeout(timer);
+  }, [departments]);
+  useEffect(() => {
+    if (!draftLoaded.current) return;
+    if (skipNextDraftSave.current) { skipNextDraftSave.current = false; return; }
+    const draft: TicketDraft = { department, neighborhood, address, title, description, priority, dueDate };
+    const timer = window.setTimeout(() => { try { localStorage.setItem(draftKey, JSON.stringify(draft)); } catch { /* armazenamento indisponível */ } }, 250);
+    return () => window.clearTimeout(timer);
+  }, [address, department, description, dueDate, neighborhood, priority, title]);
+  async function submit(event: FormEvent<HTMLFormElement>) { event.preventDefault(); await onCreate(new FormData(event.currentTarget)); try { localStorage.removeItem(draftKey); } catch { /* ignore */ } setDraftRecovered(false); }
+  function discardDraft() { skipNextDraftSave.current = true; setTitle(""); setDescription(""); setNeighborhood(""); setAddress(""); setPriority("Média"); setDueDate(""); setDepartment(departments[0] ?? ""); setDraftRecovered(false); try { localStorage.removeItem(draftKey); } catch { /* ignore */ } }
   async function assistWithAi() { if (!title.trim() && !description.trim()) { setAiHint("Escreva ao menos um título ou uma descrição para a IA analisar."); return; } setAiBusy(true); setAiHint(""); try { const response = await fetch("/api/ai", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ operation: "ticket_assist", title, description, neighborhood, departments }) }); const payload = await response.json() as { result?: { title:string; description:string; department:string; priority:Priority; dueDays:number; slaHours:number; tags:string[]; checklist:string[]; source:string }; error?:string }; if (!response.ok || !payload.result) throw new Error(payload.error || "Não foi possível preparar o chamado com IA."); const result = payload.result; setTitle(result.title || title); setDescription(result.description || description); if (departments.some((item) => sameDepartment(item, result.department))) setDepartment(departments.find((item) => sameDepartment(item, result.department)) ?? department); setPriority(result.priority || priority); const target = new Date(); target.setDate(target.getDate()+Math.max(0,result.dueDays||0)); setDueDate(target.toISOString().slice(0,10)); setAiHint(`IA sugeriu setor, prioridade e prazo · SLA recomendado: ${result.slaHours}h${result.tags.length ? ` · ${result.tags.slice(0,3).join(", ")}` : ""}. Revise antes de criar.`); } catch(error) { setAiHint(error instanceof Error ? error.message : "Falha ao consultar a IA."); } finally { setAiBusy(false); } }
   return <div className="modal-backdrop" role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget) onClose(); }}><section className="modal ticket-create-modal" role="dialog" aria-modal="true" aria-labelledby="ticket-modal-title"><header><div><p className="eyebrow">NOVO REGISTRO</p><h2 id="ticket-modal-title">Criar chamado</h2></div><button type="button" onClick={onClose} aria-label="Fechar"><X size={18}/></button></header><form onSubmit={submit}>
+    {draftRecovered && <div className="draft-recovery-note full" role="status"><RefreshCw size={15}/><span><strong>Rascunho recuperado</strong><small>O preenchimento anterior foi restaurado automaticamente.</small></span><button type="button" onClick={discardDraft}>Descartar</button></div>}
     <label className="field full"><span>Modelo da solicitação</span><select name="template" defaultValue="Solicitação geral"><option>Solicitação geral</option><option>Manutenção de veículo</option><option>Solicitação de material</option><option>Reparo em iluminação</option><option>Suporte de informática</option><option>Produção de arte e comunicação</option><option>Agendamento de espaço</option><option>Solicitação de transporte</option><option>Compra ou contratação</option><option>Vistoria técnica</option></select><small className="field-hint">O modelo define checklist, documentos obrigatórios e prazo padrão.</small></label>
     <label className="field full"><span>Título do chamado *</span><input name="title" required placeholder="Ex.: Reparo da iluminação da avenida" autoFocus value={title} onChange={(event)=>setTitle(event.target.value)}/></label>
     <label className="field full"><span>Descrição</span><textarea name="description" placeholder="Inclua contexto, entregáveis, local e observações..." value={description} onChange={(event)=>setDescription(event.target.value)}/></label>
@@ -1969,6 +2035,16 @@ function messageConfinedToDepartment(message: Message, department: string, users
   }
   const group = groups.find((item) => item.id === message.conversationId);
   return Boolean(group && groupConfinedToDepartment(group, department, users));
+}
+
+function messageAllowedInCommunication(message: Message, department: string, users: User[], groups: Group[]) {
+  if (message.conversationType === "group") return messageConfinedToDepartment(message, department, users, groups);
+  const participantIds = Array.from(new Set(directParticipants(message.conversationId)));
+  const participants = participantIds.map((userId) => users.find((user) => user.id === userId)).filter((user): user is User => Boolean(user));
+  if (participants.length !== participantIds.length || participants.length < 2) return false;
+  const sameSector = participants.every((user) => sameDepartment(user.department, participants[0].department));
+  const managersOnly = participants.every(isSectorManager);
+  return sameSector || managersOnly;
 }
 
 function directConversationId(firstUserId: string, secondUserId: string) { return [firstUserId, secondUserId].sort().join("::"); }

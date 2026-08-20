@@ -6,6 +6,7 @@ import {
   Building2,
   Check,
   ChevronRight,
+  Contrast,
   Download,
   Eye,
   FilePlus2,
@@ -19,11 +20,13 @@ import {
   ShieldCheck,
   SlidersHorizontal,
   Sparkles,
+  Type,
   UserCog,
   UsersRound,
   Volume2,
   VolumeX,
 } from "lucide-react";
+import { PwaInstallCard } from "./platform-experience";
 import {
   clonePermissionSettings,
   createDefaultPermissionSettings,
@@ -44,6 +47,8 @@ export function SettingsSection({
   settings,
   soundEnabled,
   motionEnabled,
+  contrastEnabled,
+  textScale,
   isMayor,
   crossSectorCommunicationEnabled,
   secretariatsContent,
@@ -51,6 +56,8 @@ export function SettingsSection({
   onSettingsChange,
   onSoundChange,
   onMotionChange,
+  onContrastChange,
+  onTextScaleChange,
   onCrossSectorCommunicationChange,
   onTestSound,
   notify,
@@ -61,6 +68,8 @@ export function SettingsSection({
   settings: DepartmentPermissionSettings;
   soundEnabled: boolean;
   motionEnabled: boolean;
+  contrastEnabled: boolean;
+  textScale: "normal" | "large" | "larger";
   isMayor: boolean;
   crossSectorCommunicationEnabled: boolean;
   secretariatsContent: ReactNode;
@@ -68,6 +77,8 @@ export function SettingsSection({
   onSettingsChange: (settings: DepartmentPermissionSettings) => void;
   onSoundChange: (enabled: boolean) => void;
   onMotionChange: (enabled: boolean) => void;
+  onContrastChange: (enabled: boolean) => void;
+  onTextScaleChange: (scale: "normal" | "large" | "larger") => void;
   onCrossSectorCommunicationChange: (enabled: boolean) => void;
   onTestSound: () => void;
   notify: (message: string) => void;
@@ -236,6 +247,23 @@ export function SettingsSection({
           <header><span><Sparkles size={19} /></span><div><h3>Animações da interface</h3><p>Movimentos sutis em ícones, alertas e mudanças de estado.</p></div></header>
           <button className="preference-toggle-row" onClick={() => onMotionChange(!motionEnabled)}><span><Sparkles size={18} /><span><strong>{motionEnabled ? "Animações ativadas" : "Movimento reduzido"}</strong><small>Acessibilidade respeitada em todo o sistema.</small></span></span><i className={motionEnabled ? "toggle active" : "toggle"}><b /></i></button>
         </article>
+
+        <article className="panel preference-card">
+          <header><span><Contrast size={19} /></span><div><h3>Alto contraste</h3><p>Reforça bordas, textos e estados para facilitar a leitura.</p></div></header>
+          <button type="button" className="preference-toggle-row" aria-pressed={contrastEnabled} onClick={() => onContrastChange(!contrastEnabled)}><span><Contrast size={18} /><span><strong>{contrastEnabled ? "Contraste reforçado" : "Contraste padrão"}</strong><small>A alteração é aplicada imediatamente.</small></span></span><i className={contrastEnabled ? "toggle active" : "toggle"}><b /></i></button>
+        </article>
+
+        <article className="panel preference-card">
+          <header><span><Type size={19} /></span><div><h3>Tamanho do texto</h3><p>Aumente a leitura sem precisar usar o zoom do navegador.</p></div></header>
+          <label className="preference-select"><span>Tamanho na plataforma</span><select value={textScale} onChange={(event) => onTextScaleChange(event.target.value as "normal" | "large" | "larger")}><option value="normal">Padrão</option><option value="large">Grande</option><option value="larger">Muito grande</option></select></label>
+        </article>
+
+        <article className="panel preference-card">
+          <header><span><Play size={19} /></span><div><h3>Apresentação guiada</h3><p>Reveja o passo a passo contextual do perfil atual quando precisar.</p></div></header>
+          <button type="button" className="button secondary" onClick={() => window.dispatchEvent(new CustomEvent("prefeitura:restart-onboarding"))}><Play size={14} /> Reiniciar apresentação</button>
+        </article>
+
+        <PwaInstallCard />
 
       </div>}
 
