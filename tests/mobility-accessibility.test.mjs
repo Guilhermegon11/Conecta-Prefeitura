@@ -21,7 +21,7 @@ test("ships an installable PWA with silent background synchronization", async ()
   assert.doesNotMatch(platform, /OfflineStatusBar|Conexão restaurada|Sincronizar agora/);
   assert.doesNotMatch(layout, /OfflineStatusBar/);
   assert.doesNotMatch(styles, /offline-global-bar/);
-  assert.match(worker, /prefeitura-conecta-offline-v493/);
+  assert.match(worker, /prefeitura-conecta-offline-v494/);
 });
 
 test("keeps IA Conecta only inside the floating plus menu", async () => {
@@ -56,16 +56,25 @@ test("adds mobile navigation and accessibility controls", async () => {
   assert.match(styles, /\.mobile-bottom-navigation/);
 });
 
-test("recovers drafts, supports undo, and improves field operation", async () => {
-  const [page, field] = await Promise.all([
+test("recovers drafts, supports undo, and resolves GPS into a visible address", async () => {
+  const [page, field, municipalLocation, geocode] = await Promise.all([
     read("app/page.tsx"),
     read("app/sector-workspaces.tsx"),
+    read("app/municipal-location.tsx"),
+    read("app/api/geocode/route.ts"),
   ]);
   assert.match(page, /prefeitura:draft:new-ticket:v1/);
   assert.match(page, /Rascunho recuperado/);
   assert.match(page, /function restoreDeletedEvent/);
   assert.match(page, />Desfazer</);
   assert.match(field, /navigator\.geolocation\.getCurrentPosition/);
+  assert.match(field, /Endereço atual preenchido pelo GPS/);
+  assert.match(field, /Endereço localizado e vinculado pelo GPS/);
+  assert.doesNotMatch(field, /Localização vinculada: \{fieldCoordinates\}|Coordenadas \$\{coordinates\}/);
+  assert.match(municipalLocation, /onAddressChange\(payload\.displayName\)/);
+  assert.doesNotMatch(municipalLocation, /Coordenada GPS registrada/);
+  assert.match(geocode, /nominatim\.openstreetmap\.org\/reverse/);
+  assert.match(geocode, /addressdetails/);
   assert.match(field, /capture="environment"/);
   assert.match(field, /Confirmação do responsável/);
 });

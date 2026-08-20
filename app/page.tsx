@@ -380,6 +380,7 @@ export default function Home() {
   const [motionEnabled, setMotionEnabled] = useState(true);
   const [contrastEnabled, setContrastEnabled] = useState(false);
   const [textScale, setTextScale] = useState<"normal" | "large" | "larger">("normal");
+  const [simplifiedMode, setSimplifiedMode] = useState(false);
   const [executiveCommunicationAccess, setExecutiveCommunicationAccess] = useState(false);
   const [recentlyDeletedEvent, setRecentlyDeletedEvent] = useState<SectorEvent | null>(null);
   const [citizenFeedbackUnread, setCitizenFeedbackUnread] = useState(0);
@@ -500,7 +501,7 @@ export default function Home() {
     let cancelled = false;
     setPersistenceStatus("carregando");
     void Promise.all([
-      loadPersistentValue<{ soundEnabled?: boolean; motionEnabled?: boolean; contrastEnabled?: boolean; textScale?: "normal" | "large" | "larger" }>(EXPERIENCE_SETTINGS_KEY),
+      loadPersistentValue<{ soundEnabled?: boolean; motionEnabled?: boolean; contrastEnabled?: boolean; textScale?: "normal" | "large" | "larger"; simplifiedMode?: boolean }>(EXPERIENCE_SETTINGS_KEY),
       loadPersistentValue<{ enabled?: boolean }>(EXECUTIVE_COMMUNICATION_KEY),
       loadPersistentValue<Record<string, DepartmentPermissionSettings>>(PERMISSION_SETTINGS_KEY),
       loadPersistentValue<{
@@ -513,6 +514,7 @@ export default function Home() {
       if (typeof experience?.motionEnabled === "boolean") setMotionEnabled(experience.motionEnabled);
       if (typeof experience?.contrastEnabled === "boolean") setContrastEnabled(experience.contrastEnabled);
       if (experience?.textScale === "normal" || experience?.textScale === "large" || experience?.textScale === "larger") setTextScale(experience.textScale);
+      if (typeof experience?.simplifiedMode === "boolean") setSimplifiedMode(experience.simplifiedMode);
       setExecutiveCommunicationAccess(executiveCommunication?.enabled === true);
       if (savedPermissions) setPermissionConfigs(savedPermissions);
       if (stored) {
@@ -531,7 +533,7 @@ export default function Home() {
       setAppReady(true);
     }).catch(() => {
       if (cancelled) return;
-      const cachedExperience = loadCachedPersistentValue<{ soundEnabled?: boolean; motionEnabled?: boolean; contrastEnabled?: boolean; textScale?: "normal" | "large" | "larger" }>(EXPERIENCE_SETTINGS_KEY);
+      const cachedExperience = loadCachedPersistentValue<{ soundEnabled?: boolean; motionEnabled?: boolean; contrastEnabled?: boolean; textScale?: "normal" | "large" | "larger"; simplifiedMode?: boolean }>(EXPERIENCE_SETTINGS_KEY);
       const cachedExecutive = loadCachedPersistentValue<{ enabled?: boolean }>(EXECUTIVE_COMMUNICATION_KEY);
       const cachedPermissions = loadCachedPersistentValue<Record<string, DepartmentPermissionSettings>>(PERMISSION_SETTINGS_KEY);
       const cached = loadCachedPersistentValue<{
@@ -542,6 +544,7 @@ export default function Home() {
       if (typeof cachedExperience?.motionEnabled === "boolean") setMotionEnabled(cachedExperience.motionEnabled);
       if (typeof cachedExperience?.contrastEnabled === "boolean") setContrastEnabled(cachedExperience.contrastEnabled);
       if (cachedExperience?.textScale === "normal" || cachedExperience?.textScale === "large" || cachedExperience?.textScale === "larger") setTextScale(cachedExperience.textScale);
+      if (typeof cachedExperience?.simplifiedMode === "boolean") setSimplifiedMode(cachedExperience.simplifiedMode);
       if (cachedExecutive) setExecutiveCommunicationAccess(cachedExecutive.enabled === true);
       if (cachedPermissions) setPermissionConfigs(cachedPermissions);
       if (cached) {
@@ -566,10 +569,10 @@ export default function Home() {
     if (authState !== "authenticated" || !appReady) return;
     const timer = window.setTimeout(() => {
       setPersistenceStatus("salvando");
-      void savePersistentValue(EXPERIENCE_SETTINGS_KEY, { soundEnabled, motionEnabled, contrastEnabled, textScale }).then((result) => setPersistenceStatus(result.queued ? "offline" : "salvo")).catch(() => setPersistenceStatus("offline"));
+      void savePersistentValue(EXPERIENCE_SETTINGS_KEY, { soundEnabled, motionEnabled, contrastEnabled, textScale, simplifiedMode }).then((result) => setPersistenceStatus(result.queued ? "offline" : "salvo")).catch(() => setPersistenceStatus("offline"));
     }, 350);
     return () => window.clearTimeout(timer);
-  }, [appReady, authState, contrastEnabled, motionEnabled, soundEnabled, textScale]);
+  }, [appReady, authState, contrastEnabled, motionEnabled, soundEnabled, textScale, simplifiedMode]);
 
   useEffect(() => {
     if (authState !== "authenticated" || !appReady) return;
@@ -1027,22 +1030,31 @@ export default function Home() {
     if (viewingOtherDepartment) return true;
     return permissionFor(item, canManageEmployees, currentUser.id, departmentPermissionSettings).view;
   };
-  const cleanNavSections: Array<{ label: string; items: NavItem[] }> = [
-    { label: "Prefeito e Vice", items: ["Central Executiva"] },
-    { label: "Geral", items: ["Visão geral", "Últimas Notícias Prefeitura"] },
-    { label: "Demandas e atendimento", items: ["Chamados", "Atendimento ao Cidadão", "Pendências"] },
-    { label: "Rotina operacional", items: ["Central Integrada", "Próximos Eventos", "Comunicação", "Fluxos e Anotações"] },
-    { label: "Gestão administrativa", items: ["Área do Setor", "Processos Digitais", "Gestão Municipal", "Indicadores", "Anexos e Arquivos", "Funcionários"] },
-    { label: "Sistema e suporte", items: ["Notificações", "Segurança e LGPD", "Auditoria", "Central de Ajuda", "Configurações"] },
+  const normalizedRole = normalizeText(currentUser.role);
+  const managerProfile = executiveAccess || canManageEmployees || normalizedRole.includes("gestor") || normalizedRole.includes("secret");
+  const primaryNavItems: NavItem[] = executiveAccess
+    ? ["Visão geral", "Central Executiva", "Central Integrada", "Comunicação", "Processos Digitais", "Próximos Eventos", "Gestão Municipal"]
+    : managerProfile
+      ? ["Visão geral", "Central Integrada", "Chamados", "Comunicação", "Área do Setor", "Processos Digitais", "Próximos Eventos"]
+      : ["Visão geral", "Central Integrada", "Chamados", "Comunicação", "Área do Setor", "Próximos Eventos", "Anexos e Arquivos"];
+  const allSecondaryItems: NavItem[] = [
+    "Visão geral", "Central Executiva", "Últimas Notícias Prefeitura", "Chamados", "Atendimento ao Cidadão",
+    "Pendências", "Central Integrada", "Próximos Eventos", "Comunicação", "Fluxos e Anotações",
+    "Área do Setor", "Processos Digitais", "Gestão Municipal", "Indicadores", "Anexos e Arquivos",
+    "Funcionários", "Secretarias", "Notificações", "Segurança e LGPD", "Auditoria", "Central de Ajuda", "Configurações",
+  ];
+  const cleanNavSections: Array<{ label: string; items: NavItem[]; compact?: boolean }> = [
+    { label: "Principal", items: primaryNavItems },
+    { label: "Mais", items: allSecondaryItems.filter((item) => !primaryNavItems.includes(item)), compact: true },
   ];
   const cleanNavLabel: Partial<Record<NavItem, string>> = {
     "Visão geral": "Início",
     "Central Executiva": "Pendências gerais",
     "Área do Setor": "Meu setor",
-    "Fluxos e Anotações": "Fluxos e anotações",
+    "Fluxos e Anotações": "Anotações",
     "Atendimento ao Cidadão": "Atendimento ao cidadão",
     "Próximos Eventos": "Agenda",
-    "Central Integrada": "Tarefas e central integrada",
+    "Central Integrada": "Meu trabalho",
     "Processos Digitais": "Processos",
     "Gestão Municipal": "Gestão municipal",
     "Anexos e Arquivos": "Arquivos",
@@ -1052,7 +1064,7 @@ export default function Home() {
   };
 
   return (
-    <div className={`app-shell ${motionEnabled ? "motion-enabled" : "motion-reduced"} ${contrastEnabled ? "contrast-enabled" : ""} text-scale-${textScale}`}>
+    <div className={`app-shell ${motionEnabled ? "motion-enabled" : "motion-reduced"} ${contrastEnabled ? "contrast-enabled" : ""} ${simplifiedMode ? "simplified-mode" : ""} text-scale-${textScale}`}>
       <aside className={`sidebar ${sidebarOpen ? "sidebar-open" : ""}`}>
         <div className="brand">
           <div className="brand-mark" aria-hidden="true"><Landmark size={21} strokeWidth={2.2} /></div>
@@ -1063,10 +1075,11 @@ export default function Home() {
           {cleanNavSections.map((section) => {
             const visibleItems = section.items.filter(canViewMenuItem);
             if (!visibleItems.length) return null;
+            const expanded = !section.compact || expandedNavGroup === section.label || visibleItems.includes(activeNav);
             return (
-              <div className="clean-nav-section" key={section.label}>
-                <span className="clean-nav-section-label">{section.label}</span>
-                <div className="clean-nav-section-items">
+              <div className={`clean-nav-section ${section.compact ? "secondary-nav-section" : ""}`} key={section.label}>
+                {section.compact ? <button type="button" className="clean-nav-section-toggle" aria-expanded={expanded} onClick={() => setExpandedNavGroup(expandedNavGroup === section.label ? null : section.label)}><span>••• Mais</span><ChevronRight className={expanded ? "expanded" : ""} size={15}/></button> : <span className="clean-nav-section-label">Acesso rápido</span>}
+                {expanded && <div className="clean-nav-section-items">
                   {visibleItems.map((item) => {
                     const ItemIcon = navIcons[item];
                     const badge = item === "Chamados"
@@ -1093,7 +1106,7 @@ export default function Home() {
                       </button>
                     );
                   })}
-                </div>
+                </div>}
               </div>
             );
           })}
@@ -1112,7 +1125,7 @@ export default function Home() {
           <div className="global-search-wrap">
             <label className="search-box">
               <Search size={18} aria-hidden="true" />
-              <input type="search" placeholder="Buscar somente no setor atual..." value={search} onFocus={() => setSearchOpen(true)} onChange={(event) => { setSearch(event.target.value); setSearchOpen(true); }} />
+              <input type="search" placeholder="Buscar chamados, pessoas, processos, arquivos, eventos..." value={search} onFocus={() => setSearchOpen(true)} onChange={(event) => { setSearch(event.target.value); setSearchOpen(true); }} />
               <kbd>⌘ K</kbd>
             </label>
             {searchOpen && search.trim() && <GlobalSearchPanel query={search} tickets={privateTickets} users={scopedActiveUsers} documents={privateDocuments} events={currentEvents} offices={scopedOffices} onOpen={(nav) => setActiveNav(nav as NavItem)} onClose={() => setSearchOpen(false)} />}
@@ -1120,6 +1133,7 @@ export default function Home() {
           {executiveAccess && activeNav !== "Central Executiva" && <label className="executive-sector-switch"><span className="executive-switch-icon"><Crown size={17} /></span><span><small>PAINEL SETORIAL</small><select aria-label="Selecionar setor para a visão executiva" value={activeDepartment} onChange={(event) => switchDepartment(event.target.value)}>{allDepartments.map((department) => <option key={department}>{department}</option>)}</select></span></label>}
           <div className="top-actions">
             <span className={`persistence-status ${persistenceStatus}`} title="Persistência central do sistema"><i />{persistenceStatus === "carregando" ? "Conectando" : persistenceStatus === "salvando" ? "Salvando" : persistenceStatus === "offline" ? "Aguardando conexão" : "Salvo"}</span>
+            <button className={`simple-mode-toggle ${simplifiedMode ? "active" : ""}`} type="button" aria-pressed={simplifiedMode} title={simplifiedMode ? "Voltar para interface completa" : "Ativar modo simplificado"} onClick={() => setSimplifiedMode((current) => !current)}><LayoutDashboard size={15}/><span>{simplifiedMode ? "Modo simples" : "Simplificar"}</span></button>
             <button className="top-ai-button" type="button" disabled={executiveReadOnlyScope} title={executiveReadOnlyScope ? "IA de execução indisponível no modo de consulta executiva" : "Abrir IA Conecta"} onClick={() => openMunicipalAi()}><Sparkles size={15}/> IA Conecta</button>
             <button className="icon-button notification-button" aria-label={`Notificações${unreadCount + (mayorAccess ? citizenFeedbackUnread : 0) ? `: ${unreadCount + (mayorAccess ? citizenFeedbackUnread : 0)} novas` : ""}`} onClick={() => setActiveNav(mayorAccess && citizenFeedbackUnread > 0 ? "Atendimento ao Cidadão" : "Notificações")}><Bell size={18} />{unreadCount + (mayorAccess ? citizenFeedbackUnread : 0) > 0 && <span />}</button>
             <button className="icon-button logout-button" aria-label="Sair do sistema" title="Sair" onClick={() => void logout()}><LogOut size={18} /></button>
@@ -1159,7 +1173,7 @@ export default function Home() {
 
           {!executiveReadOnlyScope && activeNav !== "Visão geral" && activeNav !== "Central Executiva" && <ContextualAiBar activeModule={activeNav} department={activeDepartment} tickets={privateTickets} events={currentEvents} />}
 
-          {activeNav === "Visão geral" && <Dashboard tickets={filteredTickets} allTickets={privateTickets} audit={privateAudit} executive={executiveAccess} department={activeDepartment} userName={currentUser.fullName} onNavigate={setActiveNav} />}
+          {activeNav === "Visão geral" && <Dashboard tickets={filteredTickets} allTickets={privateTickets} audit={privateAudit} executive={executiveAccess} department={activeDepartment} userName={currentUser.fullName} userRole={currentUser.role} events={currentEvents} unreadCount={unreadCount} onNavigate={setActiveNav} />}
           {activeNav === "Central Executiva" && executiveAccess && <ExecutiveCommandCenter tickets={ticketData} departments={allDepartments} currentUser={{ fullName: currentUser.fullName, role: currentUser.role }} onOpenDepartment={openExecutiveDepartment} notify={notify} />}
           {activeNav === "Últimas Notícias Prefeitura" && <PrefeituraNewsSection />}
           {activeNav === "Área do Setor" && <><SectorWorkspaceSection key={activeDepartment} department={activeDepartment} userName={currentUser.fullName} userRole={currentUser.role} departments={availableDepartments} notify={notify} />{!viewingOtherDepartment&&<FormBuilderPanel department={activeDepartment} notify={notify} />}</>}
@@ -1183,7 +1197,7 @@ export default function Home() {
           {activeNav === "Segurança e LGPD" && <SecuritySection department={activeDepartment} notify={notify} />}
           {activeNav === "Auditoria" && <AuditSection audit={privateAudit} department={activeDepartment} notify={notify} />}
           {activeNav === "Central de Ajuda" && <HelpCenterSection notify={notify} />}
-          {activeNav === "Configurações" && canManageEmployees && <SettingsSection key={activeDepartment} department={activeDepartment} managerName={currentUser.fullName} employees={sectorEmployees} settings={departmentPermissionSettings} soundEnabled={soundEnabled} motionEnabled={motionEnabled} contrastEnabled={contrastEnabled} textScale={textScale} isMayor={executiveAccess} crossSectorCommunicationEnabled={executiveCommunicationAccess} secretariatsContent={<TeamSection offices={scopedOffices} />} onExportContacts={exportContacts} onSettingsChange={updatePermissionSettings} onSoundChange={setSoundEnabled} onMotionChange={setMotionEnabled} onContrastChange={setContrastEnabled} onTextScaleChange={setTextScale} onCrossSectorCommunicationChange={(enabled) => { setExecutiveCommunicationAccess(enabled); notify(enabled ? "Acesso executivo à comunicação de outros setores habilitado." : "Comunicações de outros setores voltaram ao modo privado."); }} onTestSound={() => { playNotificationChime(); notify("Som de notificação reproduzido."); }} notify={notify} />}
+          {activeNav === "Configurações" && canManageEmployees && <SettingsSection key={activeDepartment} department={activeDepartment} managerName={currentUser.fullName} employees={sectorEmployees} settings={departmentPermissionSettings} soundEnabled={soundEnabled} motionEnabled={motionEnabled} contrastEnabled={contrastEnabled} textScale={textScale} simplifiedMode={simplifiedMode} isMayor={executiveAccess} crossSectorCommunicationEnabled={executiveCommunicationAccess} secretariatsContent={<TeamSection offices={scopedOffices} />} onExportContacts={exportContacts} onSettingsChange={updatePermissionSettings} onSoundChange={setSoundEnabled} onMotionChange={setMotionEnabled} onContrastChange={setContrastEnabled} onTextScaleChange={setTextScale} onSimplifiedModeChange={setSimplifiedMode} onCrossSectorCommunicationChange={(enabled) => { setExecutiveCommunicationAccess(enabled); notify(enabled ? "Acesso executivo à comunicação de outros setores habilitado." : "Comunicações de outros setores voltaram ao modo privado."); }} onTestSound={() => { playNotificationChime(); notify("Som de notificação reproduzido."); }} notify={notify} />}
         </div>
         </PermissionProvider>
       </main>
@@ -1197,7 +1211,7 @@ export default function Home() {
       {interactionModal && <div className="modal-backdrop" role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget) setInteractionModal(null); }}><section className="modal interaction-action-modal" role="dialog" aria-modal="true" aria-labelledby="interaction-action-title"><header><div><p className="eyebrow">FUNÇÃO DO SISTEMA</p><h2 id="interaction-action-title">{interactionModal.title}</h2></div><button type="button" aria-label="Fechar" onClick={() => setInteractionModal(null)}><X size={18} /></button></header><div className="interaction-action-body"><span className="interaction-action-icon"><ArrowUpRight size={22} /></span><div><strong>Recurso aberto</strong><p>{interactionModal.message}</p><small>Use esta janela para revisar a função e seguir para as orientações do módulo.</small></div></div><footer><button className="button secondary" onClick={() => setInteractionModal(null)}>Fechar</button><button className="button primary" onClick={() => { setInteractionModal(null); setActiveNav("Central de Ajuda"); }}>Ver orientações</button></footer></section></div>}
       {!executiveReadOnlyScope && <MunicipalAiCopilot activeModule={activeNav} department={activeDepartment} user={{ id: currentUser.id, fullName: currentUser.fullName, role: currentUser.role }} tickets={privateTickets} events={currentEvents} departments={availableDepartments} unreadNotifications={unreadCount + (mayorAccess ? citizenFeedbackUnread : 0)} onExecuteAction={executeMunicipalAgentAction} />}
       <OnboardingTour userName={currentUser.fullName} role={currentUser.role} department={activeDepartment} onNavigate={(nav) => setActiveNav(nav as NavItem)} />
-      {!executiveReadOnlyScope && <QuickActionDock onNavigate={(nav) => setActiveNav(nav as NavItem)} onNewTicket={() => { setTicketModal(true); setActiveNav("Chamados"); }} onNewEvent={() => { setEventModal("new"); setActiveNav("Próximos Eventos"); }} />}
+      {!executiveReadOnlyScope && <QuickActionDock onNavigate={(nav) => setActiveNav(nav as NavItem)} onNewTicket={() => { setTicketModal(true); setActiveNav("Chamados"); }} onNewEvent={() => { setEventModal("new"); setActiveNav("Próximos Eventos"); }} onUpload={() => { setActiveNav("Anexos e Arquivos"); window.setTimeout(() => fileInput.current?.click(), 0); }} />}
       <MobileBottomNavigation active={activeNav} onNavigate={(nav) => { setActiveNav(nav as NavItem); setSidebarOpen(false); }} onMenu={() => setSidebarOpen(true)} />
       {recentlyDeletedEvent && <div className="undo-toast" role="status"><span><strong>Evento excluído</strong><small>{recentlyDeletedEvent.title}</small></span><button type="button" onClick={restoreDeletedEvent}>Desfazer</button></div>}
       {toast && <div className="toast" role="status"><span><Check size={14} strokeWidth={2.5} /></span>{toast}</div>}
@@ -1210,8 +1224,8 @@ function getHeading(active: NavItem) {
     "Visão geral": { eyebrow: "", title: "Bom dia.", subtitle: "Acompanhe as demandas e mantenha as secretarias alinhadas." },
     "Central Executiva": { eyebrow: "PREFEITO E VICE-PREFEITO", title: "Central Executiva", subtitle: "Acompanhe pendências, chamados, prioridades e riscos de todos os setores da Prefeitura." },
     "Últimas Notícias Prefeitura": { eyebrow: "PORTAL OFICIAL DE VÁRZEA DA PALMA", title: "Últimas Notícias Prefeitura", subtitle: "Acompanhe as publicações mais recentes da Prefeitura, filtre por assunto e abra a matéria completa na fonte oficial." },
-    "Área do Setor": { eyebrow: "AMBIENTE ESPECIALIZADO", title: "Área do Setor", subtitle: "Formulários, endereços, indicadores, equipes e fluxos adaptados às responsabilidades da unidade selecionada." },
-    "Fluxos e Anotações": { eyebrow: "MEMÓRIA OPERACIONAL", title: "Fluxos e Anotações", subtitle: "Organize decisões, providências e registros internos em etapas próprias para cada setor." },
+    "Área do Setor": { eyebrow: "AMBIENTE ESPECIALIZADO", title: "Meu setor", subtitle: "Formulários, endereços, indicadores, equipes e fluxos adaptados às responsabilidades da unidade selecionada." },
+    "Fluxos e Anotações": { eyebrow: "MEMÓRIA OPERACIONAL", title: "Anotações", subtitle: "Organize decisões, providências e registros internos em etapas próprias para cada setor." },
     Chamados: { eyebrow: "GESTÃO DE DEMANDAS", title: "Chamados", subtitle: "Organize cada solicitação do recebimento à entrega final." },
     Comunicação: { eyebrow: "CENTRAL DE COMUNICAÇÃO", title: "Conversas", subtitle: "Mensagens diretas e grupos por convite entre as secretarias." },
     "Atendimento ao Cidadão": { eyebrow: "PROTOCOLO, OUVIDORIA E SERVIÇOS", title: "Atendimento ao Cidadão", subtitle: "Registre, encaminhe e acompanhe solicitações, manifestações e pedidos de informação." },
@@ -1272,7 +1286,7 @@ function CommunicationEditorialCalendar({ onNavigate }: { onNavigate: (item: Nav
   </section>;
 }
 
-function Dashboard({ tickets, allTickets, audit, executive, department, userName, onNavigate }: { tickets: Ticket[]; allTickets: Ticket[]; audit: AuditItem[]; executive: boolean; department: string; userName: string; onNavigate: (item: NavItem) => void }) {
+function Dashboard({ tickets, allTickets, audit, executive, department, userName, userRole, events, unreadCount, onNavigate }: { tickets: Ticket[]; allTickets: Ticket[]; audit: AuditItem[]; executive: boolean; department: string; userName: string; userRole: string; events: SectorEvent[]; unreadCount: number; onNavigate: (item: NavItem) => void }) {
   const [showDetails, setShowDetails] = useState(false);
   const stats = statuses.map((status, index) => ({
     label: statusMeta[status].short,
@@ -1280,10 +1294,41 @@ function Dashboard({ tickets, allTickets, audit, executive, department, userName
     change: ["Novos registros", "Triagem inicial", "Decisão pendente", "Serviço em andamento", "Retorno externo", "Entregas confirmadas", "Encerrados sem execução"][index],
     status,
   }));
-  const dueSoon = tickets.filter((ticket) => ticket.status !== "Concluído" && ticket.status !== "Cancelado" && ticket.dueDate).slice(0, 2).length;
+  const openTickets = tickets.filter((ticket) => ticket.status !== "Concluído" && ticket.status !== "Cancelado");
+  const overdueTickets = openTickets.filter((ticket) => ticket.dueDate && new Date(ticket.dueDate).getTime() < Date.now());
+  const dueSoon = openTickets.filter((ticket) => ticket.dueDate).slice(0, 3).length;
+  const nextEvent = events.find((event) => new Date(event.startsAt).getTime() >= Date.now());
+  const roleLabel = executive ? "Visão executiva" : normalizeText(userRole).includes("secret") || normalizeText(userRole).includes("gestor") ? "Gestão da equipe" : "Meu trabalho";
 
   return (
     <>
+      <section className="my-day-section" aria-label="Resumo do meu dia">
+        <div className="my-day-heading">
+          <div><span className="my-day-kicker">{roleLabel}</span><h2>O que precisa da sua atenção</h2><p>Comece pelas prioridades. Os indicadores detalhados ficam disponíveis mais abaixo.</p></div>
+          <button type="button" className="text-button" onClick={() => onNavigate("Central Integrada")}>Abrir meu trabalho <ArrowRight size={14}/></button>
+        </div>
+        <div className="my-day-grid">
+          <button type="button" className={`my-day-card ${overdueTickets.length ? "urgent" : ""}`} onClick={() => onNavigate("Chamados")}>
+            <span><AlertTriangle size={18}/></span><div><strong>{overdueTickets.length}</strong><small>{overdueTickets.length === 1 ? "demanda atrasada" : "demandas atrasadas"}</small></div><ChevronRight size={16}/>
+          </button>
+          <button type="button" className="my-day-card" onClick={() => onNavigate("Central Integrada")}>
+            <span><ListTodo size={18}/></span><div><strong>{openTickets.length}</strong><small>itens em andamento</small></div><ChevronRight size={16}/>
+          </button>
+          <button type="button" className="my-day-card" onClick={() => onNavigate("Notificações")}>
+            <span><BellRing size={18}/></span><div><strong>{unreadCount}</strong><small>{unreadCount === 1 ? "aviso novo" : "avisos novos"}</small></div><ChevronRight size={16}/>
+          </button>
+          <button type="button" className="my-day-card" onClick={() => onNavigate("Próximos Eventos")}>
+            <span><CalendarDays size={18}/></span><div><strong>{nextEvent ? formatDate(nextEvent.startsAt) : "—"}</strong><small>{nextEvent ? nextEvent.title : "sem compromisso próximo"}</small></div><ChevronRight size={16}/>
+          </button>
+        </div>
+        <div className="task-choice-guide">
+          <strong>Não sabe onde registrar?</strong>
+          <button type="button" onClick={() => onNavigate("Chamados")}><ClipboardList size={14}/><span><b>Chamado</b><small>pedido a outro setor</small></span></button>
+          <button type="button" onClick={() => onNavigate("Central Integrada")}><ListTodo size={14}/><span><b>Tarefa</b><small>trabalho interno</small></span></button>
+          <button type="button" onClick={() => onNavigate("Processos Digitais")}><FileText size={14}/><span><b>Processo</b><small>procedimento formal</small></span></button>
+          <button type="button" onClick={() => onNavigate("Fluxos e Anotações")}><Pencil size={14}/><span><b>Anotação</b><small>registro sem fluxo</small></span></button>
+        </div>
+      </section>
       <OperationalCommandCenter tickets={tickets} allTickets={allTickets} executive={executive} department={department} userName={userName} onNavigate={onNavigate} />
       <DashboardAiBrief department={department} tickets={tickets} />
       {department === "Secretaria de Comunicação e Eventos" && <CommunicationEditorialCalendar onNavigate={onNavigate} />}

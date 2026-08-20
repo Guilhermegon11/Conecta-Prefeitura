@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { CalendarDays, CalendarPlus, Check, ClipboardList, Download, Home, Landmark, Menu, MessageSquare, Plus, Smartphone, Sparkles, Workflow, X } from "lucide-react";
+import { CalendarDays, CalendarPlus, Check, ClipboardList, Download, FileText, Files, Home, Landmark, Menu, MessageSquare, Plus, Smartphone, Sparkles, Workflow, X } from "lucide-react";
 import { flushOfflineQueue } from "./offline-sync";
 import { flushPendingOfflineLogout } from "./offline-auth";
 
@@ -57,27 +57,52 @@ export function PwaInstallCard() {
 export function OnboardingTour({ userName, role, department, onNavigate }: { userName: string; role: string; department: string; onNavigate: (nav: string) => void }) {
   const [open, setOpen] = useState(false); const [step, setStep] = useState(0);
   useEffect(() => {
-    const initialTimer = window.setTimeout(() => { try { if (!localStorage.getItem("prefeitura-onboarding:v2")) setOpen(true); } catch { /* ignore */ } }, 0);
+    const initialTimer = window.setTimeout(() => { try { if (!localStorage.getItem("prefeitura-onboarding:v3")) setOpen(true); } catch { /* ignore */ } }, 0);
     const restart = () => { setStep(0); setOpen(true); };
     window.addEventListener("prefeitura:restart-onboarding", restart);
     return () => { window.clearTimeout(initialTimer); window.removeEventListener("prefeitura:restart-onboarding", restart); };
   }, []);
   if (!open) return null;
-  const steps = [
-    { title: `Bem-vindo, ${userName.split(" ")[0]}`, text: `Seu acesso está identificado como ${role} em ${department}. O menu respeita as permissões do seu perfil.`, action: "Visão geral" },
-    { title: "Central Integrada", text: "Tarefas, solicitações internas, projetos, metas, mapa, IA e saúde do sistema ficam reunidos em uma visão operacional.", action: "Central Integrada" },
-    { title: "Trabalho rastreável", text: "Use chamados, processos, tarefas e anotações em vez de perder decisões em mensagens externas. Prazos e movimentações permanecem registrados.", action: "Chamados" },
-    { title: "Pronto para operar", text: "A Central de Ajuda mantém tutoriais e as Configurações controlam permissões, privacidade e preferências.", action: "Central de Ajuda" },
+
+  const normalizedRole = role.toLocaleLowerCase("pt-BR");
+  const isExecutive = normalizedRole.includes("prefeito") || normalizedRole.includes("vice");
+  const isManager = normalizedRole.includes("secret") || normalizedRole.includes("admin") || normalizedRole.includes("gestor");
+  const steps = isExecutive ? [
+    { title: `Bem-vindo, ${userName.split(" ")[0]}`, text: "A tela inicial mostra o que exige atenção primeiro. Use o painel executivo para comparar setores e localizar riscos.", action: "Visão geral" },
+    { title: "Pendências gerais", text: "Acompanhe prioridades, chamados e situações críticas de toda a Prefeitura sem precisar abrir cada setor manualmente.", action: "Central Executiva" },
+    { title: "Meu trabalho", text: "Tarefas e rotinas operacionais ficam reunidas aqui. O botão + cria ações novas a partir de qualquer tela.", action: "Central Integrada" },
+    { title: "Busca e ajuda", text: "Use a busca no topo para localizar chamados, pessoas, documentos, eventos e unidades. Em dúvida, abra Ajuda.", action: "Central de Ajuda" },
+  ] : isManager ? [
+    { title: `Bem-vindo, ${userName.split(" ")[0]}`, text: `Você está em ${department}. A tela inicial destaca prioridades da equipe e ações que precisam de decisão.`, action: "Visão geral" },
+    { title: "Meu trabalho", text: "Centralize tarefas e solicitações da equipe. Chamados ficam para pedidos e demandas; processos ficam para procedimentos formais.", action: "Central Integrada" },
+    { title: "Meu setor", text: "Aqui ficam formulários, equipe, indicadores e rotinas específicas da sua secretaria.", action: "Área do Setor" },
+    { title: "Ações rápidas", text: "Sempre que quiser criar algo, use o botão +. Para aprender uma função, abra Ajuda a qualquer momento.", action: "Central de Ajuda" },
+  ] : [
+    { title: `Bem-vindo, ${userName.split(" ")[0]}`, text: `Seu acesso é de ${role} em ${department}. A tela inicial mostra primeiro o que você precisa resolver.`, action: "Visão geral" },
+    { title: "Meu trabalho", text: "Use esta área para tarefas internas. Para pedidos entre setores, use Chamados; para procedimento oficial, use Processos.", action: "Central Integrada" },
+    { title: "Comunicação e agenda", text: "Conversas ficam em Comunicação e compromissos em Agenda. Assim você não precisa memorizar onde cada informação está.", action: "Comunicação" },
+    { title: "Precisa criar algo?", text: "Use o botão + em qualquer tela. Se tiver dúvida, a área Ajuda explica cada caminho com linguagem simples.", action: "Central de Ajuda" },
   ];
   const current=steps[step];
-  function finish(){try{localStorage.setItem("prefeitura-onboarding:v2","done")}catch{} setOpen(false);}
+  function finish(){try{localStorage.setItem("prefeitura-onboarding:v3","done")}catch{} setOpen(false);}
   return <div className="onboarding-backdrop"><section className="onboarding-card"><button className="onboarding-close" onClick={finish} aria-label="Fechar"><X size={17}/></button><span className="onboarding-icon">{step===0?<Landmark size={24}/>:step===1?<Workflow size={24}/>:step===2?<ClipboardList size={24}/>:<Check size={24}/>}</span><small>PASSO {step+1} DE {steps.length}</small><h2>{current.title}</h2><p>{current.text}</p><div className="onboarding-progress">{steps.map((_,index)=><i key={index} className={index<=step?"active":""}/>)}</div><footer><button className="button secondary" onClick={()=>{onNavigate(current.action); if(step===steps.length-1)finish();}}>Abrir área</button><button className="button primary" onClick={()=>step===steps.length-1?finish():setStep(step+1)}>{step===steps.length-1?"Concluir":"Próximo"}</button></footer></section></div>;
 }
 
-export function QuickActionDock({ onNavigate, onNewTicket, onNewEvent }: { onNavigate: (nav: string) => void; onNewTicket: () => void; onNewEvent: () => void }) {
+export function QuickActionDock({ onNavigate, onNewTicket, onNewEvent, onUpload }: { onNavigate: (nav: string) => void; onNewTicket: () => void; onNewEvent: () => void; onUpload: () => void }) {
   const [open,setOpen]=useState(false);
-  function openAi(){window.dispatchEvent(new CustomEvent("prefeitura:open-ai",{detail:{prompt:"Analise o contexto atual e me ajude a decidir o próximo passo."}}));setOpen(false)}
-  return <div className={`quick-action-dock ${open?"open":""}`}><div id="quick-action-menu" className="quick-action-menu" aria-hidden={!open}><button type="button" onClick={()=>{onNewTicket();setOpen(false)}}><ClipboardList size={15}/><span>Novo chamado</span></button><button type="button" onClick={()=>{onNewEvent();setOpen(false)}}><CalendarPlus size={15}/><span>Novo evento</span></button><button type="button" onClick={()=>{onNavigate("Central Integrada");setOpen(false)}}><Workflow size={15}/><span>Nova tarefa</span></button><button type="button" className="quick-action-ai" onClick={openAi}><Sparkles size={15}/><span>IA Conecta</span></button></div><button type="button" className="quick-action-trigger" aria-label={open?"Fechar ações rápidas":"Abrir ações rápidas"} aria-expanded={open} aria-controls="quick-action-menu" onClick={()=>setOpen(!open)}><Plus size={22}/></button></div>;
+  function go(nav:string){onNavigate(nav);setOpen(false)}
+  return <div className={`quick-action-dock ${open?"open":""}`}>
+    <div id="quick-action-menu" className="quick-action-menu universal-create-menu" aria-hidden={!open}>
+      <div className="quick-action-heading"><strong>O que deseja fazer?</strong><small>Escolha a ação pelo objetivo</small></div>
+      <button type="button" onClick={()=>{onNewTicket();setOpen(false)}}><ClipboardList size={15}/><span><strong>Abrir chamado</strong><small>Solicitar algo a outro setor</small></span></button>
+      <button type="button" onClick={()=>go("Central Integrada")}><Workflow size={15}/><span><strong>Criar tarefa</strong><small>Registrar trabalho interno</small></span></button>
+      <button type="button" onClick={()=>go("Processos Digitais")}><FileText size={15}/><span><strong>Novo processo</strong><small>Procedimento formal e documental</small></span></button>
+      <button type="button" onClick={()=>go("Comunicação")}><MessageSquare size={15}/><span><strong>Enviar mensagem</strong><small>Conversar com pessoas e grupos</small></span></button>
+      <button type="button" onClick={()=>{onUpload();setOpen(false)}}><Files size={15}/><span><strong>Adicionar arquivo</strong><small>Guardar documento no setor</small></span></button>
+      <button type="button" onClick={()=>{onNewEvent();setOpen(false)}}><CalendarPlus size={15}/><span><strong>Novo evento</strong><small>Adicionar compromisso à agenda</small></span></button>
+    </div>
+    <button type="button" className="quick-action-trigger" aria-label={open?"Fechar menu Criar":"Abrir menu Criar"} aria-expanded={open} aria-controls="quick-action-menu" onClick={()=>setOpen(!open)}><Plus size={22}/><span className="quick-action-trigger-label">Criar</span></button>
+  </div>;
 }
 
 export function MobileBottomNavigation({ active, onNavigate, onMenu }: { active: string; onNavigate: (nav: string) => void; onMenu: () => void }) {

@@ -145,3 +145,7 @@ O aviso flutuante de conexão, a contagem de alterações pendentes e o botão *
 ## Versão 4.9.3 — IA dentro das ações rápidas
 
 O botão flutuante independente **IA Conecta** foi removido para não cobrir campos e botões, especialmente o envio de mensagens em **Comunicação**. O acesso à IA permanece disponível dentro do menu aberto pelo botão flutuante **+**, além dos atalhos contextuais já existentes no sistema. Veja `VERSAO-4.9.3-IA-NO-MENU-MAIS.md`.
+
+## Versão 4.9.4 — GPS convertido em endereço
+
+O botão **Usar GPS** das atividades de campo passa a consultar o endereço correspondente à localização do dispositivo e preencher automaticamente o campo de rua/endereço. Latitude e longitude deixam de ser exibidas ao usuário; as coordenadas permanecem apenas como metadado técnico para posicionamento. O mesmo comportamento foi aplicado ao cadastro de endereço dos chamados. Veja `VERSAO-4.9.4-GPS-PARA-ENDERECO.md`.

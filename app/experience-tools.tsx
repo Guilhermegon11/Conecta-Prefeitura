@@ -78,13 +78,16 @@ export function GlobalSearchPanel({
         { id: "central-projetos", type: "Módulo", title: "Projetos e metas", detail: "Progresso, etapas e metas da gestão", nav: "Central Integrada", icon: Building2 },
         { id: "central-mapa", type: "Módulo", title: "Mapa da cidade e locais públicos", detail: "Ocorrências por bairro e histórico dos equipamentos", nav: "Central Integrada", icon: Building2 },
         { id: "central-ia", type: "Módulo", title: "IA Municipal", detail: "Resumo, classificação, urgência e relatório semanal", nav: "Central Integrada", icon: Search },
+        { id: "processos", type: "Módulo", title: "Processos e procedimentos oficiais", detail: "Protocolos, documentos e tramitações formais", nav: "Processos Digitais", icon: FileText },
+        { id: "comunicacao", type: "Módulo", title: "Conversas e grupos", detail: "Mensagens internas e comunicação da equipe", nav: "Comunicação", icon: UserRound },
+        { id: "ajuda", type: "Módulo", title: "Ajuda e orientações", detail: "Descubra onde registrar cada tipo de atividade", nav: "Central de Ajuda", icon: Search },
       ].filter((item) => includes(item.title, item.detail)),
     ];
     return all.slice(0, 12);
   }, [documents, events, offices, query, tickets, users]);
 
-  return <div className="global-search-panel" role="dialog" aria-label="Resultados da busca do setor atual">
-    <header><span><Search size={15} /><strong>Busca no setor atual</strong></span><button onClick={onClose} aria-label="Fechar resultados"><X size={16} /></button></header>
+  return <div className="global-search-panel" role="dialog" aria-label="Resultados da busca">
+    <header><span><Search size={15} /><strong>Busca rápida</strong></span><button onClick={onClose} aria-label="Fechar resultados"><X size={16} /></button></header>
     <div>{results.map((result) => { const Icon = result.icon; return <button key={`${result.type}-${result.id}`} onClick={() => { onOpen(result.nav); onClose(); }}><span><Icon size={17} /></span><span><i>{result.type}</i><strong>{result.title}</strong><small>{result.detail}</small></span><ArrowRight size={14} /></button>; })}
       {!results.length && <div className="global-search-empty"><Search size={24} /><strong>Nenhum resultado encontrado</strong><p>Busque por protocolo, pessoa, documento, evento, setor ou endereço.</p></div>}
     </div>

@@ -3064,3 +3064,44 @@ body { font-size: 16.5px; }
   .exec-queue-status { grid-column:1/-1; }
   .exec-central-queue-list article > button { grid-column:1/-1;grid-row:auto;width:100%; }
 }
+
+
+/* v5 UX simplification */
+.clean-nav-section-toggle{width:100%;display:flex;align-items:center;justify-content:space-between;border:0;background:transparent;color:var(--text-secondary,#667085);padding:10px 12px;border-radius:10px;font:inherit;font-weight:700;cursor:pointer}
+.clean-nav-section-toggle:hover{background:rgba(127,127,127,.08)}
+.clean-nav-section-toggle svg{transition:transform .2s ease}.clean-nav-section-toggle svg.expanded{transform:rotate(90deg)}
+.secondary-nav-section{margin-top:6px}
+.my-day-section{margin-bottom:18px}
+.my-day-heading{display:flex;align-items:flex-start;justify-content:space-between;gap:16px;margin-bottom:12px}
+.my-day-heading h2{margin:3px 0 4px;font-size:1.15rem}.my-day-heading p{margin:0;color:var(--text-secondary,#667085)}
+.my-day-kicker{font-size:.72rem;letter-spacing:.08em;text-transform:uppercase;font-weight:800;color:var(--primary,#3157c8)}
+.my-day-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px}
+.my-day-card{display:grid;grid-template-columns:auto 1fr auto;align-items:center;gap:10px;text-align:left;border:1px solid var(--border,#e4e7ec);background:var(--surface,#fff);border-radius:14px;padding:14px;cursor:pointer;color:inherit}
+.my-day-card:hover{border-color:var(--primary,#3157c8)}
+.my-day-card>span{display:grid;place-items:center;width:34px;height:34px;border-radius:10px;background:rgba(80,100,180,.10)}
+.my-day-card strong{display:block;font-size:1.15rem}.my-day-card small{display:block;color:var(--text-secondary,#667085);margin-top:2px}
+.my-day-card.urgent{border-color:rgba(190,60,60,.35)}
+.task-choice-guide{margin-top:10px;display:flex;align-items:center;gap:8px;flex-wrap:wrap;padding:10px 12px;border:1px dashed var(--border,#d9dee7);border-radius:12px;background:rgba(127,127,127,.035)}
+.task-choice-guide>strong{font-size:.86rem;margin-right:2px}
+.task-choice-guide button{display:flex;align-items:center;gap:7px;border:0;background:transparent;padding:6px 8px;border-radius:8px;cursor:pointer;color:inherit}
+.task-choice-guide button:hover{background:rgba(127,127,127,.08)}
+.task-choice-guide button span{display:flex;flex-direction:column;text-align:left}.task-choice-guide b{font-size:.82rem}.task-choice-guide small{font-size:.69rem;color:var(--text-secondary,#667085)}
+.universal-create-menu{min-width:320px}
+.quick-action-heading{padding:10px 12px 6px;display:flex;flex-direction:column;border-bottom:1px solid var(--border,#e4e7ec);margin-bottom:4px}
+.quick-action-heading small{color:var(--text-secondary,#667085);margin-top:2px}
+.universal-create-menu button span{display:flex;flex-direction:column;align-items:flex-start}.universal-create-menu button span small{font-size:.7rem;color:var(--text-secondary,#667085);font-weight:400}
+.quick-action-trigger{width:auto!important;min-width:54px;padding-inline:14px!important;gap:7px}.quick-action-trigger-label{font-size:.82rem;font-weight:800}
+.simplified-mode .demo-banner small,.simplified-mode .page-heading .eyebrow,.simplified-mode .dashboard-progressive-details{display:none}
+.simplified-mode .content-wrap{max-width:1180px}
+.simplified-mode .panel{box-shadow:none}
+.simplified-mode .my-day-card{padding:17px}
+.simplified-mode .my-day-card strong{font-size:1.35rem}
+.simplified-mode .clean-nav-section-label{font-size:.78rem}
+.simplified-mode .organized-nav-item{min-height:44px;font-size:.95rem}
+.simplified-mode .page-heading h1{font-size:1.65rem}
+@media(max-width:900px){.my-day-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.my-day-heading{flex-direction:column}.task-choice-guide{align-items:stretch}.task-choice-guide>strong{width:100%}}
+@media(max-width:540px){.my-day-grid{grid-template-columns:1fr}.universal-create-menu{min-width:min(320px,calc(100vw - 24px))}.quick-action-trigger-label{display:none}}
+
+.simple-mode-toggle{display:inline-flex;align-items:center;gap:6px;border:1px solid var(--border,#e4e7ec);background:var(--surface,#fff);color:inherit;border-radius:10px;padding:8px 10px;font:inherit;font-size:.8rem;font-weight:700;cursor:pointer}
+.simple-mode-toggle:hover,.simple-mode-toggle.active{border-color:var(--primary,#3157c8);background:rgba(80,100,180,.08)}
+@media(max-width:760px){.simple-mode-toggle span{display:none}}

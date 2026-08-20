@@ -14,6 +14,7 @@ import {
   LockKeyhole,
   PencilLine,
   Play,
+  PanelsTopLeft,
   RefreshCcw,
   Save,
   Settings2,
@@ -49,6 +50,7 @@ export function SettingsSection({
   motionEnabled,
   contrastEnabled,
   textScale,
+  simplifiedMode,
   isMayor,
   crossSectorCommunicationEnabled,
   secretariatsContent,
@@ -58,6 +60,7 @@ export function SettingsSection({
   onMotionChange,
   onContrastChange,
   onTextScaleChange,
+  onSimplifiedModeChange,
   onCrossSectorCommunicationChange,
   onTestSound,
   notify,
@@ -70,6 +73,7 @@ export function SettingsSection({
   motionEnabled: boolean;
   contrastEnabled: boolean;
   textScale: "normal" | "large" | "larger";
+  simplifiedMode: boolean;
   isMayor: boolean;
   crossSectorCommunicationEnabled: boolean;
   secretariatsContent: ReactNode;
@@ -79,6 +83,7 @@ export function SettingsSection({
   onMotionChange: (enabled: boolean) => void;
   onContrastChange: (enabled: boolean) => void;
   onTextScaleChange: (scale: "normal" | "large" | "larger") => void;
+  onSimplifiedModeChange: (enabled: boolean) => void;
   onCrossSectorCommunicationChange: (enabled: boolean) => void;
   onTestSound: () => void;
   notify: (message: string) => void;
@@ -256,6 +261,13 @@ export function SettingsSection({
         <article className="panel preference-card">
           <header><span><Type size={19} /></span><div><h3>Tamanho do texto</h3><p>Aumente a leitura sem precisar usar o zoom do navegador.</p></div></header>
           <label className="preference-select"><span>Tamanho na plataforma</span><select value={textScale} onChange={(event) => onTextScaleChange(event.target.value as "normal" | "large" | "larger")}><option value="normal">Padrão</option><option value="large">Grande</option><option value="larger">Muito grande</option></select></label>
+        </article>
+
+
+
+        <article className="panel preference-card simplified-mode-card">
+          <header><span><PanelsTopLeft size={19} /></span><div><h3>Modo simplificado</h3><p>Reduz informações secundárias, amplia ações principais e deixa a navegação mais direta.</p></div></header>
+          <button type="button" className="preference-toggle-row" aria-pressed={simplifiedMode} onClick={() => onSimplifiedModeChange(!simplifiedMode)}><span><PanelsTopLeft size={18} /><span><strong>{simplifiedMode ? "Modo simplificado ativado" : "Interface completa"}</strong><small>{simplifiedMode ? "Prioridades, botões e textos essenciais recebem mais destaque." : "Todos os detalhes e painéis permanecem visíveis."}</small></span></span><i className={simplifiedMode ? "toggle active" : "toggle"}><b /></i></button>
         </article>
 
         <article className="panel preference-card">
