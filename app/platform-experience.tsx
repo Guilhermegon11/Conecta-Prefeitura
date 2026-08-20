@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { CalendarDays, CalendarPlus, Check, ClipboardList, Download, FileText, Files, Home, Landmark, Menu, MessageSquare, Plus, Smartphone, Sparkles, Workflow, X } from "lucide-react";
 import { flushOfflineQueue } from "./offline-sync";
 import { flushPendingOfflineLogout } from "./offline-auth";
+import { openMunicipalAi } from "./municipal-ai-copilot";
 
 type InstallPromptEvent = Event & { prompt: () => Promise<void>; userChoice: Promise<{ outcome: "accepted" | "dismissed" }> };
 
@@ -94,6 +95,7 @@ export function QuickActionDock({ onNavigate, onNewTicket, onNewEvent, onUpload 
   return <div className={`quick-action-dock ${open?"open":""}`}>
     <div id="quick-action-menu" className="quick-action-menu universal-create-menu" aria-hidden={!open}>
       <div className="quick-action-heading"><strong>O que deseja fazer?</strong><small>Escolha a ação pelo objetivo</small></div>
+      <button type="button" className="quick-action-ai" onClick={()=>{openMunicipalAi();setOpen(false)}}><Sparkles size={15}/><span>IA Conecta</span></button>
       <button type="button" onClick={()=>{onNewTicket();setOpen(false)}}><ClipboardList size={15}/><span><strong>Abrir chamado</strong><small>Solicitar algo a outro setor</small></span></button>
       <button type="button" onClick={()=>go("Central Integrada")}><Workflow size={15}/><span><strong>Criar tarefa</strong><small>Registrar trabalho interno</small></span></button>
       <button type="button" onClick={()=>go("Processos Digitais")}><FileText size={15}/><span><strong>Novo processo</strong><small>Procedimento formal e documental</small></span></button>

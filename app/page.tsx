@@ -92,7 +92,7 @@ import { queueFormRequest } from "./offline-sync";
 import { LoginLoadingScreen, TestLoginScreen } from "./test-login";
 import { IntegratedManagementSection } from "./integrated-platform";
 import { MobileBottomNavigation, OnboardingTour, QuickActionDock } from "./platform-experience";
-import { ContextualAiBar, DashboardAiBrief, MunicipalAiCopilot, openMunicipalAi } from "./municipal-ai-copilot";
+import { ContextualAiBar, DashboardAiBrief, MunicipalAiCopilot } from "./municipal-ai-copilot";
 import { PrefeituraNewsSection } from "./prefeitura-news";
 import { ExecutiveCommandCenter } from "./executive-command-center";
 import type { MunicipalAgentAction, MunicipalAgentExecutionResult } from "./municipal-agent-types";
@@ -1033,10 +1033,10 @@ export default function Home() {
   const normalizedRole = normalizeText(currentUser.role);
   const managerProfile = executiveAccess || canManageEmployees || normalizedRole.includes("gestor") || normalizedRole.includes("secret");
   const primaryNavItems: NavItem[] = executiveAccess
-    ? ["Visão geral", "Central Executiva", "Central Integrada", "Comunicação", "Processos Digitais", "Próximos Eventos", "Gestão Municipal"]
+    ? ["Visão geral", "Central Executiva", "Área do Setor", "Central Integrada", "Comunicação", "Processos Digitais", "Próximos Eventos", "Gestão Municipal"]
     : managerProfile
-      ? ["Visão geral", "Central Integrada", "Chamados", "Comunicação", "Área do Setor", "Processos Digitais", "Próximos Eventos"]
-      : ["Visão geral", "Central Integrada", "Chamados", "Comunicação", "Área do Setor", "Próximos Eventos", "Anexos e Arquivos"];
+      ? ["Visão geral", "Área do Setor", "Central Integrada", "Chamados", "Comunicação", "Processos Digitais", "Próximos Eventos"]
+      : ["Visão geral", "Área do Setor", "Central Integrada", "Chamados", "Comunicação", "Próximos Eventos", "Anexos e Arquivos"];
   const allSecondaryItems: NavItem[] = [
     "Visão geral", "Central Executiva", "Últimas Notícias Prefeitura", "Chamados", "Atendimento ao Cidadão",
     "Pendências", "Central Integrada", "Próximos Eventos", "Comunicação", "Fluxos e Anotações",
@@ -1050,7 +1050,7 @@ export default function Home() {
   const cleanNavLabel: Partial<Record<NavItem, string>> = {
     "Visão geral": "Início",
     "Central Executiva": "Pendências gerais",
-    "Área do Setor": "Meu setor",
+    "Área do Setor": "Meu Setor",
     "Fluxos e Anotações": "Anotações",
     "Atendimento ao Cidadão": "Atendimento ao cidadão",
     "Próximos Eventos": "Agenda",
@@ -1078,7 +1078,7 @@ export default function Home() {
             const expanded = !section.compact || expandedNavGroup === section.label || visibleItems.includes(activeNav);
             return (
               <div className={`clean-nav-section ${section.compact ? "secondary-nav-section" : ""}`} key={section.label}>
-                {section.compact ? <button type="button" className="clean-nav-section-toggle" aria-expanded={expanded} onClick={() => setExpandedNavGroup(expandedNavGroup === section.label ? null : section.label)}><span>••• Mais</span><ChevronRight className={expanded ? "expanded" : ""} size={15}/></button> : <span className="clean-nav-section-label">Acesso rápido</span>}
+                {section.compact ? <button type="button" className="clean-nav-section-toggle" aria-expanded={expanded} onClick={() => setExpandedNavGroup(expandedNavGroup === section.label ? null : section.label)}><span>••• Mais</span><ChevronRight className={expanded ? "expanded" : ""} size={15}/></button> : <span className="clean-nav-section-label">Principais</span>}
                 {expanded && <div className="clean-nav-section-items">
                   {visibleItems.map((item) => {
                     const ItemIcon = navIcons[item];
@@ -1098,6 +1098,7 @@ export default function Home() {
                         type="button"
                         key={item}
                         className={activeNav === item ? "clean-nav-child organized-nav-item active" : "clean-nav-child organized-nav-item"}
+                        aria-current={activeNav === item ? "page" : undefined}
                         onClick={() => { setActiveNav(item); setSidebarOpen(false); }}
                       >
                         <ItemIcon size={17} strokeWidth={2} />
@@ -1134,7 +1135,6 @@ export default function Home() {
           <div className="top-actions">
             <span className={`persistence-status ${persistenceStatus}`} title="Persistência central do sistema"><i />{persistenceStatus === "carregando" ? "Conectando" : persistenceStatus === "salvando" ? "Salvando" : persistenceStatus === "offline" ? "Aguardando conexão" : "Salvo"}</span>
             <button className={`simple-mode-toggle ${simplifiedMode ? "active" : ""}`} type="button" aria-pressed={simplifiedMode} title={simplifiedMode ? "Voltar para interface completa" : "Ativar modo simplificado"} onClick={() => setSimplifiedMode((current) => !current)}><LayoutDashboard size={15}/><span>{simplifiedMode ? "Modo simples" : "Simplificar"}</span></button>
-            <button className="top-ai-button" type="button" disabled={executiveReadOnlyScope} title={executiveReadOnlyScope ? "IA de execução indisponível no modo de consulta executiva" : "Abrir IA Conecta"} onClick={() => openMunicipalAi()}><Sparkles size={15}/> IA Conecta</button>
             <button className="icon-button notification-button" aria-label={`Notificações${unreadCount + (mayorAccess ? citizenFeedbackUnread : 0) ? `: ${unreadCount + (mayorAccess ? citizenFeedbackUnread : 0)} novas` : ""}`} onClick={() => setActiveNav(mayorAccess && citizenFeedbackUnread > 0 ? "Atendimento ao Cidadão" : "Notificações")}><Bell size={18} />{unreadCount + (mayorAccess ? citizenFeedbackUnread : 0) > 0 && <span />}</button>
             <button className="icon-button logout-button" aria-label="Sair do sistema" title="Sair" onClick={() => void logout()}><LogOut size={18} /></button>
             <label className="account-switch"><div className="avatar">{currentUser.initials}</div><span><small>{executiveAccess ? "VISUALIZAR COMO" : "PERFIS CADASTRADOS"}</small><select aria-label="Visualizar como usuário" value={currentUserId} onChange={(event) => switchUser(event.target.value)}>{activeUsers.map((user) => <option key={user.id} value={user.id}>{user.fullName} — {user.department}</option>)}</select></span></label>

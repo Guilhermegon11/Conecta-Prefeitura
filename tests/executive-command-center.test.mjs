@@ -10,7 +10,7 @@ test("shows the Central Executiva only to Prefeito and Vice-prefeito", async () 
   assert.match(page, /if \(item === "Central Executiva"\) return executiveAccess/);
   assert.match(page, /activeNav === "Central Executiva"\s*\? executiveAccess \? PUBLIC_READ_PERMISSION : NO_PERMISSION/);
   assert.match(page, /role === "prefeito" \|\| role === "vice-prefeito"/);
-  assert.match(page, /label: "Prefeito e Vice", items: \["Central Executiva"\]/);
+  assert.match(page, /\? \["Visão geral", "Central Executiva", "Área do Setor", "Central Integrada"/);
 });
 
 test("consolidates real tickets and integrated tasks from every department", async () => {

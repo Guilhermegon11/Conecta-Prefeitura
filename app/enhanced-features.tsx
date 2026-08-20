@@ -27,11 +27,15 @@ export function OperationalCommandCenter({ tickets, allTickets, executive, depar
     const departments = Array.from(new Set(allTickets.map((t) => t.department))).map((name) => ({ name, total: active.filter((t) => t.department === name).length, late: late.filter((t) => t.department === name).length })).sort((a,b) => b.total - a.total).slice(0,5);
     return { active: active.length, late: late.length, within: active.length ? Math.round(((active.length - late.length) / active.length) * 100) : 100, departments };
   }, [allTickets]);
+  const onTimeScore = executive ? executiveStats.within : Math.max(0, 100 - overdue.length * 8);
 
   return <section className="command-center">
     <article className="command-hero panel">
       <div><p className="eyebrow">CENTRAL DE TRABALHO</p><h2>{executive ? `Visão executiva de ${department}` : `Meu dia em ${department}`}</h2><p>{executive ? "Prioridades, riscos e desempenho do setor selecionado, sem mistura com outras unidades." : `${userName.split(" ")[0]}, estas são as ações que merecem atenção agora.`}</p></div>
-      <div className="command-score"><span><Gauge size={18}/></span><strong>{executive ? `${executiveStats.within}%` : `${Math.max(0, 100 - overdue.length * 8)}%`}</strong><small>dentro do prazo</small></div>
+      <div className="command-score">
+        <span><Gauge size={18}/></span><strong>{onTimeScore}%</strong><small>dentro do prazo</small>
+        <div className="command-score-progress" role="progressbar" aria-label="Demandas dentro do prazo" aria-valuemin={0} aria-valuemax={100} aria-valuenow={onTimeScore}><i style={{ width: `${onTimeScore}%` }} /></div>
+      </div>
     </article>
 
     {executive && <div className="executive-kpis">

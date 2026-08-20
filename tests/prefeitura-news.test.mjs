@@ -7,7 +7,7 @@ const readSource = (file) => readFile(new URL(`../${file}`, import.meta.url), "u
 test("adds a public official-news tab for every selectable profile", async () => {
   const page = await readSource("app/page.tsx");
   assert.match(page, /"Últimas Notícias Prefeitura": Newspaper/);
-  assert.match(page, /items: \["Visão geral", "Últimas Notícias Prefeitura"\]/);
+  assert.match(page, /"Últimas Notícias Prefeitura", "Chamados"/);
   assert.match(page, /item === "Últimas Notícias Prefeitura"\) return true/);
   assert.match(page, /activeNav === "Últimas Notícias Prefeitura" && <PrefeituraNewsSection/);
   assert.match(page, /PUBLIC_READ_PERMISSION = \{ view: true, register: false, edit: false \}/);
