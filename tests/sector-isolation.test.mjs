@@ -22,10 +22,22 @@ test("allows every demonstration profile while keeping sector navigation executi
 
 test("restores the complete historical user registry", async () => {
   const source = await readSource("page.tsx");
-  assert.match(source, /setUsers\(restoreRegisteredUsers\(stored\.users\)\)/);
-  assert.match(source, /setUsers\(restoreRegisteredUsers\(cached\.users\)\)/);
+  assert.match(source, /restoreRegisteredUsers\(stored\.users\)/);
+  assert.match(source, /restoreRegisteredUsers\(cached\.users\)/);
+  assert.match(source, /setUsers\(restoredUsers\)/);
   assert.match(source, /const restoredDefaults = USERS\.map/);
   assert.match(source, /return \[\.\.\.restoredDefaults, \.\.\.sanitized\.filter/);
+});
+
+test("repairs communication data for every isolated sector", async () => {
+  const source = await readSource("page.tsx");
+  assert.match(source, /function buildSectorChannelGroups/);
+  assert.match(source, /Canal interno exclusivo de \$\{department\}/);
+  assert.match(source, /restoreSectorGroups\(Array\.isArray\(stored\.groups\)/);
+  assert.match(source, /restoreSectorMessages\(Array\.isArray\(stored\.messages\)/);
+  assert.match(source, /groupConfinedToDepartment\(group, activeDepartment, users\)/);
+  assert.match(source, /key=\{`\$\{currentUser\.id\}-\$\{activeDepartment\}`\}/);
+  assert.doesNotMatch(source, /useState\("u-rafael"\)/);
 });
 
 test("passes only sector-scoped collections to global views", async () => {

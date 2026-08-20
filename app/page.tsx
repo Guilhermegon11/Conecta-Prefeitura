@@ -191,10 +191,75 @@ function backfillTicketLocations(tickets: Ticket[]) {
   });
 }
 
+function sectorChannelId(department: string) {
+  return `g-setor-${normalizeText(department).replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "")}`;
+}
+
+function buildSectorChannelGroups(items: User[]) {
+  const activeUsers = items.filter((user) => (user.accountStatus ?? "Ativo") === "Ativo");
+  const departments = Array.from(new Set(activeUsers.map((user) => user.department)));
+  return departments.map((department) => {
+    const memberUserIds = activeUsers.filter((user) => sameDepartment(user.department, department)).map((user) => user.id);
+    return {
+      id: sectorChannelId(department),
+      name: `Equipe · ${department}`,
+      description: `Canal interno exclusivo de ${department}.`,
+      memberCount: memberUserIds.length,
+      createdAt: "2026-08-13T09:00:00.000Z",
+      memberUserIds,
+      pendingUserIds: [],
+    } satisfies Group;
+  });
+}
+
+function buildSectorWelcomeMessages(items: User[]) {
+  return buildSectorChannelGroups(items).flatMap((group, index) => {
+    const members = items.filter((user) => group.memberUserIds?.includes(user.id));
+    const sender = members[0];
+    if (!sender) return [];
+    const welcome: Message = {
+      id: `m-${group.id}-boas-vindas`,
+      conversationType: "group",
+      conversationId: group.id,
+      senderId: sender.id,
+      senderName: sender.fullName,
+      senderInitials: sender.initials,
+      body: `Canal interno de ${sender.department}. Use este espaço para alinhar demandas, documentos e chamados somente com a equipe do setor.`,
+      createdAt: `2026-08-13T09:${String(index % 50).padStart(2, "0")}:00.000Z`,
+    };
+    const recipient = members[1];
+    if (!recipient) return [welcome];
+    const directWelcome: Message = {
+      id: `m-${group.id}-direta`,
+      conversationType: "direct",
+      conversationId: directConversationId(sender.id, recipient.id),
+      senderId: sender.id,
+      senderName: sender.fullName,
+      senderInitials: sender.initials,
+      body: `A comunicação direta da equipe de ${sender.department} está disponível e permanece restrita ao setor.`,
+      createdAt: `2026-08-13T10:${String(index % 50).padStart(2, "0")}:00.000Z`,
+    };
+    return [welcome, directWelcome];
+  });
+}
+
+function restoreSectorGroups(items: Group[], users: User[]) {
+  const channels = buildSectorChannelGroups(users);
+  const channelIds = new Set(channels.map((group) => group.id));
+  return [...channels, ...items.filter((group) => !channelIds.has(group.id) && !group.id.startsWith("g-setor-"))];
+}
+
+function restoreSectorMessages(items: Message[], users: User[]) {
+  const welcomeMessages = buildSectorWelcomeMessages(users);
+  const welcomeIds = new Set(welcomeMessages.map((message) => message.id));
+  return [...welcomeMessages, ...items.filter((message) => !welcomeIds.has(message.id))];
+}
+
 const INITIAL_GROUPS: Group[] = [
   { id: "g-volta-aulas", name: "Operação Volta às Aulas 2026", description: "Educação, Mobilidade e Governo", memberCount: 3, createdAt: "2026-08-13T14:00:00.000Z", memberUserIds: ["u-ana", "u-amanda"], pendingUserIds: ["u-rafael"] },
   { id: "g-centro", name: "Revitalização do Centro", description: "Obras e comunicação institucional", memberCount: 3, createdAt: "2026-08-11T10:00:00.000Z", memberUserIds: ["u-ana", "u-rafael", "u-carla"], pendingUserIds: [] },
   { id: "g-saude-digital", name: "Comitê de Saúde Digital", description: "Integração dos atendimentos e sistemas da rede municipal.", memberCount: 1, createdAt: "2026-08-13T14:45:00.000Z", memberUserIds: ["u-lucas"], pendingUserIds: ["u-ana"] },
+  ...buildSectorChannelGroups(USERS),
 ];
 
 const INITIAL_NOTIFICATIONS: NotificationItem[] = [
@@ -217,6 +282,7 @@ const INITIAL_MESSAGES: Message[] = [
   { id: "m-2", conversationType: "direct", conversationId: "u-ana::u-rafael", senderId: "u-ana", senderName: "Artur Paulo Fagundes Rabelo", senderInitials: "AR", body: "Ótimo. Por favor, envie o relatório técnico assim que estiver pronto.", ticketId: "t-187", createdAt: "2026-08-13T14:24:00.000Z" },
   { id: "m-3", conversationType: "direct", conversationId: "u-ana::u-rafael", senderId: "u-rafael", senderName: "Bruno Gonçalves da Fonseca", senderInitials: "BF", body: "Segue a primeira versão para conferência.", attachmentId: "d-1", attachmentName: "Relatório técnico — Iluminação.pdf", attachmentSize: 2480000, attachmentContentType: "application/pdf", ticketId: "t-187", createdAt: "2026-08-13T14:36:00.000Z" },
   { id: "m-4", conversationType: "group", conversationId: "g-volta-aulas", senderId: "u-amanda", senderName: "Leila Cibeli Silveira Mendes", senderInitials: "LM", body: "Incluí a planilha com os novos itinerários. Precisamos da validação até amanhã.", ticketId: "t-185", createdAt: "2026-08-13T14:10:00.000Z" },
+  ...buildSectorWelcomeMessages(USERS),
 ];
 
 const INITIAL_DOCS: DocumentItem[] = [
@@ -424,10 +490,11 @@ export default function Home() {
       setExecutiveCommunicationAccess(executiveCommunication?.enabled === true);
       if (savedPermissions) setPermissionConfigs(savedPermissions);
       if (stored) {
+        const restoredUsers = Array.isArray(stored.users) ? restoreRegisteredUsers(stored.users) : users;
         if (Array.isArray(stored.ticketData)) setTicketData(backfillTicketLocations(stored.ticketData));
-        if (Array.isArray(stored.users)) setUsers(restoreRegisteredUsers(stored.users));
-        if (Array.isArray(stored.groups)) setGroups(stored.groups);
-        if (Array.isArray(stored.messages)) setMessages(stored.messages);
+        if (Array.isArray(stored.users)) setUsers(restoredUsers);
+        setGroups(restoreSectorGroups(Array.isArray(stored.groups) ? stored.groups : INITIAL_GROUPS, restoredUsers));
+        setMessages(restoreSectorMessages(Array.isArray(stored.messages) ? stored.messages : INITIAL_MESSAGES, restoredUsers));
         if (Array.isArray(stored.documents)) setDocuments(stored.documents);
         if (Array.isArray(stored.events)) setEvents(stored.events);
         if (Array.isArray(stored.audit)) setAudit(stored.audit);
@@ -450,10 +517,11 @@ export default function Home() {
       if (cachedExecutive) setExecutiveCommunicationAccess(cachedExecutive.enabled === true);
       if (cachedPermissions) setPermissionConfigs(cachedPermissions);
       if (cached) {
+        const restoredUsers = Array.isArray(cached.users) ? restoreRegisteredUsers(cached.users) : users;
         if (Array.isArray(cached.ticketData)) setTicketData(backfillTicketLocations(cached.ticketData));
-        if (Array.isArray(cached.users)) setUsers(restoreRegisteredUsers(cached.users));
-        if (Array.isArray(cached.groups)) setGroups(cached.groups);
-        if (Array.isArray(cached.messages)) setMessages(cached.messages);
+        if (Array.isArray(cached.users)) setUsers(restoredUsers);
+        setGroups(restoreSectorGroups(Array.isArray(cached.groups) ? cached.groups : INITIAL_GROUPS, restoredUsers));
+        setMessages(restoreSectorMessages(Array.isArray(cached.messages) ? cached.messages : INITIAL_MESSAGES, restoredUsers));
         if (Array.isArray(cached.documents)) setDocuments(cached.documents);
         if (Array.isArray(cached.events)) setEvents(cached.events);
         if (Array.isArray(cached.audit)) setAudit(cached.audit);
@@ -569,11 +637,28 @@ export default function Home() {
     setPermissionConfigs((current) => ({ ...current, [activeDepartment]: settings }));
   }
 
+  function resetScopedUi() {
+    setTicketModal(false);
+    setGroupModal(false);
+    setEventModal(null);
+    setEventToDelete(null);
+    setEmployeeModal(false);
+    setInteractionModal(null);
+    setSearch("");
+    setSearchOpen(false);
+  }
+
   function switchUser(userId: string) {
     const nextUser = users.find((user) => user.id === userId);
     if (!nextUser) return;
+    resetScopedUi();
     setCurrentUserId(userId);
     setViewedDepartment(nextUser.department);
+  }
+
+  function switchDepartment(department: string) {
+    resetScopedUi();
+    setViewedDepartment(department);
   }
 
   async function logout() {
@@ -978,7 +1063,7 @@ export default function Home() {
             </label>
             {searchOpen && search.trim() && <GlobalSearchPanel query={search} tickets={privateTickets} users={scopedActiveUsers} documents={privateDocuments} events={currentEvents} offices={scopedOffices} onOpen={(nav) => setActiveNav(nav as NavItem)} onClose={() => setSearchOpen(false)} />}
           </div>
-          {executiveAccess && <label className="executive-sector-switch"><span className="executive-switch-icon"><Crown size={17} /></span><span><small>PAINEL SETORIAL</small><select aria-label="Selecionar setor para a visão executiva" value={activeDepartment} onChange={(event) => setViewedDepartment(event.target.value)}>{allDepartments.map((department) => <option key={department}>{department}</option>)}</select></span></label>}
+          {executiveAccess && <label className="executive-sector-switch"><span className="executive-switch-icon"><Crown size={17} /></span><span><small>PAINEL SETORIAL</small><select aria-label="Selecionar setor para a visão executiva" value={activeDepartment} onChange={(event) => switchDepartment(event.target.value)}>{allDepartments.map((department) => <option key={department}>{department}</option>)}</select></span></label>}
           <div className="top-actions">
             <span className={`persistence-status ${persistenceStatus}`} title="Persistência central do sistema"><i />{persistenceStatus === "carregando" ? "Conectando" : persistenceStatus === "salvando" ? "Salvando" : persistenceStatus === "offline" ? "Aguardando conexão" : "Salvo"}</span>
             <button className="top-ai-button" type="button" onClick={() => openMunicipalAi()}><Sparkles size={15}/> IA Conecta</button>
@@ -988,7 +1073,7 @@ export default function Home() {
           </div>
         </header>
 
-        <PermissionProvider permission={currentPermission}>
+        <PermissionProvider key={`${currentUser.id}-${activeDepartment}`} permission={currentPermission}>
         <div className={`content-wrap ${activeNav === "Comunicação" ? "chat-content" : ""} ${currentPermission.register ? "can-register" : "read-only-register"} ${currentPermission.edit ? "can-edit" : "read-only-edit"}`}>
           <section className="page-heading">
             <div><p className="eyebrow">{activeNav === "Visão geral" ? `${formatHeadingDate(clockNow)} · ${formatHeadingClock(clockNow)}` : heading.eyebrow}</p><h1>{headingTitle}</h1><p>{heading.subtitle}</p></div>
@@ -1026,7 +1111,7 @@ export default function Home() {
             ? <CommunicationPrivacyGate department={activeDepartment} isMayor={mayorAccess} onOpenSettings={() => setActiveNav("Configurações")} />
             : executiveCommunicationMonitor
               ? <ExecutiveCommunicationViewer department={activeDepartment} users={scopedActiveUsers} groups={accessibleGroups} messages={communicationMessages} />
-              : <CommunicationSection currentUser={currentUser} users={scopedActiveUsers} groups={accessibleGroups} messages={communicationMessages} tickets={privateTickets} onSend={sendMessage} onSendAttachment={sendChatAttachment} onNewGroup={() => setGroupModal(true)} onTicketStatus={updateStatus} />)}
+              : <CommunicationSection key={`${currentUser.id}-${activeDepartment}`} currentUser={currentUser} users={scopedActiveUsers} groups={accessibleGroups} messages={communicationMessages} tickets={privateTickets} onSend={sendMessage} onSendAttachment={sendChatAttachment} onNewGroup={() => setGroupModal(true)} onTicketStatus={updateStatus} />)}
           {activeNav === "Atendimento ao Cidadão" && <CitizenServiceSection department={activeDepartment} notify={notify} isMayor={executiveAccess} departments={availableDepartments} />}
           {activeNav === "Central Integrada" && <IntegratedManagementSection key={activeDepartment} initialTab="Tarefas" department={activeDepartment} currentUser={{ id: currentUser.id, fullName: currentUser.fullName, department: currentUser.department, role: currentUser.role, initials: currentUser.initials }} tickets={privateTickets} users={scopedActiveUsers.map((user) => ({ id: user.id, fullName: user.fullName, department: user.department, role: user.role, initials: user.initials }))} offices={scopedOffices} events={currentEvents} departments={availableDepartments} notify={notify} />}
           {activeNav === "Processos Digitais" && <ProcessesSection key={`${activeDepartment}-${currentUser.id}`} department={activeDepartment} currentUser={{ id: currentUser.id, fullName: currentUser.fullName, department: currentUser.department, role: currentUser.role }} users={scopedActiveUsers.map((user) => ({ id: user.id, fullName: user.fullName, department: user.department, role: user.role }))} departments={availableDepartments} notify={notify} />}
@@ -1312,9 +1397,10 @@ function ExecutiveCommunicationViewer({ department, users, groups, messages }: {
 
 function CommunicationSection({ currentUser, users, groups, messages, tickets, onSend, onSendAttachment, onNewGroup, onTicketStatus }: { currentUser: User; users: User[]; groups: Group[]; messages: Message[]; tickets: Ticket[]; onSend: (message: Message, recipientId?: string) => void; onSendAttachment: (file: File, context: { conversationType: ChatTab; conversationId: string; recipientId?: string; body: string; ticketId?: string | null }) => Promise<boolean>; onNewGroup: () => void; onTicketStatus: (id: string, status: TicketStatus) => void }) {
   const access = useCurrentPermission();
-  const [tab, setTab] = useState<ChatTab>("direct");
+  const directUsers = users.filter((user) => user.id !== currentUser.id);
+  const [tab, setTab] = useState<ChatTab>(() => directUsers.length ? "direct" : groups.length ? "group" : "direct");
   const [conversationSearch, setConversationSearch] = useState("");
-  const [selected, setSelected] = useState("u-rafael");
+  const [selected, setSelected] = useState(() => directUsers[0]?.id ?? groups[0]?.id ?? "");
   const [draft, setDraft] = useState("");
   const [pendingFile, setPendingFile] = useState<File | null>(null);
   const [isUploading, setIsUploading] = useState(false);
@@ -1325,10 +1411,9 @@ function CommunicationSection({ currentUser, users, groups, messages, tickets, o
   const [linkedTicket, setLinkedTicket] = useState<Ticket | null>(null);
   const [pendingTicketId, setPendingTicketId] = useState<string | null>(null);
   const chatFileInput = useRef<HTMLInputElement>(null);
-  const directUsers = users.filter((user) => user.id !== currentUser.id);
   const selectionIsValid = tab === "direct" ? directUsers.some((user) => user.id === selected) : groups.some((group) => group.id === selected);
   const effectiveSelected = selectionIsValid ? selected : tab === "direct" ? directUsers[0]?.id ?? "" : groups[0]?.id ?? "";
-  const conversationThreadId = tab === "direct" ? directConversationId(currentUser.id, effectiveSelected) : effectiveSelected;
+  const conversationThreadId = tab === "direct" && effectiveSelected ? directConversationId(currentUser.id, effectiveSelected) : effectiveSelected;
   const selectedUser = users.find((user) => user.id === effectiveSelected);
   const selectedGroup = groups.find((group) => group.id === effectiveSelected);
   const visibleMessages = messages.filter((message) => message.conversationType === tab && message.conversationId === conversationThreadId);
@@ -1401,6 +1486,8 @@ function CommunicationSection({ currentUser, users, groups, messages, tickets, o
               <span className="group-avatar"><Hash size={16} /></span><span><strong>{group.name}</strong><small>{last?.body || last?.attachmentName || `${group.memberCount} participantes`}</small></span><span className="conversation-side"><time>{last ? formatTime(last.createdAt) : ""}</time></span>
             </button>;
           })}
+          {tab === "direct" && !filteredDirectUsers.length && <div className="chat-panel-empty"><UserRound size={24} /><strong>Nenhum colega disponível</strong><p>Use o canal interno do setor na aba Grupos.</p></div>}
+          {tab === "group" && !filteredGroups.length && <div className="chat-panel-empty"><UsersRound size={24} /><strong>Nenhum grupo disponível</strong><p>Os canais internos válidos do setor aparecerão aqui.</p></div>}
         </div>
       </aside>
       <div className="chat-main">
@@ -1784,7 +1871,7 @@ function GroupModal({ currentUserId, users, onClose, onCreate }: { currentUserId
   const filtered = candidates.filter((user) => [user.fullName, user.department, user.email].join(" ").toLowerCase().includes(query.trim().toLowerCase()));
   function submit(form: FormData) { if (!selected.length) return; const name = String(form.get("name")); onCreate({ id: makeId(), name, description: String(form.get("description")), memberCount: 1, createdAt: new Date().toISOString() }, selected); }
   function toggleAll() { setSelected(selected.length === candidates.length ? [] : candidates.map((user) => user.id)); }
-  return <div className="modal-backdrop" role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget) onClose(); }}><section className="modal group-modal" role="dialog" aria-modal="true" aria-labelledby="group-modal-title"><header><div><p className="eyebrow">COMUNICAÇÃO ENTRE SECRETARIAS</p><h2 id="group-modal-title">Criar grupo por convite</h2></div><button onClick={onClose} aria-label="Fechar"><X size={18} /></button></header><form action={submit}><label className="field full"><span>Nome do grupo *</span><input name="name" required placeholder="Ex.: Operação Volta às Aulas" autoFocus /></label><label className="field full"><span>Objetivo</span><textarea name="description" placeholder="Qual é o objetivo desta conversa?" /></label><fieldset className="member-picker"><legend>Quem você deseja adicionar?</legend><div className="member-tools"><label><Search size={15} /><input aria-label="Buscar pessoa para o grupo" placeholder="Buscar por nome ou secretaria..." value={query} onChange={(event) => setQuery(event.target.value)} /></label><button type="button" onClick={toggleAll}>{selected.length === candidates.length ? "Limpar seleção" : "Selecionar todos"}</button></div><div className="member-results">{filtered.map((user) => <label className={selected.includes(user.id) ? "selected" : ""} key={user.id}><input type="checkbox" checked={selected.includes(user.id)} onChange={(event) => setSelected((current) => event.target.checked ? [...current, user.id] : current.filter((id) => id !== user.id))} /><span className="mini-avatar">{user.initials}</span><span><strong>{user.fullName}</strong><small>{user.department} · {user.role}</small></span><i>{selected.includes(user.id) ? <Check size={12} /> : <Plus size={12} />}</i></label>)}</div><p className="member-count"><UsersRound size={14} /><strong>{selected.length}</strong> {selected.length === 1 ? "pessoa selecionada" : "pessoas selecionadas"}</p></fieldset><p className="invite-note"><BellRing size={14} /> Cada participante receberá uma notificação e uma pendência no próprio acesso. O grupo só ficará disponível depois que o convite for aceito.</p><div className="modal-actions"><button type="button" className="button secondary" onClick={onClose}>Cancelar</button><button className="button primary" disabled={!selected.length}><UserPlus size={15} /> Criar e enviar {selected.length || ""} {selected.length === 1 ? "convite" : "convites"}</button></div></form></section></div>;
+  return <div className="modal-backdrop" role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget) onClose(); }}><section className="modal group-modal" role="dialog" aria-modal="true" aria-labelledby="group-modal-title"><header><div><p className="eyebrow">COMUNICAÇÃO DO SETOR</p><h2 id="group-modal-title">Criar grupo por convite</h2></div><button onClick={onClose} aria-label="Fechar"><X size={18} /></button></header><form action={submit}><label className="field full"><span>Nome do grupo *</span><input name="name" required placeholder="Ex.: Planejamento semanal" autoFocus /></label><label className="field full"><span>Objetivo</span><textarea name="description" placeholder="Qual é o objetivo desta conversa?" /></label><fieldset className="member-picker"><legend>Quem você deseja adicionar?</legend><div className="member-tools"><label><Search size={15} /><input aria-label="Buscar pessoa para o grupo" placeholder="Buscar por nome no setor..." value={query} onChange={(event) => setQuery(event.target.value)} /></label><button type="button" onClick={toggleAll}>{selected.length === candidates.length ? "Limpar seleção" : "Selecionar todos"}</button></div><div className="member-results">{filtered.map((user) => <label className={selected.includes(user.id) ? "selected" : ""} key={user.id}><input type="checkbox" checked={selected.includes(user.id)} onChange={(event) => setSelected((current) => event.target.checked ? [...current, user.id] : current.filter((id) => id !== user.id))} /><span className="mini-avatar">{user.initials}</span><span><strong>{user.fullName}</strong><small>{user.department} · {user.role}</small></span><i>{selected.includes(user.id) ? <Check size={12} /> : <Plus size={12} />}</i></label>)}</div><p className="member-count"><UsersRound size={14} /><strong>{selected.length}</strong> {selected.length === 1 ? "pessoa selecionada" : "pessoas selecionadas"}</p></fieldset><p className="invite-note"><BellRing size={14} /> Cada participante receberá uma notificação e uma pendência no próprio acesso. O grupo só ficará disponível depois que o convite for aceito.</p><div className="modal-actions"><button type="button" className="button secondary" onClick={onClose}>Cancelar</button><button className="button primary" disabled={!selected.length}><UserPlus size={15} /> Criar e enviar {selected.length || ""} {selected.length === 1 ? "convite" : "convites"}</button></div></form></section></div>;
 }
 
 function StatusPill({ status }: { status: TicketStatus }) { return <span className={`status-pill ${statusMeta[status].color}`}><i />{statusMeta[status].short}</span>; }
