@@ -30,6 +30,39 @@ const PRESETS = [
   { mode: "meeting", label: "Preparar reunião", icon: MessageSquareText, prompt: "Prepare uma pauta executiva curta com decisões, pendências e próximos passos a partir deste contexto." },
 ] as const;
 
+const SESSION_STARTED_AT = Date.now();
+
+export function openMunicipalAi(prompt = "") {
+  if (typeof window === "undefined") return;
+  window.dispatchEvent(new CustomEvent("prefeitura:open-ai", { detail: { prompt } }));
+}
+
+export function ContextualAiBar({ activeModule, department, tickets, events }: { activeModule: string; department: string; tickets: CopilotTicket[]; events: CopilotEvent[] }) {
+  const openTickets = tickets.filter((item) => !["Concluído", "Cancelado"].includes(item.status));
+  const urgentTickets = openTickets.filter((item) => ["Urgente", "Crítica", "Alta"].includes(item.priority));
+  const futureEvents = events.filter((event) => new Date(event.startsAt).getTime() >= SESSION_STARTED_AT);
+  const insightByModule: Record<string, { title: string; body: string }> = {
+    "Visão geral": { title: `${openTickets.length} demandas abertas no radar`, body: `${urgentTickets.length || "Nenhuma"} com prioridade elevada e ${futureEvents.length} compromisso(s) futuro(s). A IA pode organizar o próximo passo.` },
+    Chamados: { title: `${urgentTickets.length} demandas merecem atenção`, body: "Resuma relatos, encontre riscos, gere checklists e prepare atualizações sem sair da fila de trabalho." },
+    "Atendimento ao Cidadão": { title: "Triagem inteligente disponível", body: "A IA pode resumir manifestações, sugerir destino, identificar urgência e preparar uma resposta clara para revisão." },
+    "Central Integrada": { title: "Planejamento assistido em tempo real", body: "Transforme prioridades em tarefas, planos de ação, reuniões, projetos e metas usando linguagem natural." },
+    "Processos Digitais": { title: "Leitura inteligente de processos", body: "Peça um resumo executivo, uma minuta de despacho, uma lista de pendências ou a próxima movimentação recomendada." },
+    Comunicação: { title: "Comunicação mais rápida e objetiva", body: "Resuma conversas, melhore mensagens e transforme decisões em tarefas acompanháveis." },
+    Indicadores: { title: "A IA interpreta os números com você", body: "Identifique variações, gargalos e perguntas que precisam ser respondidas antes da próxima reunião." },
+    "Próximos Eventos": { title: `${futureEvents.length} compromisso(s) no contexto atual`, body: "Prepare pauta, participantes, decisões esperadas e próximos passos para cada encontro." },
+  };
+  const insight = insightByModule[activeModule] ?? { title: `IA integrada a ${activeModule}`, body: `Pergunte sobre esta área, peça um resumo ou transforme o contexto de ${department} em um plano de ação.` };
+  return <section className="contextual-ai-bar" aria-label="Assistência contextual da IA">
+    <span className="contextual-ai-orb"><Sparkles size={18}/></span>
+    <div className="contextual-ai-copy"><small>IA CONECTA · CONTEXTO ATUAL</small><strong>{insight.title}</strong><p>{insight.body}</p></div>
+    <div className="contextual-ai-actions">
+      <button type="button" onClick={() => openMunicipalAi("Resuma esta tela e destaque somente o que precisa da minha atenção agora.")}><Sparkles size={14}/> Resumir tela</button>
+      <button type="button" onClick={() => openMunicipalAi("Analise o contexto desta tela e sugira a próxima melhor ação, explicando o motivo.")}><Target size={14}/> Próxima ação</button>
+      <button type="button" className="primary" onClick={() => openMunicipalAi()}><Bot size={14}/> Perguntar à IA <ChevronRight size={13}/></button>
+    </div>
+  </section>;
+}
+
 function makeId(prefix: string) { return `${prefix}-${globalThis.crypto?.randomUUID?.() ?? `${Date.now()}-${Math.random().toString(36).slice(2)}`}`; }
 function compactTicket(ticket: CopilotTicket) { return { protocol: ticket.protocol, title: ticket.title, description: ticket.description.slice(0, 650), department: ticket.department, status: ticket.status, priority: ticket.priority, dueDate: ticket.dueDate, neighborhood: ticket.neighborhood || "" }; }
 function formatChatTime(value: string) { try { return new Intl.DateTimeFormat("pt-BR", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit", timeZone: "America/Sao_Paulo" }).format(new Date(value)); } catch { return ""; } }
@@ -71,13 +104,24 @@ export function MunicipalAiCopilot({ activeModule, department, user, tickets, ev
     refresh(); window.addEventListener("online", refresh); window.addEventListener("offline", refresh);
     return () => { window.removeEventListener("online", refresh); window.removeEventListener("offline", refresh); };
   }, []);
+  useEffect(() => {
+    const handleOpen = (event: Event) => {
+      const detail = (event as CustomEvent<{ prompt?: string }>).detail;
+      setOpen(true);
+      setShowHistory(false);
+      setError("");
+      if (detail?.prompt) setPrompt(detail.prompt);
+    };
+    window.addEventListener("prefeitura:open-ai", handleOpen);
+    return () => window.removeEventListener("prefeitura:open-ai", handleOpen);
+  }, []);
   useEffect(() => { if (open) window.setTimeout(() => endRef.current?.scrollIntoView({ behavior: "smooth" }), 30); }, [conversations, open, busy]);
 
   const activeConversation = conversations.find((item) => item.id === activeConversationId) ?? null;
   const context = useMemo(() => ({
     now: new Date().toISOString(), currentScreen: activeModule, viewedDepartment: department,
     currentUser: { fullName: user.fullName, role: user.role, department },
-    summary: { visibleTickets: tickets.length, urgentTickets: tickets.filter((item) => ["Urgente", "Crítica"].includes(item.priority) && !["Concluído", "Cancelado"].includes(item.status)).length, openTickets: tickets.filter((item) => !["Concluído", "Cancelado"].includes(item.status)).length, unreadNotifications, upcomingEvents: events.filter((event) => new Date(event.startsAt).getTime() >= Date.now()).slice(0, 10) },
+    summary: { visibleTickets: tickets.length, urgentTickets: tickets.filter((item) => ["Urgente", "Crítica"].includes(item.priority) && !["Concluído", "Cancelado"].includes(item.status)).length, openTickets: tickets.filter((item) => !["Concluído", "Cancelado"].includes(item.status)).length, unreadNotifications, upcomingEvents: events.filter((event) => new Date(event.startsAt).getTime() >= SESSION_STARTED_AT).slice(0, 10) },
     visibleTickets: tickets.slice(0, 30).map(compactTicket), upcomingEvents: events.slice(0, 20),
     navigationOptions: ["Início", "Demandas", "Tarefas", "Agenda", "Gestão", "Configurações", "Chamados", "Atendimento ao Cidadão", "Central Integrada", "Próximos Eventos", "Comunicação", "Processos", "Indicadores", "Arquivos", "Auditoria", "Ajuda"],
     capabilities: [
@@ -159,9 +203,9 @@ export function MunicipalAiCopilot({ activeModule, department, user, tickets, ev
 
   const messages = activeConversation?.messages ?? [];
   return <>
-    <button className="municipal-ai-fab" type="button" onClick={() => setOpen(true)} aria-label="Abrir IA Conecta"><span><Sparkles size={17}/></span><div><strong>IA</strong><small>Chat + Agente</small></div></button>
+    <button className="municipal-ai-fab" type="button" onClick={() => setOpen(true)} aria-label="Abrir IA Conecta"><span><Sparkles size={17}/></span><div><strong>IA Conecta</strong><small>Pergunta, analisa e executa</small></div></button>
     {open && <div className="municipal-ai-overlay" role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget) setOpen(false); }}><aside className="municipal-ai-panel municipal-ai-agent-panel" role="dialog" aria-modal="true" aria-labelledby="municipal-ai-title">
-      <header><div className="municipal-ai-brand"><span><Bot size={21}/></span><div><small>GROQ · CHATBOT + AGENTE</small><h2 id="municipal-ai-title">Pergunte qualquer coisa</h2></div></div><div className="municipal-ai-header-actions"><button type="button" title="Histórico" aria-label="Abrir histórico" onClick={() => setShowHistory((value) => !value)}><History size={18}/></button><button type="button" title="Nova conversa" aria-label="Nova conversa" onClick={startNewConversation}><MessageSquarePlus size={18}/></button><button type="button" aria-label="Fechar Agente" onClick={() => setOpen(false)}><X size={19}/></button></div></header>
+      <header><div className="municipal-ai-brand"><span><Bot size={21}/></span><div><small>IA CONECTA · COPILOTO MUNICIPAL</small><h2 id="municipal-ai-title">O que você precisa resolver?</h2></div></div><div className="municipal-ai-header-actions"><button type="button" title="Histórico" aria-label="Abrir histórico" onClick={() => setShowHistory((value) => !value)}><History size={18}/></button><button type="button" title="Nova conversa" aria-label="Nova conversa" onClick={startNewConversation}><MessageSquarePlus size={18}/></button><button type="button" aria-label="Fechar Agente" onClick={() => setOpen(false)}><X size={19}/></button></div></header>
       {showHistory && <section className="municipal-ai-history"><div><strong>Histórico de conversas</strong><small>{historyStatus === "salvando" ? "Salvando…" : historyStatus === "offline" ? "Histórico local — sincronizará depois" : "Sincronizado"}</small></div>{conversations.length ? conversations.slice(0,30).map((conversation)=><button type="button" className={conversation.id===activeConversationId?"active":""} key={conversation.id} onClick={()=>{setActiveConversationId(conversation.id);setShowHistory(false);setPendingAction(null);}}><span><strong>{conversation.title || "Conversa"}</strong><small>{formatChatTime(conversation.updatedAt)}</small></span><i role="button" tabIndex={0} aria-label="Excluir conversa" onClick={(event)=>{event.stopPropagation();removeConversation(conversation.id);}} onKeyDown={(event)=>{if(event.key==="Enter"){event.stopPropagation();removeConversation(conversation.id);}}}><Trash2 size={13}/></i></button>):<p>Nenhuma conversa salva ainda.</p>}</section>}
       <div className="municipal-ai-context"><span><Sparkles size={14}/></span><div><strong>{activeModule}</strong><small>{department} · a IA pode operar os recursos permitidos</small></div></div>
       {!messages.length && <section className="municipal-ai-presets" aria-label="Ações rápidas de inteligência artificial">{PRESETS.map(({ mode, label, icon: Icon, prompt: presetPrompt }) => <button type="button" key={mode} disabled={busy} onClick={() => void ask(presetPrompt)}><Icon size={15}/><span>{label}</span><ChevronRight size={13}/></button>)}</section>}
@@ -181,7 +225,35 @@ export function MunicipalAiCopilot({ activeModule, department, user, tickets, ev
 }
 
 export function DashboardAiBrief({ department, tickets }: { department: string; tickets: CopilotTicket[] }) {
-  const [open, setOpen] = useState(false), [busy, setBusy] = useState(false), [result, setResult] = useState<CopilotResult | null>(null);
-  async function generate() { setOpen(true); if (result || busy) return; setBusy(true); try { const response = await fetch("/api/ai", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ operation: "copilot", mode: "prioritize", prompt: "Gere um briefing executivo muito curto: o que merece atenção agora, qual o maior risco e quais são as três próximas ações.", context: { department, tickets: tickets.slice(0, 20).map(compactTicket) } }) }); const payload = await response.json() as { result?: CopilotResult }; if (response.ok && payload.result) setResult(payload.result); } finally { setBusy(false); } }
-  return <article className={`dashboard-ai-brief ${open ? "open" : ""}`}><button type="button" onClick={() => open ? setOpen(false) : void generate()}><span><Sparkles size={16}/></span><div><strong>Resumo inteligente</strong><small>Groq analisa o cenário quando você pedir</small></div><ChevronRight size={15}/></button>{open && <div className="dashboard-ai-brief-body">{busy ? <p><LoaderCircle className="spin" size={15}/> Preparando briefing...</p> : result ? <><strong>{result.headline}</strong><p>{result.answer}</p>{result.recommendedActions.slice(0,3).map((item, index)=><span key={`${item}-${index}`}><CheckCircle2 size={12}/>{item}</span>)}</> : <p>Não foi possível gerar o briefing agora.</p>}</div>}</article>;
+  const [busy, setBusy] = useState(false), [result, setResult] = useState<CopilotResult | null>(null), [command, setCommand] = useState("");
+  const active = tickets.filter((ticket) => !["Concluído", "Cancelado"].includes(ticket.status));
+  const priority = active.filter((ticket) => ["Urgente", "Crítica", "Alta"].includes(ticket.priority));
+  const late = active.filter((ticket) => ticket.dueDate && new Date(ticket.dueDate).getTime() < SESSION_STARTED_AT);
+  async function generate() { if (busy) return; setBusy(true); try { const response = await fetch("/api/ai", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ operation: "copilot", mode: "prioritize", prompt: "Gere um briefing executivo muito curto: o que merece atenção agora, qual o maior risco e quais são as três próximas ações.", context: { department, tickets: tickets.slice(0, 20).map(compactTicket) } }) }); const payload = await response.json() as { result?: CopilotResult }; if (response.ok && payload.result) setResult(payload.result); } finally { setBusy(false); } }
+  function submitCommand(event: FormEvent) { event.preventDefault(); if (!command.trim()) return; openMunicipalAi(command); setCommand(""); }
+  return <section className="municipal-ai-command-center">
+    <header>
+      <div className="municipal-ai-command-title"><span><Sparkles size={21}/></span><div><small>INTELIGÊNCIA APLICADA À ROTINA</small><h2>IA Conecta acompanha seu dia</h2><p>Entende o contexto de {department}, aponta o que importa e transforma pedidos em ações.</p></div></div>
+      <span className="municipal-ai-live"><i/> IA ativa no sistema</span>
+    </header>
+    <div className="municipal-ai-command-body">
+      <div className="municipal-ai-snapshot">
+        <article><span>Demandas abertas</span><strong>{active.length}</strong><small>no contexto atual</small></article>
+        <article><span>Prioridade elevada</span><strong>{priority.length}</strong><small>pedem atenção</small></article>
+        <article className={late.length ? "attention" : ""}><span>Risco de prazo</span><strong>{late.length}</strong><small>{late.length ? "revisar agora" : "fluxo controlado"}</small></article>
+      </div>
+      <form className="municipal-ai-command-form" onSubmit={submitCommand}>
+        <span><Bot size={18}/></span>
+        <input value={command} onChange={(event) => setCommand(event.target.value)} placeholder="Peça em linguagem natural: mostre riscos, crie uma tarefa, prepare uma reunião..." aria-label="Comando para a IA Conecta" />
+        <button type="submit" disabled={!command.trim()}><Send size={15}/> Enviar para a IA</button>
+      </form>
+      <div className="municipal-ai-command-actions">
+        <button type="button" onClick={() => void generate()} disabled={busy}><Sparkles size={14}/>{busy ? "Analisando..." : "Gerar briefing agora"}</button>
+        <button type="button" onClick={() => openMunicipalAi("Analise minhas demandas e organize as três prioridades mais importantes para hoje.")}><Target size={14}/> Priorizar meu dia</button>
+        <button type="button" onClick={() => openMunicipalAi("Encontre atrasos, riscos, gargalos e itens sem responsável no contexto atual.")}><AlertTriangle size={14}/> Encontrar riscos</button>
+        <button type="button" onClick={() => openMunicipalAi("Prepare uma pauta executiva curta para a próxima reunião, com decisões e próximos passos.")}><MessageSquareText size={14}/> Preparar reunião</button>
+      </div>
+      {(busy || result) && <div className="municipal-ai-command-result">{busy ? <p><LoaderCircle className="spin" size={16}/> Preparando leitura executiva...</p> : result && <><div><span><Sparkles size={15}/></span><strong>{result.headline}</strong></div><p>{result.answer}</p><section>{result.recommendedActions.slice(0,3).map((item, index)=><span key={`${item}-${index}`}><CheckCircle2 size={12}/>{item}</span>)}</section></>}</div>}
+    </div>
+  </section>;
 }

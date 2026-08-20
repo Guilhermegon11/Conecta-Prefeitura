@@ -92,3 +92,16 @@ O canal do cidadão permanece separado do login:
 A camada de IA faz resumo, classificação de categoria e secretaria, indicação de urgência, tags, ação sugerida, identificação de demandas semelhantes e relatórios executivos. Ela é **assistiva** e não substitui a validação do servidor público. Sem `GROQ_API_KEY`, o sistema usa regras locais de contingência.
 
 Veja `IMPLEMENTACAO-45-RECOMENDACOES.md` para o mapa completo das frentes implementadas e `README-VERCEL.md` para variáveis e deploy.
+
+## Versão 4.7 — IA presente na experiência
+
+Esta demonstração deixa a IA visível e acionável nos principais momentos da jornada:
+
+- central de comando com briefing, riscos, prioridades e consulta em linguagem natural na página inicial;
+- barra contextual de IA em todos os módulos, adaptada à tela e à secretaria selecionada;
+- copiloto municipal disponível no cabeçalho, no menu de ações rápidas e no botão flutuante;
+- leitura territorial assistida no mapa, destacando bairros e demandas que merecem atenção;
+- assistente do cidadão em `/avaliar`, capaz de interpretar um relato e preencher tipo, assunto e bairro;
+- identidade visual mais clara para recursos inteligentes, mantendo a linguagem institucional do produto.
+
+As respostas da demonstração usam os recursos de IA já existentes no projeto e mantêm contingência local quando o serviço externo não estiver configurado.

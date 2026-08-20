@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { FormEvent, useState } from "react";
 import { queueCitizenFeedback } from "../offline-sync";
-import { CheckCircle2, HeartHandshake, Landmark, MessageSquareText, Send, ShieldCheck, Star } from "lucide-react";
+import { Bot, CheckCircle2, HeartHandshake, Landmark, MessageSquareText, Send, ShieldCheck, Sparkles, Star } from "lucide-react";
 
 type FeedbackKind = "Reclamação" | "Elogio" | "Sugestão";
 type FeedbackResponse = { ok?: boolean; protocol?: string; accessCode?: string; error?: string; code?: string };
@@ -26,6 +26,31 @@ export default function AvaliarPage() {
   const [protocol, setProtocol] = useState("");
   const [accessCode, setAccessCode] = useState("");
   const [offlineReceipt, setOfflineReceipt] = useState(false);
+  const [subject, setSubject] = useState("");
+  const [message, setMessage] = useState("");
+  const [neighborhood, setNeighborhood] = useState("");
+  const [aiCitizenText, setAiCitizenText] = useState("");
+  const [aiSuggestion, setAiSuggestion] = useState<{ kind: FeedbackKind; subject: string; department: string; explanation: string } | null>(null);
+
+  function analyzeCitizenText() {
+    const raw = aiCitizenText.trim(); if (!raw) return;
+    const normalized = raw.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
+    const suggestedKind: FeedbackKind = /paraben|elog|agradec|excelente|muito bom/.test(normalized) ? "Elogio" : /sugir|sugest|poderia|gostaria que/.test(normalized) ? "Sugestão" : "Reclamação";
+    const match = [
+      { test: /poste|ilumin|lampada|fio/, subject: "Iluminação pública", department: "Secretaria de Infraestrutura e Transporte" },
+      { test: /lixo|coleta|entulho|residuo/, subject: "Coleta e limpeza urbana", department: "Secretaria de Infraestrutura e Transporte" },
+      { test: /buraco|asfalto|paviment|estrada|rua/, subject: "Manutenção de via pública", department: "Secretaria de Infraestrutura e Transporte" },
+      { test: /saude|medicamento|ubs|posto|consulta/, subject: "Atendimento de saúde", department: "Secretaria de Saúde" },
+      { test: /escola|aluno|transporte escolar|professor/, subject: "Serviço de educação", department: "Secretaria de Educação" },
+    ].find((item) => item.test.test(normalized));
+    const suggestion = { kind: suggestedKind, subject: match?.subject ?? "Solicitação do cidadão", department: match?.department ?? "Gabinete do Prefeito", explanation: match ? "A IA identificou o tema principal e o setor mais compatível." : "A IA organizou o relato para a triagem inicial do Gabinete." };
+    setAiSuggestion(suggestion);
+  }
+
+  function applyAiSuggestion() {
+    if (!aiSuggestion) return;
+    setKind(aiSuggestion.kind); setSubject(aiSuggestion.subject); setMessage(aiCitizenText.trim());
+  }
 
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -41,7 +66,7 @@ export default function AvaliarPage() {
       const queued = await queueCitizenFeedback(payload, attachments);
       setProtocol(queued.localProtocol); setAccessCode(""); setOfflineReceipt(true);
       setUploadWarning(attachments.length ? "Os anexos também foram guardados neste dispositivo e serão enviados quando a conexão voltar." : "");
-      formElement.reset(); setRating(0); setAnonymous(false); setKind("Reclamação");
+      formElement.reset(); setRating(0); setAnonymous(false); setKind("Reclamação"); setSubject(""); setMessage(""); setNeighborhood(""); setAiCitizenText(""); setAiSuggestion(null);
     }
     try {
       if (!navigator.onLine) { await saveOffline(); return; }
@@ -57,7 +82,7 @@ export default function AvaliarPage() {
         }
         if (failed) setUploadWarning(`${failed} anexo(s) não puderam ser enviado(s). A manifestação foi registrada normalmente.`);
       }
-      formElement.reset(); setRating(0); setAnonymous(false); setKind("Reclamação");
+      formElement.reset(); setRating(0); setAnonymous(false); setKind("Reclamação"); setSubject(""); setMessage(""); setNeighborhood(""); setAiCitizenText(""); setAiSuggestion(null);
     } catch (submitError) {
       if (!navigator.onLine || submitError instanceof TypeError) {
         try { await saveOffline(); } catch { setError("Não foi possível guardar a manifestação neste dispositivo."); }
@@ -83,23 +108,28 @@ export default function AvaliarPage() {
       <section className="citizen-front-panel evaluation-form-card" aria-labelledby="citizen-front-title">
         <div className="citizen-front-heading">
           <span><HeartHandshake size={23} /></span>
-          <div><p className="eyebrow">AVALIAÇÃO E MANIFESTAÇÃO</p><h2 id="citizen-front-title">Fale direto com o Prefeito</h2><p>Escolha o tipo, dê sua nota e conte o que deseja registrar.</p></div>
+          <div><p className="eyebrow">AVALIAÇÃO E MANIFESTAÇÃO</p><h2 id="citizen-front-title">Fale com a Prefeitura</h2><p>Conte o que aconteceu. A IA ajuda a organizar e encaminhar seu relato.</p></div>
         </div>
 
         {protocol ? <div className="citizen-success">
           <span><CheckCircle2 size={28} /></span><div><strong>{offlineReceipt ? "Manifestação guardada para envio" : "Manifestação enviada com sucesso"}</strong><p>{offlineReceipt ? "Sem internet no momento. Guarde esta referência temporária; o sistema enviará automaticamente quando a conexão voltar." : "Guarde estes dados para acompanhar o atendimento:"}</p><div className="citizen-success-credentials"><div><small>{offlineReceipt ? "Referência offline" : "Protocolo"}</small><code>{protocol}</code></div>{accessCode && <div><small>Código de acesso</small><code>{accessCode}</code></div>}</div><small>{offlineReceipt ? "O protocolo oficial e o código de acesso serão gerados após a sincronização." : "O registro foi encaminhado ao Gabinete do Prefeito."}</small>{uploadWarning && <p className="evaluation-warning">{uploadWarning}</p>}{!offlineReceipt && <Link href="/acompanhar" className="citizen-track-cta">Acompanhar manifestação</Link>}</div>
           <button type="button" onClick={() => { setProtocol(""); setAccessCode(""); setOfflineReceipt(false); }}>Enviar outra manifestação</button>
         </div> : <form className="citizen-public-form" onSubmit={submit}>
+          <section className="citizen-ai-assistant">
+            <header><span><Bot size={19}/></span><div><small>ASSISTENTE IA DO CIDADÃO</small><strong>Conte com suas próprias palavras</strong><p>A IA identifica o assunto e prepara o formulário para você revisar.</p></div></header>
+            <div><textarea value={aiCitizenText} onChange={(event)=>{setAiCitizenText(event.target.value);setAiSuggestion(null)}} placeholder="Ex.: Há três postes apagados na minha rua, próximo à praça do bairro..."/><button type="button" disabled={!aiCitizenText.trim()} onClick={analyzeCitizenText}><Sparkles size={15}/> Entender meu relato</button></div>
+            {aiSuggestion&&<aside><span><Sparkles size={15}/></span><div><small>SUGESTÃO DA IA</small><strong>{aiSuggestion.subject}</strong><p>{aiSuggestion.kind} · destino sugerido: {aiSuggestion.department}</p><em>{aiSuggestion.explanation}</em></div><button type="button" onClick={applyAiSuggestion}>Aplicar ao formulário</button></aside>}
+          </section>
           <div className="citizen-kind-grid" role="group" aria-label="Tipo da manifestação">
             {(["Reclamação", "Elogio", "Sugestão"] as FeedbackKind[]).map((item) => <button type="button" key={item} className={kind === item ? "active" : ""} onClick={() => setKind(item)}><MessageSquareText size={15} />{item}</button>)}
           </div>
           <fieldset className="citizen-rating"><legend>Como você avalia a Prefeitura hoje? *</legend><div>{[1,2,3,4,5].map((value) => <button type="button" key={value} className={rating >= value ? "active" : ""} aria-label={`${value} ${value === 1 ? "estrela" : "estrelas"}`} onClick={() => { setRating(value); setError(""); }}><Star size={24} fill={rating >= value ? "currentColor" : "none"} /></button>)}</div><small>{rating ? `${rating}/5 selecionado` : "Selecione de 1 a 5 estrelas"}</small></fieldset>
           <div className="citizen-public-grid">
-            <label className="full"><span>Assunto *</span><input name="subject" maxLength={140} required placeholder="Ex.: coleta de lixo no meu bairro" /></label>
-            <label className="full"><span>Conte o que aconteceu ou deixe sua sugestão *</span><textarea name="message" minLength={10} maxLength={4000} required placeholder="Descreva de forma clara para que o Gabinete possa entender e encaminhar corretamente." /></label>
+            <label className="full"><span>Assunto *</span><input name="subject" value={subject} onChange={(event)=>setSubject(event.target.value)} maxLength={140} required placeholder="Ex.: coleta de lixo no meu bairro" /></label>
+            <label className="full"><span>Conte o que aconteceu ou deixe sua sugestão *</span><textarea name="message" value={message} onChange={(event)=>setMessage(event.target.value)} minLength={10} maxLength={4000} required placeholder="Descreva de forma clara para que o Gabinete possa entender e encaminhar corretamente." /></label>
             <label><span>Seu nome</span><input name="name" maxLength={120} disabled={anonymous} placeholder={anonymous ? "Envio anônimo" : "Nome completo"} /></label>
             <label><span>Contato para retorno</span><input name="contact" maxLength={180} disabled={anonymous} placeholder="Telefone ou e-mail (opcional)" /></label>
-            <label className="full"><span>Bairro</span><input name="neighborhood" maxLength={100} placeholder="Opcional" /></label>
+            <label className="full"><span>Bairro</span><input name="neighborhood" value={neighborhood} onChange={(event)=>setNeighborhood(event.target.value)} maxLength={100} placeholder="Opcional" /></label>
             <label className="full citizen-attachment-field"><span>Fotos ou documento (opcional)</span><input type="file" name="attachments" multiple accept="image/jpeg,image/png,image/webp,application/pdf" /><small>Até 3 arquivos JPG, PNG, WEBP ou PDF, com no máximo 7 MB cada.</small></label>
             <label className="citizen-check full"><input type="checkbox" checked={anonymous} onChange={(event) => setAnonymous(event.target.checked)} /><span>Quero enviar de forma anônima</span></label>
             <label className="citizen-check full"><input type="checkbox" name="consent" required /><span>Concordo com o tratamento dos dados informados exclusivamente para registro, triagem e resposta desta manifestação.</span></label>

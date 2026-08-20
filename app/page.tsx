@@ -90,7 +90,7 @@ import { queueFormRequest } from "./offline-sync";
 import { LoginLoadingScreen, TestLoginScreen } from "./test-login";
 import { IntegratedManagementSection } from "./integrated-platform";
 import { OnboardingTour, QuickActionDock } from "./platform-experience";
-import { DashboardAiBrief, MunicipalAiCopilot } from "./municipal-ai-copilot";
+import { ContextualAiBar, DashboardAiBrief, MunicipalAiCopilot, openMunicipalAi } from "./municipal-ai-copilot";
 import type { MunicipalAgentAction, MunicipalAgentExecutionResult } from "./municipal-agent-types";
 
 type TicketStatus = "Recebido" | "Em análise" | "Aguardando aprovação" | "Em execução" | "Aguardando resposta" | "Concluído" | "Cancelado";
@@ -901,7 +901,7 @@ export default function Home() {
       <aside className={`sidebar ${sidebarOpen ? "sidebar-open" : ""}`}>
         <div className="brand">
           <div className="brand-mark" aria-hidden="true"><Landmark size={21} strokeWidth={2.2} /></div>
-          <div><strong>Prefeitura Conecta</strong><small>Gestão Integrada</small></div>
+          <div><strong>Prefeitura Conecta</strong><small>Gestão Integrada + IA</small></div>
         </div>
         <nav className="main-nav clean-main-nav organized-main-nav" aria-label="Navegação principal">
           <span className="nav-label">NAVEGAÇÃO</span>
@@ -965,6 +965,7 @@ export default function Home() {
           {executiveAccess && <label className="executive-sector-switch"><span className="executive-switch-icon"><Crown size={17} /></span><span><small>PAINEL SETORIAL</small><select aria-label="Selecionar setor para a visão executiva" value={activeDepartment} onChange={(event) => setViewedDepartment(event.target.value)}>{allDepartments.map((department) => <option key={department}>{department}</option>)}</select></span></label>}
           <div className="top-actions">
             <span className={`persistence-status ${persistenceStatus}`} title="Persistência central do sistema"><i />{persistenceStatus === "carregando" ? "Conectando" : persistenceStatus === "salvando" ? "Salvando" : persistenceStatus === "offline" ? "Aguardando conexão" : "Salvo"}</span>
+            <button className="top-ai-button" type="button" onClick={() => openMunicipalAi()}><Sparkles size={15}/> IA Conecta</button>
             <button className="icon-button notification-button" aria-label={`Notificações${unreadCount + (mayorAccess ? citizenFeedbackUnread : 0) ? `: ${unreadCount + (mayorAccess ? citizenFeedbackUnread : 0)} novas` : ""}`} onClick={() => setActiveNav(mayorAccess && citizenFeedbackUnread > 0 ? "Atendimento ao Cidadão" : "Notificações")}><Bell size={18} />{unreadCount + (mayorAccess ? citizenFeedbackUnread : 0) > 0 && <span />}</button>
             <button className="icon-button logout-button" aria-label="Sair do sistema" title="Sair" onClick={() => void logout()}><LogOut size={18} /></button>
             <label className="account-switch"><div className="avatar">{currentUser.initials}</div><span><small>VISUALIZAR COMO</small><select aria-label="Visualizar como usuário" value={currentUserId} onChange={(event) => switchUser(event.target.value)}>{activeUsers.map((user) => <option key={user.id} value={user.id}>{user.fullName} — {user.department}</option>)}</select></span></label>
@@ -1000,6 +1001,8 @@ export default function Home() {
           </section>
 
           {/* v4.2 CLEAN: contexto executivo e permissões continuam disponíveis no topo/configurações, sem banners repetitivos em todas as telas. */}
+
+          {activeNav !== "Visão geral" && <ContextualAiBar activeModule={activeNav} department={activeDepartment} tickets={privateTickets} events={currentEvents} />}
 
           {activeNav === "Visão geral" && <Dashboard tickets={filteredTickets} allTickets={ticketData} audit={privateAudit} executive={executiveAccess} department={activeDepartment} userName={currentUser.fullName} onNavigate={setActiveNav} />}
           {activeNav === "Área do Setor" && <><SectorWorkspaceSection key={activeDepartment} department={activeDepartment} userName={currentUser.fullName} userRole={currentUser.role} departments={allDepartments} notify={notify} /><FormBuilderPanel department={activeDepartment} notify={notify} /></>}

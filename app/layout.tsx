@@ -14,12 +14,28 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Prefeitura Conecta",
-  description: "Plataforma integrada de gestão municipal, atendimento ao cidadão, operações, indicadores e inteligência artificial.",
+  title: "Prefeitura Conecta IA",
+  description: "Gestão municipal inteligente, integrada e próxima do cidadão.",
   manifest: "/manifest.webmanifest",
-  applicationName: "Prefeitura Conecta",
-  other: {
-    "codex-preview": "development",
+  applicationName: "Prefeitura Conecta IA",
+  openGraph: {
+    title: "Prefeitura Conecta IA",
+    description: "Gestão municipal inteligente, integrada e próxima do cidadão.",
+    type: "website",
+    images: [
+      {
+        url: "/og.png",
+        width: 1200,
+        height: 630,
+        alt: "Prefeitura Conecta IA",
+      },
+    ],
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "Prefeitura Conecta IA",
+    description: "Gestão municipal inteligente, integrada e próxima do cidadão.",
+    images: ["/og.png"],
   },
   icons: {
     icon: "/favicon.svg",
