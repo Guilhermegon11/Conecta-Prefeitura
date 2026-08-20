@@ -94,11 +94,12 @@ import { IntegratedManagementSection } from "./integrated-platform";
 import { MobileBottomNavigation, OnboardingTour, QuickActionDock } from "./platform-experience";
 import { ContextualAiBar, DashboardAiBrief, MunicipalAiCopilot, openMunicipalAi } from "./municipal-ai-copilot";
 import { PrefeituraNewsSection } from "./prefeitura-news";
+import { ExecutiveCommandCenter } from "./executive-command-center";
 import type { MunicipalAgentAction, MunicipalAgentExecutionResult } from "./municipal-agent-types";
 
 type TicketStatus = "Recebido" | "Em análise" | "Aguardando aprovação" | "Em execução" | "Aguardando resposta" | "Concluído" | "Cancelado";
 type Priority = "Urgente" | "Alta" | "Média" | "Baixa";
-type NavItem = PermissionModule | "Funcionários" | "Configurações" | "Últimas Notícias Prefeitura";
+type NavItem = PermissionModule | "Central Executiva" | "Funcionários" | "Configurações" | "Últimas Notícias Prefeitura";
 type ChatTab = "direct" | "group";
 type OfficeCategory = "Prefeitura e apoio" | "Secretarias" | "Departamentos" | "Seções e subprefeitura";
 
@@ -311,6 +312,7 @@ const INITIAL_AUDIT: AuditItem[] = [
 
 const navIcons: Record<NavItem, LucideIcon> = {
   "Visão geral": LayoutDashboard,
+  "Central Executiva": Crown,
   "Área do Setor": Building2,
   "Fluxos e Anotações": Workflow,
   Chamados: ClipboardList,
@@ -451,7 +453,9 @@ export default function Home() {
     });
     return defaults;
   })();
-  const currentPermission = activeNav === "Últimas Notícias Prefeitura"
+  const currentPermission = activeNav === "Central Executiva"
+    ? executiveAccess ? FULL_PERMISSION : NO_PERMISSION
+    : activeNav === "Últimas Notícias Prefeitura"
     ? PUBLIC_READ_PERMISSION
     : activeNav === "Funcionários" || activeNav === "Configurações"
     ? canManageEmployees ? FULL_PERMISSION : NO_PERMISSION
@@ -682,6 +686,13 @@ export default function Home() {
     setViewedDepartment(department);
   }
 
+  function openExecutiveDepartment(department: string, target: "Chamados" | "Central Integrada") {
+    if (!executiveAccess) { notify("A Central Executiva é exclusiva do Prefeito e do Vice-Prefeito."); return; }
+    resetScopedUi();
+    setViewedDepartment(department);
+    setActiveNav(target);
+  }
+
   async function logout() {
     if (!navigator.onLine) { clearOfflineSession(true); window.location.reload(); return; }
     try { await fetch("/api/auth/logout", { method: "POST" }); } finally { clearOfflineSession(false); window.location.reload(); }
@@ -754,6 +765,25 @@ export default function Home() {
     setTicketData((current) => current.map((item) => item.id === id ? { ...item, status, updatedAt: new Date().toISOString() } : item));
     addAudit("status_atualizado", "chamado", id, `${ticket?.protocol ?? "Chamado"} movido para ${status}`);
     notify(`Chamado movido para “${status}”.`);
+  }
+
+  function updateExecutiveTicketStatus(id: string, status: TicketStatus) {
+    const ticket = ticketData.find((item) => item.id === id);
+    if (!executiveAccess || !ticket) { notify("Este chamado não está disponível na Central Executiva."); return; }
+    const updatedAt = new Date().toISOString();
+    setTicketData((current) => current.map((item) => item.id === id ? { ...item, status, updatedAt } : item));
+    setAudit((current) => [{
+      id: makeId(),
+      action: "status_executivo_atualizado",
+      entityType: "chamado",
+      entityId: id,
+      detail: `${ticket.protocol} movido para ${status} pela Central Executiva`,
+      department: ticket.department,
+      createdAt: updatedAt,
+      actorName: currentUser.fullName,
+      actorInitials: currentUser.initials,
+    }, ...current]);
+    notify(`Chamado ${ticket.protocol} atualizado para “${status}”.`);
   }
 
   function addAudit(action: string, entityType: string, entityId: string, detail: string) {
@@ -1005,11 +1035,13 @@ export default function Home() {
   const headingTitle = activeNav === "Visão geral" ? `${greetingFor(clockNow)}, ${currentUser.fullName.split(" ")[0]}.` : activeNav === "Área do Setor" ? activeDepartment : heading.title;
 
   const canViewMenuItem = (item: NavItem) => {
+    if (item === "Central Executiva") return executiveAccess;
     if (item === "Últimas Notícias Prefeitura") return true;
     if (item === "Funcionários" || item === "Configurações") return canManageEmployees;
     return permissionFor(item, canManageEmployees, currentUser.id, departmentPermissionSettings).view;
   };
   const cleanNavSections: Array<{ label: string; items: NavItem[] }> = [
+    { label: "Prefeito e Vice", items: ["Central Executiva"] },
     { label: "Geral", items: ["Visão geral", "Últimas Notícias Prefeitura"] },
     { label: "Demandas e atendimento", items: ["Chamados", "Atendimento ao Cidadão", "Pendências"] },
     { label: "Rotina operacional", items: ["Central Integrada", "Próximos Eventos", "Comunicação", "Fluxos e Anotações"] },
@@ -1018,6 +1050,7 @@ export default function Home() {
   ];
   const cleanNavLabel: Partial<Record<NavItem, string>> = {
     "Visão geral": "Início",
+    "Central Executiva": "Pendências gerais",
     "Área do Setor": "Meu setor",
     "Fluxos e Anotações": "Fluxos e anotações",
     "Atendimento ao Cidadão": "Atendimento ao cidadão",
@@ -1069,7 +1102,7 @@ export default function Home() {
                       >
                         <ItemIcon size={17} strokeWidth={2} />
                         <span>{cleanNavLabel[item] ?? item}</span>
-                        {badge > 0 && <span className={`nav-badge ${item === "Pendências" || item === "Chamados" ? "pending-badge" : ""}`}>{badge}</span>}
+                        {badge > 0 && <span className={`nav-badge ${item === "Pendências" || item === "Chamados" || item === "Central Executiva" ? "pending-badge" : ""}`}>{badge}</span>}
                       </button>
                     );
                   })}
@@ -1097,7 +1130,7 @@ export default function Home() {
             </label>
             {searchOpen && search.trim() && <GlobalSearchPanel query={search} tickets={privateTickets} users={scopedActiveUsers} documents={privateDocuments} events={currentEvents} offices={scopedOffices} onOpen={(nav) => setActiveNav(nav as NavItem)} onClose={() => setSearchOpen(false)} />}
           </div>
-          {executiveAccess && <label className="executive-sector-switch"><span className="executive-switch-icon"><Crown size={17} /></span><span><small>PAINEL SETORIAL</small><select aria-label="Selecionar setor para a visão executiva" value={activeDepartment} onChange={(event) => switchDepartment(event.target.value)}>{allDepartments.map((department) => <option key={department}>{department}</option>)}</select></span></label>}
+          {executiveAccess && activeNav !== "Central Executiva" && <label className="executive-sector-switch"><span className="executive-switch-icon"><Crown size={17} /></span><span><small>PAINEL SETORIAL</small><select aria-label="Selecionar setor para a visão executiva" value={activeDepartment} onChange={(event) => switchDepartment(event.target.value)}>{allDepartments.map((department) => <option key={department}>{department}</option>)}</select></span></label>}
           <div className="top-actions">
             <span className={`persistence-status ${persistenceStatus}`} title="Persistência central do sistema"><i />{persistenceStatus === "carregando" ? "Conectando" : persistenceStatus === "salvando" ? "Salvando" : persistenceStatus === "offline" ? "Aguardando conexão" : "Salvo"}</span>
             <button className="top-ai-button" type="button" onClick={() => openMunicipalAi()}><Sparkles size={15}/> IA Conecta</button>
@@ -1135,9 +1168,10 @@ export default function Home() {
 
           {/* v4.2 CLEAN: contexto executivo e permissões continuam disponíveis no topo/configurações, sem banners repetitivos em todas as telas. */}
 
-          {activeNav !== "Visão geral" && <ContextualAiBar activeModule={activeNav} department={activeDepartment} tickets={privateTickets} events={currentEvents} />}
+          {activeNav !== "Visão geral" && activeNav !== "Central Executiva" && <ContextualAiBar activeModule={activeNav} department={activeDepartment} tickets={privateTickets} events={currentEvents} />}
 
           {activeNav === "Visão geral" && <Dashboard tickets={filteredTickets} allTickets={privateTickets} audit={privateAudit} executive={executiveAccess} department={activeDepartment} userName={currentUser.fullName} onNavigate={setActiveNav} />}
+          {activeNav === "Central Executiva" && executiveAccess && <ExecutiveCommandCenter tickets={ticketData} departments={allDepartments} currentUser={{ fullName: currentUser.fullName, role: currentUser.role }} onOpenDepartment={openExecutiveDepartment} onTicketStatus={updateExecutiveTicketStatus} onNewTicket={() => setTicketModal(true)} notify={notify} />}
           {activeNav === "Últimas Notícias Prefeitura" && <PrefeituraNewsSection />}
           {activeNav === "Área do Setor" && <><SectorWorkspaceSection key={activeDepartment} department={activeDepartment} userName={currentUser.fullName} userRole={currentUser.role} departments={availableDepartments} notify={notify} /><FormBuilderPanel department={activeDepartment} notify={notify} /></>}
           {activeNav === "Fluxos e Anotações" && <SectorNotesSection key={activeDepartment} department={activeDepartment} userName={currentUser.fullName} team={sectorUsers.map((user) => ({ id: user.id, name: user.fullName, role: user.role }))} notify={notify} />}
@@ -1185,6 +1219,7 @@ export default function Home() {
 function getHeading(active: NavItem) {
   const headings: Record<NavItem, { eyebrow: string; title: string; subtitle: string }> = {
     "Visão geral": { eyebrow: "", title: "Bom dia.", subtitle: "Acompanhe as demandas e mantenha as secretarias alinhadas." },
+    "Central Executiva": { eyebrow: "PREFEITO E VICE-PREFEITO", title: "Central Executiva", subtitle: "Acompanhe pendências, chamados, prioridades e riscos de todos os setores da Prefeitura." },
     "Últimas Notícias Prefeitura": { eyebrow: "PORTAL OFICIAL DE VÁRZEA DA PALMA", title: "Últimas Notícias Prefeitura", subtitle: "Acompanhe as publicações mais recentes da Prefeitura, filtre por assunto e abra a matéria completa na fonte oficial." },
     "Área do Setor": { eyebrow: "AMBIENTE ESPECIALIZADO", title: "Área do Setor", subtitle: "Formulários, endereços, indicadores, equipes e fluxos adaptados às responsabilidades da unidade selecionada." },
     "Fluxos e Anotações": { eyebrow: "MEMÓRIA OPERACIONAL", title: "Fluxos e Anotações", subtitle: "Organize decisões, providências e registros internos em etapas próprias para cada setor." },

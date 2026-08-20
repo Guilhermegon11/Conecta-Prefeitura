@@ -17,7 +17,7 @@ test("ships an installable PWA manifest and offline shell", async () => {
   assert.match(platform, /export function PwaInstallCard/);
   assert.match(platform, /export function OfflineStatusBar/);
   assert.match(platform, /getOfflinePendingCount/);
-  assert.match(worker, /prefeitura-conecta-offline-v48/);
+  assert.match(worker, /prefeitura-conecta-offline-v49/);
 });
 
 test("adds mobile navigation and accessibility controls", async () => {

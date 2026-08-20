@@ -5,6 +5,7 @@ Sistema interno de gestão municipal em Next.js, React e TypeScript, com persist
 ## Módulos principais
 
 - Visão Geral e Meu Dia
+- Central Executiva do Prefeito e Vice-Prefeito
 - Chamados
 - Comunicação interna e grupos
 - Processos Digitais
@@ -122,3 +123,11 @@ A experiência móvel ganhou manifesto PWA instalável, navegação inferior, es
 Em **Configurações › Preferências**, o usuário pode ativar alto contraste, aumentar o tamanho do texto, reduzir animações, reiniciar a apresentação guiada e instalar o aplicativo. A versão também inclui atalho de teclado para o conteúdo principal e foco visível.
 
 Esta entrega não altera a lógica da Inteligência Artificial, nem aplica mudanças na área de Segurança e LGPD. Veja `VERSAO-4.8.0-MOBILIDADE-ACESSIBILIDADE.md`.
+
+## Versão 4.9.0 — Central Executiva de pendências
+
+Os perfis **Prefeito** e **Vice-prefeito** agora possuem uma aba exclusiva chamada **Pendências gerais**, dentro do grupo **Prefeito e Vice**. A Central Executiva consolida chamados e tarefas de todos os setores, sem depender do setor selecionado no painel comum.
+
+O novo painel inclui prioridades do dia e dos próximos sete dias, itens vencidos, urgentes, aguardando decisão e sem responsável, metas abaixo do esperado, projetos em risco, filtros combináveis, exportação CSV e cards separados por setor. Também permite abrir diretamente o ambiente responsável e atualizar a situação de chamados e tarefas com persistência e histórico.
+
+Usuários que não sejam Prefeito ou Vice-prefeito não visualizam a aba e são redirecionados para a página inicial caso tentem manter esse módulo aberto após uma troca de perfil. Veja `VERSAO-4.9.0-CENTRAL-EXECUTIVA.md`.

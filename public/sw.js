@@ -1,4 +1,4 @@
-const CACHE = "prefeitura-conecta-offline-v48";
+const CACHE = "prefeitura-conecta-offline-v49";
 const CORE_ROUTES = ["/", "/avaliar", "/acompanhar", "/manifest.webmanifest", "/favicon.svg"];
 
 function sameOrigin(url) {

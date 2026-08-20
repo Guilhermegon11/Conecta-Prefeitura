@@ -16,33 +16,33 @@ type UserInput = { id: string; fullName: string; department: string; role: strin
 type OfficeInput = { id: string; name: string; head: string; address: string; phone?: string; email?: string; category?: string };
 type EventInput = { id: string; title: string; department: string; location: string; startsAt: string; endsAt?: string | null };
 type IntegratedTab = "Central" | "Tarefas" | "Projetos e metas" | "Mapa e locais" | "Organograma" | "IA Municipal" | "Saúde do sistema";
-type WorkStatus = "A fazer" | "Em andamento" | "Aguardando" | "Concluído";
-type TaskPriority = "Baixa" | "Normal" | "Alta" | "Urgente";
+export type WorkStatus = "A fazer" | "Em andamento" | "Aguardando" | "Concluído";
+export type TaskPriority = "Baixa" | "Normal" | "Alta" | "Urgente";
 
 type TaskComment = { id: string; author: string; text: string; createdAt: string };
-type IntegratedTask = {
+export type IntegratedTask = {
   id: string; title: string; description: string; kind: "Tarefa" | "Solicitação interna" | "Vistoria"; requesterDepartment: string; department: string;
   assignee: string; priority: TaskPriority; status: WorkStatus; dueAt: string; slaHours: number; createdAt: string; updatedAt: string;
   tags: string[]; comments: TaskComment[]; history: Array<{ at: string; action: string }>;
 };
-type Project = { id: string; title: string; department: string; owner: string; status: "Planejamento" | "Em execução" | "Em risco" | "Concluído"; progress: number; dueDate: string; stages: Array<{ name: string; done: boolean }> };
-type Goal = { id: string; title: string; department: string; current: number; target: number; unit: string; dueDate: string };
+export type Project = { id: string; title: string; department: string; owner: string; status: "Planejamento" | "Em execução" | "Em risco" | "Concluído"; progress: number; dueDate: string; stages: Array<{ name: string; done: boolean }> };
+export type Goal = { id: string; title: string; department: string; current: number; target: number; unit: string; dueDate: string };
 type PublicPlace = { id: string; name: string; type: string; department: string; neighborhood: string; address: string; status: string; lastMaintenance: string; history: string[]; latitude?: number | null; longitude?: number | null };
 
 type HealthPayload = { checkedAt: string; services: Record<string, { ok: boolean; label: string; model?: string }> };
 type AiAnalysis = { summary: string; category: string; suggestedDepartment: string; urgency: string; urgencyReason: string; tags: string[]; recommendedAction: string; source: string };
 
 const WORK_COLUMNS: WorkStatus[] = ["A fazer", "Em andamento", "Aguardando", "Concluído"];
-const INITIAL_TASKS: IntegratedTask[] = [
+export const INITIAL_TASKS: IntegratedTask[] = [
   { id: "it-1", title: "Vistoriar iluminação da Rua São José", description: "Verificar três pontos informados pela comunidade e anexar evidências.", kind: "Vistoria", requesterDepartment: "Gabinete do Prefeito", department: "Secretaria de Infraestrutura e Transporte", assignee: "Equipe de iluminação", priority: "Alta", status: "Em andamento", dueAt: "2026-08-20T18:00:00.000Z", slaHours: 48, createdAt: "2026-08-18T12:00:00.000Z", updatedAt: "2026-08-18T15:00:00.000Z", tags: ["iluminação", "campo"], comments: [{ id: "c1", author: "Gabinete", text: "@Infraestrutura confirmar equipe responsável ainda hoje.", createdAt: "2026-08-18T13:00:00.000Z" }], history: [{ at: "2026-08-18T12:00:00.000Z", action: "Solicitação criada pelo Gabinete" }, { at: "2026-08-18T15:00:00.000Z", action: "Movida para Em andamento" }] },
   { id: "it-2", title: "Conferir disponibilidade de medicamentos", description: "Consolidar estoque das unidades e informar itens abaixo do mínimo.", kind: "Solicitação interna", requesterDepartment: "Gabinete do Prefeito", department: "Secretaria de Saúde", assignee: "Coordenação de Assistência Farmacêutica", priority: "Urgente", status: "A fazer", dueAt: "2026-08-19T15:00:00.000Z", slaHours: 24, createdAt: "2026-08-18T14:00:00.000Z", updatedAt: "2026-08-18T14:00:00.000Z", tags: ["saúde", "estoque"], comments: [], history: [{ at: "2026-08-18T14:00:00.000Z", action: "Solicitação interna criada" }] },
   { id: "it-3", title: "Revisar cronograma da volta às aulas", description: "Validar transporte, comunicação e manutenção das unidades.", kind: "Tarefa", requesterDepartment: "Secretaria de Educação", department: "Secretaria de Educação", assignee: "Gabinete da Educação", priority: "Normal", status: "Aguardando", dueAt: "2026-08-23T17:00:00.000Z", slaHours: 96, createdAt: "2026-08-17T10:00:00.000Z", updatedAt: "2026-08-18T09:00:00.000Z", tags: ["educação", "planejamento"], comments: [], history: [{ at: "2026-08-17T10:00:00.000Z", action: "Tarefa criada" }, { at: "2026-08-18T09:00:00.000Z", action: "Aguardando validação de transporte" }] },
 ];
-const INITIAL_PROJECTS: Project[] = [
+export const INITIAL_PROJECTS: Project[] = [
   { id: "pj-1", title: "Revitalização da Praça Central", department: "Secretaria de Infraestrutura e Transporte", owner: "Diretoria de Obras", status: "Em execução", progress: 63, dueDate: "2026-10-15", stages: [{ name: "Projeto", done: true }, { name: "Licitação", done: true }, { name: "Execução", done: false }, { name: "Iluminação", done: false }, { name: "Paisagismo", done: false }] },
   { id: "pj-2", title: "Saúde Digital nas UBS", department: "Secretaria de Saúde", owner: "Coordenação de TI em Saúde", status: "Em execução", progress: 42, dueDate: "2026-11-30", stages: [{ name: "Mapeamento", done: true }, { name: "Infraestrutura", done: true }, { name: "Treinamento", done: false }, { name: "Implantação", done: false }] },
 ];
-const INITIAL_GOALS: Goal[] = [
+export const INITIAL_GOALS: Goal[] = [
   { id: "g-1", title: "Resolver solicitações dentro do prazo", department: "Secretaria de Infraestrutura e Transporte", current: 86, target: 90, unit: "%", dueDate: "2026-12-31" },
   { id: "g-2", title: "Reformar escolas municipais", department: "Secretaria de Educação", current: 6, target: 10, unit: "escolas", dueDate: "2026-12-20" },
   { id: "g-3", title: "Reduzir tempo médio de triagem", department: "Gabinete do Prefeito", current: 5, target: 4, unit: "horas", dueDate: "2026-09-30" },
