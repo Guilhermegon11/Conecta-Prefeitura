@@ -4,13 +4,15 @@ import test from "node:test";
 
 const readSource = (file) => readFile(new URL(`../app/${file}`, import.meta.url), "utf8");
 
-test("uses the unified municipal header from the supplied reference", async () => {
+test("restores the previous header and sidebar identity", async () => {
   const source = await readSource("page.tsx");
-  assert.match(source, /className="topbar-brand"/);
-  assert.match(source, /NÚCLEO MUNICIPAL/);
-  assert.match(source, /Buscar chamado, servidor, processo ou arquivo/);
-  assert.match(source, /Perguntar à IA/);
-  assert.match(source, /PERFIL ATIVO/);
+  assert.match(source, /className="brand"/);
+  assert.match(source, /Gestão Integrada \+ IA/);
+  assert.match(source, /Buscar somente no setor atual\.\.\./);
+  assert.match(source, /> IA Conecta</);
+  assert.match(source, /"VISUALIZAR COMO" : "PERFIL DO SETOR"/);
+  assert.doesNotMatch(source, /className="topbar-brand"/);
+  assert.doesNotMatch(source, /NÚCLEO MUNICIPAL|Perguntar à IA|PERFIL ATIVO/);
 });
 
 test("keeps Secretarias inside Configurações instead of the main navigation", async () => {

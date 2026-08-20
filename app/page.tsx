@@ -919,6 +919,10 @@ export default function Home() {
   return (
     <div className={`app-shell ${motionEnabled ? "motion-enabled" : "motion-reduced"}`}>
       <aside className={`sidebar ${sidebarOpen ? "sidebar-open" : ""}`}>
+        <div className="brand">
+          <div className="brand-mark" aria-hidden="true"><Landmark size={21} strokeWidth={2.2} /></div>
+          <div><strong>Prefeitura Conecta</strong><small>Gestão Integrada + IA</small></div>
+        </div>
         <nav className="main-nav clean-main-nav organized-main-nav" aria-label="Navegação principal">
           <span className="nav-label">NAVEGAÇÃO</span>
           {cleanNavSections.map((section) => {
@@ -959,20 +963,21 @@ export default function Home() {
             );
           })}
         </nav>
+        <div className={`sidebar-profile ${executiveAccess ? "sidebar-profile-executive" : ""}`}>
+          <div className="profile-avatar-wrap"><div className="avatar avatar-large">{currentUser.initials}</div>{executiveAccess&&<span className="executive-avatar-badge"><Crown size={10}/></span>}</div>
+          <div className="profile-copy"><strong>{currentUser.fullName}</strong><span>{executiveAccess ? `${currentUser.role} · acesso executivo` : currentUser.department}</span></div>
+          <button className="icon-button" aria-label="Opções do perfil" onClick={() => setInteractionModal({ title: "Opções do perfil", message: `${currentUser.fullName} · ${currentUser.role} · ${currentUser.department}. Use o seletor “Visualizar como” para alternar perfis ou abra Configurações para revisar permissões e preferências.` })}><MoreHorizontal size={18} /></button>
+        </div>
       </aside>
       {sidebarOpen && <button className="sidebar-scrim" aria-label="Fechar menu" onClick={() => setSidebarOpen(false)} />}
 
       <main className="main-area">
         <header className={`topbar ${executiveAccess ? "executive-topbar" : ""}`}>
           <button className="mobile-menu" aria-label="Abrir menu" onClick={() => setSidebarOpen(true)}><Menu size={21} /></button>
-          <div className="topbar-brand">
-            <div className="topbar-brand-mark" aria-hidden="true"><Landmark size={20} strokeWidth={2.1} /></div>
-            <span><strong>Prefeitura Conecta</strong><small>NÚCLEO MUNICIPAL</small></span>
-          </div>
           <div className="global-search-wrap">
             <label className="search-box">
               <Search size={18} aria-hidden="true" />
-              <input type="search" placeholder="Buscar chamado, servidor, processo ou arquivo" value={search} onFocus={() => setSearchOpen(true)} onChange={(event) => { setSearch(event.target.value); setSearchOpen(true); }} />
+              <input type="search" placeholder="Buscar somente no setor atual..." value={search} onFocus={() => setSearchOpen(true)} onChange={(event) => { setSearch(event.target.value); setSearchOpen(true); }} />
               <kbd>⌘ K</kbd>
             </label>
             {searchOpen && search.trim() && <GlobalSearchPanel query={search} tickets={privateTickets} users={scopedActiveUsers} documents={privateDocuments} events={currentEvents} offices={scopedOffices} onOpen={(nav) => setActiveNav(nav as NavItem)} onClose={() => setSearchOpen(false)} />}
@@ -980,10 +985,10 @@ export default function Home() {
           {executiveAccess && <label className="executive-sector-switch"><span className="executive-switch-icon"><Crown size={17} /></span><span><small>PAINEL SETORIAL</small><select aria-label="Selecionar setor para a visão executiva" value={activeDepartment} onChange={(event) => setViewedDepartment(event.target.value)}>{allDepartments.map((department) => <option key={department}>{department}</option>)}</select></span></label>}
           <div className="top-actions">
             <span className={`persistence-status ${persistenceStatus}`} title="Persistência central do sistema"><i />{persistenceStatus === "carregando" ? "Conectando" : persistenceStatus === "salvando" ? "Salvando" : persistenceStatus === "offline" ? "Aguardando conexão" : "Salvo"}</span>
-            <button className="top-ai-button" type="button" onClick={() => openMunicipalAi()}><Sparkles size={15}/> Perguntar à IA</button>
+            <button className="top-ai-button" type="button" onClick={() => openMunicipalAi()}><Sparkles size={15}/> IA Conecta</button>
             <button className="icon-button notification-button" aria-label={`Notificações${unreadCount + (mayorAccess ? citizenFeedbackUnread : 0) ? `: ${unreadCount + (mayorAccess ? citizenFeedbackUnread : 0)} novas` : ""}`} onClick={() => setActiveNav(mayorAccess && citizenFeedbackUnread > 0 ? "Atendimento ao Cidadão" : "Notificações")}><Bell size={18} />{unreadCount + (mayorAccess ? citizenFeedbackUnread : 0) > 0 && <span />}</button>
-            <label className="account-switch"><div className="avatar">{currentUser.initials}</div><span><small>PERFIL ATIVO</small><select aria-label="Visualizar como usuário" value={currentUserId} onChange={(event) => switchUser(event.target.value)}>{switchableUsers.map((user) => <option key={user.id} value={user.id}>{user.fullName} — {user.department}</option>)}</select></span></label>
             <button className="icon-button logout-button" aria-label="Sair do sistema" title="Sair" onClick={() => void logout()}><LogOut size={18} /></button>
+            <label className="account-switch"><div className="avatar">{currentUser.initials}</div><span><small>{executiveAccess ? "VISUALIZAR COMO" : "PERFIL DO SETOR"}</small><select aria-label="Visualizar como usuário" value={currentUserId} onChange={(event) => switchUser(event.target.value)}>{switchableUsers.map((user) => <option key={user.id} value={user.id}>{user.fullName} — {user.department}</option>)}</select></span></label>
           </div>
         </header>
 

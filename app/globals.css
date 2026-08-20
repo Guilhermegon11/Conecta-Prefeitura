@@ -2644,44 +2644,7 @@ body { font-size: 16.5px; }
 .location-gps-button{display:inline-flex;align-items:center;justify-content:center;gap:6px;min-height:34px;padding:7px 10px;border:1px solid #cfe2dd;border-radius:9px;color:#276f65;background:#fff;font-size:12px;font-weight:750;white-space:nowrap}.location-gps-button:hover{background:#f2f9f7}.location-gps-button:disabled{opacity:.65;cursor:wait}.address-registration-note small.location-success,.address-registration-note small.location-warning{display:block;margin-top:5px;font-size:11.5px}.address-registration-note small.location-success{color:#277a58}.address-registration-note small.location-warning{color:#9a6b24}@media(max-width:640px){.address-registration-note{align-items:flex-start;flex-wrap:wrap}.location-gps-button{width:100%;order:3}}
 .real-map-viewport{cursor:grab;touch-action:none}.real-map-viewport:active{cursor:grabbing}.real-map-marker,.real-map-controls button{cursor:pointer}
 
-/* v4.7.2 — cabeçalho unificado, Secretarias em Configurações e Processos essenciais */
-.main-area { padding-top:82px; }
-.sidebar { top:82px;bottom:0;height:auto; }
-.topbar {
-  position:fixed;z-index:70;inset:0 0 auto 0;height:82px;gap:16px;padding:6px 20px 0;border-top:6px solid #aaa79f;border-bottom:1px solid #263447;
-  color:#f5f7fb;background:#0f1c2d;backdrop-filter:none;box-shadow:0 8px 24px rgba(4,14,28,.15);
-}
-.topbar-brand { display:flex;flex:0 0 212px;align-items:center;gap:11px; }
-.topbar-brand-mark { display:grid;width:41px;height:41px;place-items:center;border:1px solid #3a4a5f;border-radius:11px;color:#bfe8e1;background:#1a293b;box-shadow:inset 0 0 0 1px rgba(255,255,255,.025); }
-.topbar-brand > span,.topbar-brand strong,.topbar-brand small { display:block; }
-.topbar-brand strong { color:#fff;font-size:15px;font-weight:780;letter-spacing:-.2px; }
-.topbar-brand small { margin-top:4px;color:#7892ad;font-size:9px;font-weight:850;letter-spacing:1.05px; }
-.topbar .global-search-wrap { max-width:650px; }
-.topbar .search-box { min-height:42px;padding:0 10px 0 13px;border:1px solid #344255;border-radius:10px;color:#8fa4bb;background:#202d3e; }
-.topbar .search-box > svg { color:#8ba0b5; }
-.topbar .search-box input { color:#edf3fa;font-size:12.5px; }
-.topbar .search-box input::placeholder { color:#8ea3bd; }
-.topbar .search-box kbd { min-width:36px;padding:5px 7px;border-color:#435268;color:#afbed0;background:#263548;text-align:center; }
-.topbar .top-actions { gap:8px; }
-.topbar .persistence-status { display:none; }
-.topbar .top-ai-button { min-height:38px;padding:0 12px;border-color:#4e477f;color:#ece9ff;background:#1a2342;box-shadow:none; }
-.topbar .top-ai-button:hover { border-color:#7169ad;background:#242d50; }
-.topbar .icon-button { width:39px;height:39px;border:1px solid #2f3c4d;border-radius:10px;color:#b8c6d6;background:#192638; }
-.topbar .icon-button:hover { color:#fff;background:#243246; }
-.topbar .mobile-menu { color:#c7d3df;background:transparent; }
-.topbar .notification-button { padding:0;border-right:1px solid #2f3c4d;border-radius:10px; }
-.topbar .notification-button span { top:7px;right:7px;border-color:#192638; }
-.topbar .account-switch { min-width:246px;min-height:42px;gap:9px;padding:4px 10px 4px 6px;border:1px solid #314054;border-radius:11px;background:#1b293b; }
-.topbar .account-switch .avatar { width:32px;height:32px;border-color:#52647a;background:linear-gradient(145deg,#6784a3,#3d5875); }
-.topbar .account-switch > span { min-width:0;flex:1; }
-.topbar .account-switch small { color:#7290ae;font-size:8.5px;letter-spacing:.8px; }
-.topbar .account-switch select { width:100%;padding-right:18px;color:#f4f6fa;font-size:11.5px;background:#1b293b; }
-.topbar .executive-sector-switch { min-width:180px;max-width:220px;padding:4px 8px;border-color:#35465b;color:#d6e1eb;background:#18283a; }
-.topbar .executive-switch-icon { flex-basis:29px;height:29px; }
-.topbar .executive-sector-switch small { color:#9b865f;font-size:8.5px; }
-.topbar .executive-sector-switch select { color:#dbe6ef;background:#18283a;font-size:10.5px; }
-.global-search-panel { top:48px; }
-.main-nav { padding-top:16px; }
+/* v4.7.2 — Secretarias em Configurações e Processos essenciais */
 
 .settings-secretariats { display:grid;gap:12px; }
 .settings-section-toolbar { display:flex;align-items:flex-end;justify-content:space-between;gap:16px;padding:17px 19px;border:1px solid var(--line);border-radius:12px;background:#fff;box-shadow:var(--shadow); }
@@ -2732,28 +2695,14 @@ body { font-size: 16.5px; }
 .process-history-simple .process-timeline { padding-top:5px; }
 
 @media (max-width:1320px) {
-  .topbar-brand { flex-basis:190px; }
-  .topbar .account-switch { min-width:210px; }
-  .topbar .executive-sector-switch { min-width:155px;max-width:175px; }
   .process-summary-strip { flex-wrap:wrap; }
   .process-view-switch { flex:1;justify-content:flex-end; }
 }
 @media (max-width:1120px) {
-  .topbar-brand { flex-basis:175px; }
-  .topbar-brand small { display:none; }
-  .topbar .account-switch { min-width:190px; }
   .process-layout-v2 { grid-template-columns:1fr; }
   .process-list-v2 { min-height:0;max-height:none; }
 }
 @media (max-width:820px) {
-  .main-area { padding-top:70px; }
-  .sidebar { top:70px;z-index:60; }
-  .sidebar-scrim { z-index:55; }
-  .topbar { position:fixed;height:70px;padding:6px 12px 0; }
-  .topbar-brand { display:none; }
-  .topbar .global-search-wrap { max-width:none; }
-  .topbar .search-box { min-height:40px; }
-  .topbar .executive-sector-switch { display:none; }
   .settings-section-toolbar { align-items:stretch;flex-direction:column; }
   .settings-section-toolbar .button { width:100%; }
   .process-summary-strip > button { flex:1;justify-content:center; }
@@ -2762,10 +2711,6 @@ body { font-size: 16.5px; }
   .process-view-switch button { flex:1; }
 }
 @media (max-width:620px) {
-  .topbar .search-box kbd { display:none; }
-  .topbar .account-switch { min-width:42px;padding:4px; }
-  .topbar .account-switch > span { display:none; }
-  .topbar .logout-button { display:none; }
   .process-command-actions { flex-direction:column;width:100%; }
   .process-summary-strip > button { padding:0 8px; }
   .process-filter-simple { grid-template-columns:1fr; }
