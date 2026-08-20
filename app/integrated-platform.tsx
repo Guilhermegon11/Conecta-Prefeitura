@@ -101,10 +101,40 @@ export function IntegratedManagementSection({ department, currentUser, executive
   const departmentLoad = useMemo(()=>departments.map((name)=>({name,total:tasks.filter((t)=>t.department===name&&t.status!=="Concluído").length,late:tasks.filter((t)=>t.department===name&&taskRisk(t).level>=2&&t.status!=="Concluído").length})).filter((i)=>i.total).sort((a,b)=>b.total-a.total).slice(0,6),[departments,tasks]);
   const mapTickets = tickets.filter((ticket)=>ticket.neighborhood||ticket.address);
   const hotspots = useMemo(()=>{const map=new Map<string,number>();mapTickets.forEach((t)=>{const key=t.neighborhood||"Local informado";map.set(key,(map.get(key)||0)+1)});return [...map.entries()].sort((a,b)=>b[1]-a[1]).slice(0,6)},[mapTickets]);
+  const neighborhoodTicketPoints = useMemo<RealMapPoint[]>(() => {
+    const priorityRank: Record<string, number> = { urgente: 4, alta: 3, media: 2, normal: 1, baixa: 0 };
+    const groups = new Map<string, { neighborhood: string; count: number; priority: string; samples: string[]; address?: string; latitude?: number | null; longitude?: number | null }>();
+    mapTickets.slice(0, 80).forEach((ticket) => {
+      const neighborhood = ticket.neighborhood?.trim() || "Local informado";
+      const key = normalize(neighborhood);
+      const current = groups.get(key);
+      const ticketPriority = ticket.priority || "Normal";
+      if (!current) {
+        groups.set(key, { neighborhood, count: 1, priority: ticketPriority, samples: [ticket.title].filter(Boolean), address: ticket.address, latitude: ticket.latitude, longitude: ticket.longitude });
+        return;
+      }
+      current.count += 1;
+      if ((priorityRank[normalize(ticketPriority)] ?? 0) > (priorityRank[normalize(current.priority)] ?? 0)) current.priority = ticketPriority;
+      if (current.samples.length < 2 && ticket.title) current.samples.push(ticket.title);
+      if ((!current.latitude || !current.longitude) && ticket.latitude && ticket.longitude) { current.latitude = ticket.latitude; current.longitude = ticket.longitude; }
+      if (!current.address && ticket.address) current.address = ticket.address;
+    });
+    return [...groups.values()].map((group) => ({
+      id: `bairro:${normalize(group.neighborhood)}`,
+      title: group.neighborhood,
+      subtitle: `${group.count} ${group.count === 1 ? "ocorrência" : "ocorrências"}${group.samples.length ? ` · ${group.samples.join(" · ")}` : ""}`,
+      priority: group.priority,
+      address: group.address,
+      neighborhood: group.neighborhood,
+      latitude: group.latitude,
+      longitude: group.longitude,
+      kind: "ticket" as const,
+    }));
+  }, [mapTickets]);
   const realMapPoints = useMemo<RealMapPoint[]>(() => [
-    ...mapTickets.slice(0, 40).map((ticket) => ({ id: `ticket:${ticket.id}`, title: `${ticket.protocol} — ${ticket.title}`, subtitle: [ticket.address, ticket.neighborhood].filter(Boolean).join(" · "), priority: ticket.priority, address: ticket.address, neighborhood: ticket.neighborhood, latitude: ticket.latitude, longitude: ticket.longitude, kind: "ticket" as const })),
+    ...neighborhoodTicketPoints,
     ...places.map((place) => ({ id: `place:${place.id}`, title: place.name, subtitle: `${place.type} · ${place.address}`, priority: "Normal", address: place.address, neighborhood: place.neighborhood, latitude: place.latitude, longitude: place.longitude, kind: "place" as const })),
-  ], [mapTickets, places]);
+  ], [neighborhoodTicketPoints, places]);
 
   function createTask(event: FormEvent<HTMLFormElement>) {
     event.preventDefault(); const form=new FormData(event.currentTarget); const now=new Date().toISOString(); const due=String(form.get("dueAt"));

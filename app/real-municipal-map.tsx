@@ -19,6 +19,18 @@ type Coordinate = { lat: number; lon: number; precision: "coordenada" | "endere√
 type Tile = { x: number; y: number; left: number; top: number };
 
 const CITY_CENTER = { lat: -17.6005, lon: -44.7340 };
+const NEIGHBORHOOD_CENTERS: Record<string, { lat: number; lon: number }> = {
+  "centro": { lat: -17.5987, lon: -44.7328 },
+  "planalto": { lat: -17.6038, lon: -44.7275 },
+  "pinlar": { lat: -17.5958, lon: -44.7398 },
+  "pinlar i": { lat: -17.5958, lon: -44.7398 },
+  "pinlar ii": { lat: -17.5945, lon: -44.7422 },
+  "guaicui": { lat: -17.5405, lon: -44.8130 },
+  "barra do guaicui": { lat: -17.5405, lon: -44.8130 },
+  "jardim america": { lat: -17.6015, lon: -44.7378 },
+  "lameirao": { lat: -17.6076, lon: -44.7410 },
+  "nova esperanca": { lat: -17.6020, lon: -44.7445 },
+};
 const TILE_SIZE = 256;
 const MAP_HEIGHT = 430;
 
@@ -46,6 +58,13 @@ function cacheKey(point: RealMapPoint) {
 function queryFor(point: RealMapPoint) {
   const chunks = [point.address, point.neighborhood, "V√°rzea da Palma", "Minas Gerais", "Brasil"].filter(Boolean);
   return Array.from(new Set(chunks.map((value) => String(value).trim()))).join(", ");
+}
+function neighborhoodCoordinate(name?: string | null): Coordinate | null {
+  if (!name) return null;
+  const normalizedName = normalized(name);
+  const match = Object.entries(NEIGHBORHOOD_CENTERS).find(([key]) => normalizedName === key || normalizedName.includes(key) || key.includes(normalizedName));
+  if (!match) return null;
+  return { lat: match[1].lat, lon: match[1].lon, precision: "bairro" };
 }
 function readCached(point: RealMapPoint): Coordinate | null {
   if (typeof window === "undefined") return null;
@@ -86,6 +105,11 @@ export function RealMunicipalMap({ points, onPointClick }: { points: RealMapPoin
     for (const point of points) {
       if (Number.isFinite(point.latitude) && Number.isFinite(point.longitude)) {
         direct[point.id] = { lat: Number(point.latitude), lon: Number(point.longitude), precision: "coordenada" };
+        continue;
+      }
+      const neighborhoodHit = neighborhoodCoordinate(point.neighborhood);
+      if (neighborhoodHit) {
+        direct[point.id] = neighborhoodHit;
         continue;
       }
       const cached = readCached(point);
