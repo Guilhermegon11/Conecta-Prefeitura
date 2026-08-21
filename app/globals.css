@@ -3772,8 +3772,8 @@ body:has(.reference-ui-2026) {
 .reference-assignments-card > div > button > span { display: grid; width: 31px; height: 31px; place-items: center; border-radius: 10px; }
 .reference-kpi-grid strong,.reference-kpi-grid small,.reference-kpi-grid em { display: block; min-width: 0; }
 .reference-kpi-grid strong { margin-bottom: 3px; font-size: 18px; line-height: 1; }
-.reference-kpi-grid small { overflow: hidden; font-size: 10.5px; font-weight: 700; text-overflow: ellipsis; white-space: nowrap; }
-.reference-kpi-grid em { overflow: hidden; margin-top: 4px; color: #999aa3; font-size: 9.5px; font-style: normal; text-overflow: ellipsis; white-space: nowrap; }
+.reference-kpi-grid small { overflow: hidden; font-size: 14px; font-weight: 700; text-overflow: ellipsis; white-space: nowrap; }
+.reference-kpi-grid em { overflow: hidden; margin-top: 4px; color: #999aa3; font-size: 13px; font-style: normal; text-overflow: ellipsis; white-space: nowrap; }
 .reference-kpi-grid .peach,.reference-schedule-list .peach,.reference-assignments-card .peach { color: #a56645; background: #fde9dc; }
 .reference-kpi-grid .lime,.reference-schedule-list .lime,.reference-assignments-card .lime { color: #627d1d; background: #edf6d3; }
 .reference-kpi-grid .blue,.reference-schedule-list .blue,.reference-assignments-card .blue { color: #55739c; background: #e7eef8; }
