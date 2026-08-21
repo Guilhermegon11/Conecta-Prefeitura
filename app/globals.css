@@ -5371,3 +5371,831 @@ body:has(.reference-ui-2026) {
 .reference-ui-2026 .reference-chart-summary span {
   color: #176057 !important;
 }
+
+/* Textos internos dos controles ativos precisam acompanhar o fundo escuro. */
+.reference-ui-2026 :where(.sector-tabs,.settings-tabs,.module-tabs,.management-tabs,.integrated-tabs,.chat-tabs) button.active :where(strong,b,svg) {
+  color: #fff !important;
+}
+
+.reference-ui-2026 :where(.sector-tabs,.settings-tabs,.module-tabs,.management-tabs,.integrated-tabs,.chat-tabs) button.active :where(small,em) {
+  color: rgba(255,255,255,.76) !important;
+}
+
+.reference-ui-2026 .management-tabs button.active > span,
+.reference-ui-2026 .chat-tabs button.active > span,
+.reference-ui-2026 .settings-tabs button.active > i {
+  color: #fff !important;
+  background: rgba(255,255,255,.16) !important;
+}
+
+.reference-ui-2026 .event-date :where(small,strong),
+.reference-ui-2026 .news-featured-marker :where(small,strong,svg) {
+  color: #fff !important;
+}
+
+.reference-ui-2026 .event-date span {
+  color: rgba(255,255,255,.78) !important;
+}
+
+/* ==========================================================================
+   Radar executivo do Instagram
+   ========================================================================== */
+
+.module-layout-social-monitor {
+  grid-template-columns: minmax(0, 1fr);
+}
+
+.module-layout-social-monitor > .module-experience-rail {
+  display: none;
+}
+
+.executive-social-monitor {
+  display: grid;
+  min-width: 0;
+  gap: 14px;
+}
+
+.social-monitor-hero {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 16px;
+  min-height: 142px;
+  padding: 22px 24px;
+  overflow: hidden;
+  border: 1px solid rgba(255,255,255,.08);
+  border-radius: 19px;
+  color: #fff;
+  background:
+    radial-gradient(circle at 92% 14%, rgba(133,207,194,.22), transparent 31%),
+    linear-gradient(125deg, #202631 0%, #193a39 54%, #176057 100%);
+  box-shadow: 0 15px 34px rgba(23, 66, 61, .13);
+}
+
+.social-monitor-hero-icon {
+  display: grid;
+  width: 54px;
+  height: 54px;
+  place-items: center;
+  border: 1px solid rgba(255,255,255,.18);
+  border-radius: 16px;
+  color: #fff;
+  background: rgba(255,255,255,.11);
+}
+
+.social-monitor-hero .eyebrow {
+  margin: 0 0 5px;
+  color: #9de0d6 !important;
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: .075em;
+}
+
+.social-monitor-hero h2 {
+  margin: 0;
+  color: #fff;
+  font-size: clamp(22px, 2.25vw, 30px);
+  font-weight: 600;
+  letter-spacing: -.035em;
+}
+
+.social-monitor-hero > div > p:last-child {
+  max-width: 720px;
+  margin: 7px 0 0;
+  color: rgba(255,255,255,.78);
+  font-size: 14px;
+  font-weight: 400;
+  line-height: 1.55;
+}
+
+.social-monitor-security {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  min-width: 218px;
+  padding: 11px 13px;
+  border: 1px solid rgba(255,255,255,.14);
+  border-radius: 13px;
+  background: rgba(8,35,33,.28);
+  backdrop-filter: blur(8px);
+}
+
+.social-monitor-security > svg {
+  color: #a7e5dc;
+}
+
+.social-monitor-security span,
+.social-monitor-security strong,
+.social-monitor-security small {
+  display: block;
+}
+
+.social-monitor-security strong {
+  color: #fff;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.social-monitor-security small {
+  margin-top: 2px;
+  color: rgba(255,255,255,.68);
+  font-size: 13px;
+  font-weight: 400;
+}
+
+.social-monitor-kpis {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 11px;
+}
+
+.social-monitor-kpis > article {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: start;
+  gap: 12px;
+  min-height: 116px;
+  padding: 16px;
+  border-color: #e1e8e6;
+}
+
+.social-monitor-kpis > article > span {
+  display: grid;
+  width: 39px;
+  height: 39px;
+  place-items: center;
+  border-radius: 11px;
+  color: #176057;
+  background: #e7f3f1;
+}
+
+.social-monitor-kpis > article.attention > span {
+  color: #9a5a0a;
+  background: #fff2dd;
+}
+
+.social-monitor-kpis > article.positive > span {
+  color: #176057;
+  background: #dff1ed;
+}
+
+.social-monitor-kpis small,
+.social-monitor-kpis strong,
+.social-monitor-kpis p {
+  display: block;
+}
+
+.social-monitor-kpis small {
+  color: #77858a;
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: .055em;
+}
+
+.social-monitor-kpis strong {
+  margin-top: 3px;
+  color: #203139;
+  font-size: 25px;
+  font-weight: 600;
+  letter-spacing: -.04em;
+}
+
+.social-monitor-kpis p {
+  margin: 3px 0 0;
+  color: #748188;
+  font-size: 13px;
+  font-weight: 400;
+  line-height: 1.42;
+}
+
+.social-monitor-setup {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 14px;
+  padding: 16px 18px;
+  border-color: #bcd9d4 !important;
+  background: #edf7f5 !important;
+  box-shadow: none !important;
+}
+
+.social-monitor-setup > span {
+  display: grid;
+  width: 43px;
+  height: 43px;
+  place-items: center;
+  border-radius: 12px;
+  color: #fff;
+  background: #176057;
+}
+
+.social-monitor-setup .eyebrow {
+  margin: 0;
+  color: #176057 !important;
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: .065em;
+}
+
+.social-monitor-setup h3 {
+  margin: 3px 0 2px;
+  color: #193a37;
+  font-size: 15px;
+  font-weight: 600;
+}
+
+.social-monitor-setup div > p:last-child {
+  margin: 0;
+  color: #536d69;
+  font-size: 13px;
+  font-weight: 400;
+  line-height: 1.48;
+}
+
+.social-monitor-setup > i {
+  padding: 6px 9px;
+  border: 1px solid #bdd8d3;
+  border-radius: 999px;
+  color: #275f58;
+  background: #fff;
+  font-size: 13px;
+  font-style: normal;
+  font-weight: 500;
+  white-space: nowrap;
+}
+
+.social-monitor-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 310px;
+  align-items: start;
+  gap: 14px;
+}
+
+.social-monitor-main,
+.social-monitor-side {
+  display: grid;
+  min-width: 0;
+  gap: 12px;
+}
+
+.social-monitor-toolbar {
+  display: grid;
+  grid-template-columns: minmax(220px, 1fr) auto auto;
+  align-items: center;
+  gap: 10px;
+  padding: 11px;
+}
+
+.social-monitor-toolbar > label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  height: 39px;
+  padding: 0 11px;
+  border: 1px solid #dfe6e4;
+  border-radius: 10px;
+  color: #60736f;
+  background: #f8faf9;
+}
+
+.social-monitor-toolbar input {
+  width: 100%;
+  min-width: 0;
+  border: 0;
+  outline: 0;
+  color: #23363a;
+  background: transparent;
+  font-size: 13px;
+  font-weight: 400;
+}
+
+.social-monitor-toolbar input::placeholder,
+.social-monitor-keywords input::placeholder {
+  color: #8b9699;
+  opacity: 1;
+}
+
+.social-monitor-toolbar > nav {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px;
+  border: 1px solid #e0e6e4;
+  border-radius: 10px;
+  background: #f7f9f8;
+}
+
+.social-monitor-toolbar > nav button {
+  min-height: 31px;
+  padding: 5px 9px;
+  border: 0;
+  border-radius: 7px;
+  color: #5f6d71;
+  background: transparent;
+  font-size: 13px;
+  font-weight: 500;
+}
+
+.social-monitor-toolbar > nav button:hover {
+  color: #176057;
+  background: #e7f3f1;
+}
+
+.social-monitor-toolbar > nav button.active {
+  color: #fff !important;
+  background: #176057;
+  box-shadow: 0 3px 8px rgba(23,96,87,.18);
+}
+
+.social-monitor-refresh {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  min-height: 39px;
+  padding: 7px 12px;
+  border: 1px solid #176057;
+  border-radius: 10px;
+  color: #fff;
+  background: #176057;
+  font-size: 13px;
+  font-weight: 500;
+  white-space: nowrap;
+}
+
+.social-monitor-refresh:hover:not(:disabled) {
+  border-color: #104b44;
+  background: #104b44;
+}
+
+.social-monitor-refresh:disabled {
+  cursor: wait;
+  opacity: .72;
+}
+
+.social-monitor-error {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 11px 13px;
+  border: 1px solid #efc7c1;
+  border-radius: 11px;
+  color: #8a332b;
+  background: #fff3f1;
+  font-size: 13px;
+}
+
+.social-monitor-feed {
+  display: grid;
+  gap: 9px;
+}
+
+.social-monitor-item {
+  position: relative;
+  padding: 15px 16px;
+  overflow: hidden;
+  border-color: #e0e6e4 !important;
+  box-shadow: 0 5px 16px rgba(31,50,48,.035) !important;
+}
+
+.social-monitor-item::before {
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: 3px;
+  content: "";
+  background: #9aa5a8;
+}
+
+.social-monitor-item.tone-positivo::before {
+  background: #2d8579;
+}
+
+.social-monitor-item.tone-negativo::before {
+  background: #bd594d;
+}
+
+.social-monitor-item > header {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 9px;
+}
+
+.social-monitor-source-icon {
+  display: grid;
+  width: 35px;
+  height: 35px;
+  place-items: center;
+  border-radius: 10px;
+  color: #176057;
+  background: #e7f3f1;
+}
+
+.social-monitor-item header strong,
+.social-monitor-item header small {
+  display: block;
+}
+
+.social-monitor-item header strong {
+  overflow: hidden;
+  color: #24353a;
+  font-size: 14px;
+  font-weight: 600;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.social-monitor-item header small {
+  margin-top: 2px;
+  color: #77858a;
+  font-size: 13px;
+  font-weight: 400;
+}
+
+.social-monitor-tone {
+  padding: 5px 8px;
+  border-radius: 999px;
+  color: #536166;
+  background: #eef1f1;
+  font-size: 13px;
+  font-style: normal;
+  font-weight: 500;
+}
+
+.social-monitor-tone.positivo {
+  color: #176057;
+  background: #e2f1ee;
+}
+
+.social-monitor-tone.negativo {
+  color: #973e35;
+  background: #fde9e6;
+}
+
+.social-monitor-item > p {
+  margin: 13px 0;
+  color: #34484c;
+  font-size: 14px;
+  font-weight: 400;
+  line-height: 1.58;
+  overflow-wrap: anywhere;
+}
+
+.social-monitor-item > footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.social-monitor-item > footer > div {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+}
+
+.social-monitor-item > footer span {
+  padding: 4px 7px;
+  border: 1px solid #d9e7e4;
+  border-radius: 999px;
+  color: #356b64;
+  background: #f2f8f6;
+  font-size: 13px;
+  font-weight: 400;
+}
+
+.social-monitor-item > footer a {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  color: #176057;
+  font-size: 13px;
+  font-weight: 600;
+  text-decoration: none;
+  white-space: nowrap;
+}
+
+.social-monitor-item > footer a:hover {
+  color: #104b44;
+  text-decoration: underline;
+}
+
+.social-monitor-empty {
+  display: grid;
+  min-height: 210px;
+  place-items: center;
+  align-content: center;
+  gap: 7px;
+  padding: 26px;
+  text-align: center;
+}
+
+.social-monitor-empty > svg {
+  color: #3b7b73;
+}
+
+.social-monitor-empty strong {
+  color: #293b3f;
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.social-monitor-empty p {
+  max-width: 460px;
+  margin: 0;
+  color: #718084;
+  font-size: 13px;
+  font-weight: 400;
+  line-height: 1.5;
+}
+
+.social-monitor-keywords,
+.social-monitor-sources {
+  padding: 15px;
+}
+
+.social-monitor-keywords > header,
+.social-monitor-sources > header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.social-monitor-keywords .eyebrow,
+.social-monitor-sources .eyebrow {
+  margin: 0;
+  color: #617875 !important;
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: .06em;
+}
+
+.social-monitor-keywords h3,
+.social-monitor-sources h3 {
+  margin: 3px 0 0;
+  color: #263a3e;
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.social-monitor-keywords > header > small {
+  color: #176057;
+  font-size: 13px;
+  font-weight: 500;
+}
+
+.social-monitor-keywords > div {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.social-monitor-keywords > div > span {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  max-width: 100%;
+  padding: 6px 7px 6px 9px;
+  border: 1px solid #d7e5e2;
+  border-radius: 9px;
+  color: #315a55;
+  background: #f2f8f6;
+  font-size: 13px;
+  font-weight: 400;
+}
+
+.social-monitor-keywords > div > span button {
+  display: grid;
+  width: 20px;
+  height: 20px;
+  place-items: center;
+  padding: 0;
+  border: 0;
+  border-radius: 6px;
+  color: #56716d;
+  background: transparent;
+}
+
+.social-monitor-keywords > div > span button:hover {
+  color: #8d3f36;
+  background: #f9e6e3;
+}
+
+.social-monitor-keywords form {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 36px;
+  gap: 6px;
+  margin-top: 10px;
+}
+
+.social-monitor-keywords form input {
+  min-width: 0;
+  height: 37px;
+  padding: 0 10px;
+  border: 1px solid #dfe6e4;
+  border-radius: 9px;
+  outline: 0;
+  color: #23363a;
+  background: #fff;
+  font-size: 13px;
+  font-weight: 400;
+}
+
+.social-monitor-keywords form input:focus {
+  border-color: #6ca79f;
+  box-shadow: 0 0 0 3px rgba(23,96,87,.09);
+}
+
+.social-monitor-keywords form button {
+  display: grid;
+  height: 37px;
+  place-items: center;
+  padding: 0;
+  border: 0;
+  border-radius: 9px;
+  color: #fff;
+  background: #176057;
+}
+
+.social-monitor-keywords form button:hover {
+  background: #104b44;
+}
+
+.social-monitor-keywords > p {
+  margin: 10px 0 0;
+  color: #768489;
+  font-size: 13px;
+  font-weight: 400;
+  line-height: 1.5;
+}
+
+.social-monitor-sources > div {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: start;
+  gap: 9px;
+  padding: 10px 0;
+  border-top: 1px solid #edf0ef;
+}
+
+.social-monitor-sources > div > i {
+  width: 8px;
+  height: 8px;
+  margin-top: 5px;
+  border-radius: 50%;
+  background: #a3adaf;
+  box-shadow: 0 0 0 3px rgba(116,131,134,.11);
+}
+
+.social-monitor-sources > div > i.connected {
+  background: #23776c;
+  box-shadow: 0 0 0 3px rgba(35,119,108,.12);
+}
+
+.social-monitor-sources > div > i.error {
+  background: #b64f44;
+  box-shadow: 0 0 0 3px rgba(182,79,68,.12);
+}
+
+.social-monitor-sources > div > span,
+.social-monitor-sources strong,
+.social-monitor-sources small {
+  display: block;
+}
+
+.social-monitor-sources strong {
+  color: #314247;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.social-monitor-sources small {
+  margin-top: 2px;
+  color: #78868a;
+  font-size: 13px;
+  font-weight: 400;
+  line-height: 1.42;
+}
+
+.social-monitor-sources > div.limited > i {
+  background: #b17b35;
+  box-shadow: 0 0 0 3px rgba(177,123,53,.12);
+}
+
+.social-monitor-note {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 8px;
+  padding: 12px 13px;
+  border: 1px solid #d5e5e1;
+  border-radius: 12px;
+  color: #315d57;
+  background: #f1f8f6;
+}
+
+.social-monitor-note p {
+  margin: 0;
+  color: #526d69;
+  font-size: 13px;
+  font-weight: 400;
+  line-height: 1.52;
+}
+
+@media (max-width: 1180px) {
+  .social-monitor-kpis {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .social-monitor-layout {
+    grid-template-columns: minmax(0, 1fr) 278px;
+  }
+
+  .social-monitor-toolbar {
+    grid-template-columns: minmax(220px, 1fr) auto;
+  }
+
+  .social-monitor-toolbar > nav {
+    grid-column: 1 / -1;
+    grid-row: 2;
+    overflow-x: auto;
+  }
+}
+
+@media (max-width: 900px) {
+  .social-monitor-hero {
+    grid-template-columns: auto minmax(0, 1fr);
+  }
+
+  .social-monitor-security {
+    grid-column: 1 / -1;
+    min-width: 0;
+  }
+
+  .social-monitor-layout {
+    grid-template-columns: 1fr;
+  }
+
+  .social-monitor-side {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .social-monitor-note {
+    grid-column: 1 / -1;
+  }
+}
+
+@media (max-width: 620px) {
+  .social-monitor-hero {
+    grid-template-columns: 1fr;
+    padding: 18px;
+  }
+
+  .social-monitor-hero-icon {
+    width: 47px;
+    height: 47px;
+  }
+
+  .social-monitor-security {
+    grid-column: auto;
+  }
+
+  .social-monitor-kpis,
+  .social-monitor-side {
+    grid-template-columns: 1fr;
+  }
+
+  .social-monitor-kpis > article {
+    min-height: 0;
+  }
+
+  .social-monitor-setup {
+    grid-template-columns: auto minmax(0, 1fr);
+  }
+
+  .social-monitor-setup > i {
+    grid-column: 1 / -1;
+    justify-self: start;
+  }
+
+  .social-monitor-toolbar {
+    grid-template-columns: 1fr;
+  }
+
+  .social-monitor-toolbar > nav,
+  .social-monitor-refresh {
+    grid-column: auto;
+    grid-row: auto;
+  }
+
+  .social-monitor-toolbar > nav {
+    justify-content: flex-start;
+  }
+
+  .social-monitor-item > footer {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+}

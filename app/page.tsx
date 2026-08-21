@@ -2,6 +2,7 @@
 
 import { FormEvent, useEffect, useMemo, useRef, useState } from "react";
 import {
+  Activity as ActivityIcon,
   AlertTriangle,
   ArrowRight,
   ArrowUpRight,
@@ -98,11 +99,12 @@ import { MobileBottomNavigation, OnboardingTour, QuickActionDock } from "./platf
 import { ContextualAiBar, DashboardAiBrief, MunicipalAiCopilot } from "./municipal-ai-copilot";
 import { PrefeituraNewsSection } from "./prefeitura-news";
 import { ExecutiveCommandCenter } from "./executive-command-center";
+import { ExecutiveSocialMonitor } from "./executive-social-monitor";
 import type { MunicipalAgentAction, MunicipalAgentExecutionResult } from "./municipal-agent-types";
 
 type TicketStatus = "Recebido" | "Em análise" | "Aguardando aprovação" | "Em execução" | "Aguardando resposta" | "Concluído" | "Cancelado";
 type Priority = "Urgente" | "Alta" | "Média" | "Baixa";
-type NavItem = PermissionModule | "Central Executiva" | "Funcionários" | "Configurações" | "Últimas Notícias Prefeitura";
+type NavItem = PermissionModule | "Central Executiva" | "Monitoramento Instagram" | "Funcionários" | "Configurações" | "Últimas Notícias Prefeitura";
 type ChatTab = "direct" | "group";
 type OfficeCategory = "Prefeitura e apoio" | "Secretarias" | "Departamentos" | "Seções e subprefeitura";
 
@@ -316,6 +318,7 @@ const INITIAL_AUDIT: AuditItem[] = [
 const navIcons: Record<NavItem, LucideIcon> = {
   "Visão geral": LayoutDashboard,
   "Central Executiva": Crown,
+  "Monitoramento Instagram": ActivityIcon,
   "Área do Setor": BriefcaseBusiness,
   "Fluxos e Anotações": Workflow,
   Chamados: ClipboardList,
@@ -411,7 +414,7 @@ export default function Home() {
   const currentEventIds = new Set(currentEvents.map((event) => event.id));
   const ownCommunicationMessages = messages.filter((message) => messageVisibleToUser(message, currentUserId, groups) && messageAllowedInCommunication(message, activeDepartment, users, groups));
   const viewingOtherDepartment = executiveAccess && !sameDepartment(activeDepartment, currentUser.department);
-  const executiveReadOnlyScope = executiveAccess && (activeNav === "Central Executiva" || viewingOtherDepartment);
+  const executiveReadOnlyScope = executiveAccess && (activeNav === "Central Executiva" || activeNav === "Monitoramento Instagram" || viewingOtherDepartment);
   const executiveCommunicationMonitor = executiveAccess && executiveCommunicationAccess && viewingOtherDepartment;
   const communicationLocked = viewingOtherDepartment && !executiveCommunicationMonitor;
   const communicationMessages = executiveCommunicationMonitor
@@ -458,7 +461,7 @@ export default function Home() {
     });
     return defaults;
   })();
-  const currentPermission = activeNav === "Central Executiva"
+  const currentPermission = activeNav === "Central Executiva" || activeNav === "Monitoramento Instagram"
     ? executiveAccess ? PUBLIC_READ_PERMISSION : NO_PERMISSION
     : activeNav === "Últimas Notícias Prefeitura"
     ? PUBLIC_READ_PERMISSION
@@ -1028,7 +1031,7 @@ export default function Home() {
   const ActiveModuleIcon = moduleIconForNav(activeNav);
 
   const canViewMenuItem = (item: NavItem) => {
-    if (item === "Central Executiva") return executiveAccess;
+    if (item === "Central Executiva" || item === "Monitoramento Instagram") return executiveAccess;
     if (item === "Últimas Notícias Prefeitura") return true;
     if (item === "Funcionários" || item === "Configurações") return canManageEmployees;
     if (viewingOtherDepartment) return true;
@@ -1037,12 +1040,12 @@ export default function Home() {
   const normalizedRole = normalizeText(currentUser.role);
   const managerProfile = executiveAccess || canManageEmployees || normalizedRole.includes("gestor") || normalizedRole.includes("secret");
   const primaryNavItems: NavItem[] = executiveAccess
-    ? ["Visão geral", "Central Executiva", "Área do Setor", "Central Integrada", "Comunicação", "Processos Digitais", "Próximos Eventos", "Gestão Municipal"]
+    ? ["Visão geral", "Central Executiva", "Monitoramento Instagram", "Área do Setor", "Central Integrada", "Comunicação", "Processos Digitais", "Próximos Eventos"]
     : managerProfile
       ? ["Visão geral", "Área do Setor", "Central Integrada", "Chamados", "Comunicação", "Processos Digitais", "Próximos Eventos"]
       : ["Visão geral", "Área do Setor", "Central Integrada", "Chamados", "Comunicação", "Próximos Eventos", "Anexos e Arquivos"];
   const allSecondaryItems: NavItem[] = [
-    "Visão geral", "Central Executiva", "Últimas Notícias Prefeitura", "Chamados", "Atendimento ao Cidadão",
+    "Visão geral", "Central Executiva", "Monitoramento Instagram", "Últimas Notícias Prefeitura", "Chamados", "Atendimento ao Cidadão",
     "Pendências", "Central Integrada", "Próximos Eventos", "Comunicação", "Fluxos e Anotações",
     "Área do Setor", "Processos Digitais", "Gestão Municipal", "Indicadores", "Anexos e Arquivos",
     "Funcionários", "Secretarias", "Notificações", "Segurança e LGPD", "Auditoria", "Central de Ajuda", "Configurações",
@@ -1054,6 +1057,7 @@ export default function Home() {
   const cleanNavLabel: Partial<Record<NavItem, string>> = {
     "Visão geral": "Início",
     "Central Executiva": "Pendências gerais",
+    "Monitoramento Instagram": "Radar do Instagram",
     "Área do Setor": "Meu Setor",
     "Fluxos e Anotações": "Anotações",
     "Atendimento ao Cidadão": "Atendimento ao cidadão",
@@ -1140,7 +1144,7 @@ export default function Home() {
             </label>
             {searchOpen && search.trim() && <GlobalSearchPanel query={search} tickets={privateTickets} users={scopedActiveUsers} documents={privateDocuments} events={currentEvents} offices={scopedOffices} onOpen={(nav) => setActiveNav(nav as NavItem)} onClose={() => setSearchOpen(false)} />}
           </div>
-          {executiveAccess && activeNav !== "Central Executiva" && <label className="executive-sector-switch"><span className="executive-switch-icon"><Crown size={17} /></span><span><small>PAINEL SETORIAL</small><select aria-label="Selecionar setor para a visão executiva" value={activeDepartment} onChange={(event) => switchDepartment(event.target.value)}>{allDepartments.map((department) => <option key={department}>{department}</option>)}</select></span></label>}
+          {executiveAccess && activeNav !== "Central Executiva" && activeNav !== "Monitoramento Instagram" && <label className="executive-sector-switch"><span className="executive-switch-icon"><Crown size={17} /></span><span><small>PAINEL SETORIAL</small><select aria-label="Selecionar setor para a visão executiva" value={activeDepartment} onChange={(event) => switchDepartment(event.target.value)}>{allDepartments.map((department) => <option key={department}>{department}</option>)}</select></span></label>}
           <div className="top-actions">
             <span className={`persistence-status ${persistenceStatus}`} title="Persistência central do sistema"><i />{persistenceStatus === "carregando" ? "Conectando" : persistenceStatus === "salvando" ? "Salvando" : persistenceStatus === "offline" ? "Aguardando conexão" : "Salvo"}</span>
             <button className={`simple-mode-toggle ${simplifiedMode ? "active" : ""}`} type="button" aria-pressed={simplifiedMode} title={simplifiedMode ? "Voltar para interface completa" : "Ativar modo simplificado"} onClick={() => setSimplifiedMode((current) => !current)}><LayoutDashboard size={15}/><span>{simplifiedMode ? "Modo simples" : "Simplificar"}</span></button>
@@ -1157,7 +1161,7 @@ export default function Home() {
           <section className={activeNav === "Visão geral" ? "page-heading" : "module-page-header-v3"}>
             {activeNav !== "Visão geral" && <span className="module-page-header-icon"><ActiveModuleIcon size={20}/></span>}
             <div className="module-page-header-copy"><p className="eyebrow">{activeNav === "Visão geral" ? `${formatHeadingDate(clockNow)} · ${formatHeadingClock(clockNow)}` : heading.eyebrow}</p><h1>{headingTitle}</h1><p>{heading.subtitle}</p></div>
-            {activeNav !== "Visão geral" && <div className="module-page-header-context"><small>AMBIENTE ATUAL</small><strong>{activeDepartment}</strong><span><i/> {viewingOtherDepartment ? "Consulta executiva" : "Operação do setor"}</span></div>}
+            {activeNav !== "Visão geral" && <div className="module-page-header-context"><small>AMBIENTE ATUAL</small><strong>{activeNav === "Monitoramento Instagram" ? "Gabinete Executivo" : activeDepartment}</strong><span><i/> {activeNav === "Monitoramento Instagram" ? "Acesso restrito" : viewingOtherDepartment ? "Consulta executiva" : "Operação do setor"}</span></div>}
             <div className="heading-actions">
               {activeNav === "Comunicação" ? (
                 currentPermission.register && <button className="button secondary" onClick={() => setGroupModal(true)}><Plus size={15} /> Novo grupo</button>
@@ -1180,13 +1184,14 @@ export default function Home() {
             </div>
           </section>
 
-          {viewingOtherDepartment && activeNav !== "Central Executiva" && <div className="executive-sector-readonly" role="status"><ShieldCheck size={19}/><span><strong>Modo de consulta executiva · {activeDepartment}</strong><small>Prefeito e Vice-Prefeito podem visualizar e abrir as informações deste setor, mas não podem criar, editar, mover, comentar, excluir ou executar ações por IA.</small></span></div>}
+          {viewingOtherDepartment && activeNav !== "Central Executiva" && activeNav !== "Monitoramento Instagram" && <div className="executive-sector-readonly" role="status"><ShieldCheck size={19}/><span><strong>Modo de consulta executiva · {activeDepartment}</strong><small>Prefeito e Vice-Prefeito podem visualizar e abrir as informações deste setor, mas não podem criar, editar, mover, comentar, excluir ou executar ações por IA.</small></span></div>}
 
           {activeNav === "Visão geral" && <Dashboard tickets={filteredTickets} allTickets={privateTickets} audit={privateAudit} executive={executiveAccess} department={activeDepartment} userName={currentUser.fullName} userRole={currentUser.role} events={currentEvents} unreadCount={unreadCount} now={clockNow} onNavigate={setActiveNav} />}
-          {activeNav !== "Visão geral" && <div className={`module-layout-v3 ${activeNav === "Comunicação" ? "module-layout-chat" : ""}`}>
+          {activeNav !== "Visão geral" && <div className={`module-layout-v3 ${activeNav === "Comunicação" ? "module-layout-chat" : ""} ${activeNav === "Monitoramento Instagram" ? "module-layout-social-monitor" : ""}`}>
             <div className="module-main-v3">
           {!executiveReadOnlyScope && activeNav !== "Central Executiva" && <ContextualAiBar activeModule={activeNav} department={activeDepartment} tickets={privateTickets} events={currentEvents} />}
           {activeNav === "Central Executiva" && executiveAccess && <ExecutiveCommandCenter tickets={ticketData} departments={allDepartments} currentUser={{ fullName: currentUser.fullName, role: currentUser.role }} onOpenDepartment={openExecutiveDepartment} notify={notify} />}
+          {activeNav === "Monitoramento Instagram" && executiveAccess && <ExecutiveSocialMonitor profileId={currentUser.id} profileName={currentUser.fullName} />}
           {activeNav === "Últimas Notícias Prefeitura" && <PrefeituraNewsSection />}
           {activeNav === "Área do Setor" && <><SectorWorkspaceSection key={activeDepartment} department={activeDepartment} userName={currentUser.fullName} userRole={currentUser.role} departments={availableDepartments} notify={notify} />{!viewingOtherDepartment&&<FormBuilderPanel department={activeDepartment} notify={notify} />}</>}
           {activeNav === "Fluxos e Anotações" && <SectorNotesSection key={activeDepartment} department={activeDepartment} userName={currentUser.fullName} team={sectorUsers.map((user) => ({ id: user.id, name: user.fullName, role: user.role }))} notify={notify} />}
@@ -1238,6 +1243,7 @@ function getHeading(active: NavItem) {
   const headings: Record<NavItem, { eyebrow: string; title: string; subtitle: string }> = {
     "Visão geral": { eyebrow: "", title: "Bom dia.", subtitle: "Acompanhe as demandas e mantenha as secretarias alinhadas." },
     "Central Executiva": { eyebrow: "PREFEITO E VICE-PREFEITO", title: "Central Executiva", subtitle: "Acompanhe pendências, chamados, prioridades e riscos de todos os setores da Prefeitura." },
+    "Monitoramento Instagram": { eyebrow: "PREFEITO E VICE-PREFEITO", title: "Monitoramento do Instagram", subtitle: "Acompanhe menções, comentários, hashtags e sinais de atenção relacionados à imagem pública municipal." },
     "Últimas Notícias Prefeitura": { eyebrow: "PORTAL OFICIAL DE VÁRZEA DA PALMA", title: "Últimas Notícias Prefeitura", subtitle: "Acompanhe as publicações mais recentes da Prefeitura, filtre por assunto e abra a matéria completa na fonte oficial." },
     "Área do Setor": { eyebrow: "AMBIENTE ESPECIALIZADO", title: "Meu setor", subtitle: "Formulários, endereços, indicadores, equipes e fluxos adaptados às responsabilidades da unidade selecionada." },
     "Fluxos e Anotações": { eyebrow: "MEMÓRIA OPERACIONAL", title: "Anotações", subtitle: "Organize decisões, providências e registros internos em etapas próprias para cada setor." },
@@ -1265,6 +1271,7 @@ function getHeading(active: NavItem) {
 function moduleIconForNav(active: NavItem): LucideIcon {
   const icons: Partial<Record<NavItem, LucideIcon>> = {
     "Central Executiva": Crown,
+    "Monitoramento Instagram": ActivityIcon,
     "Últimas Notícias Prefeitura": Newspaper,
     "Área do Setor": Building2,
     "Fluxos e Anotações": Pencil,
@@ -1307,6 +1314,8 @@ function ModuleExperienceRail({ activeNav, department, tickets, documents, event
       ? ["Anexos e Arquivos", "Pendências", "Auditoria"]
       : activeNav === "Comunicação"
         ? ["Chamados", "Notificações", "Anexos e Arquivos"]
+        : activeNav === "Monitoramento Instagram"
+          ? ["Central Executiva", "Últimas Notícias Prefeitura", "Comunicação"]
         : activeNav === "Central Executiva"
           ? ["Indicadores", "Central Integrada", "Próximos Eventos"]
           : ["Chamados", "Central Integrada", "Próximos Eventos"];

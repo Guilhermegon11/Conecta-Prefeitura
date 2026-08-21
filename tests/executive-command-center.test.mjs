@@ -7,10 +7,10 @@ const read = (path) => readFile(new URL(`../${path}`, import.meta.url), "utf8");
 test("shows the Central Executiva only to Prefeito and Vice-prefeito", async () => {
   const page = await read("app/page.tsx");
   assert.match(page, /type NavItem = PermissionModule \| "Central Executiva"/);
-  assert.match(page, /if \(item === "Central Executiva"\) return executiveAccess/);
-  assert.match(page, /activeNav === "Central Executiva"\s*\? executiveAccess \? PUBLIC_READ_PERMISSION : NO_PERMISSION/);
+  assert.match(page, /if \(item === "Central Executiva" \|\| item === "Monitoramento Instagram"\) return executiveAccess/);
+  assert.match(page, /activeNav === "Central Executiva" \|\| activeNav === "Monitoramento Instagram"\s*\? executiveAccess \? PUBLIC_READ_PERMISSION : NO_PERMISSION/);
   assert.match(page, /role === "prefeito" \|\| role === "vice-prefeito"/);
-  assert.match(page, /\? \["Visão geral", "Central Executiva", "Área do Setor", "Central Integrada"/);
+  assert.match(page, /\? \["Visão geral", "Central Executiva", "Monitoramento Instagram", "Área do Setor", "Central Integrada"/);
 });
 
 test("consolidates real tickets and integrated tasks from every department", async () => {

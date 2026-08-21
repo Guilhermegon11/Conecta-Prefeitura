@@ -40,7 +40,7 @@ test("presents a reduced process workspace without removing advanced actions", a
 
 test("keeps Meu Setor among the main entries for every profile", async () => {
   const source = await readSource("page.tsx");
-  assert.match(source, /"Central Executiva", "Área do Setor", "Central Integrada"/);
+  assert.match(source, /"Central Executiva", "Monitoramento Instagram", "Área do Setor", "Central Integrada"/);
   assert.match(source, /"Visão geral", "Área do Setor", "Central Integrada", "Chamados"/);
   assert.match(source, /"Área do Setor": "Meu Setor"/);
   assert.match(source, />Principais</);
@@ -157,6 +157,14 @@ test("shows a functional seven-day demand flow and centers communication actions
   assert.match(styles, /\.reference-bar-chart \{[^}]*grid-template-columns: repeat\(7, minmax\(0, 1fr\)\)/);
   assert.match(styles, /\.reference-ui-2026 \.message-composer \.compose-actions \{[^}]*justify-content: center/);
   assert.doesNotMatch(styles, /#5dafa4/i);
+});
+
+test("keeps titles and supporting text readable on the dark green active states", async () => {
+  const styles = await readSource("globals.css");
+  assert.match(styles, /button\.active :where\(strong,b,svg\) \{[^}]*color: #fff !important/);
+  assert.match(styles, /button\.active :where\(small,em\) \{[^}]*rgba\(255,255,255,\.76\) !important/);
+  assert.match(styles, /\.management-tabs button\.active > span,[\s\S]*?background: rgba\(255,255,255,\.16\) !important/);
+  assert.match(styles, /\.reference-ui-2026 \.event-date span \{[^}]*rgba\(255,255,255,\.78\) !important/);
 });
 
 test("keeps the universal create action perfectly circular", async () => {
