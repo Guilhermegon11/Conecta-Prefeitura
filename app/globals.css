@@ -3357,7 +3357,7 @@ body { font-size: 16.5px; }
 
 /* ==========================================================================
    Prefeitura Conecta v5.0 — UI inspirada no painel de referência
-   Estrutura central clara, navegação escura e destaque verde-lima.
+   Estrutura central clara, navegação escura e destaque verde-petróleo.
    ========================================================================== */
 
 body:has(.app-shell) {
@@ -3372,15 +3372,15 @@ body:has(.app-shell) {
   --line: #ebeaf0;
   --ink: #242532;
   --muted: #747581;
-  --teal: #728e29;
-  --teal-dark: #58701d;
+  --teal: #4d9d93;
+  --teal-dark: #33776f;
   --ui-navy: #202130;
   --ui-navy-soft: #292a3b;
-  --ui-lime: #c9f25b;
-  --ui-lime-dark: #b9df4f;
+  --ui-lime: #5dafa4;
+  --ui-lime-dark: #4a978e;
   --ui-neutral-soft: #f2f3f5;
-  --violet-soft: #f1f4e6;
-  --ai-violet: #728e29;
+  --violet-soft: #e7f3f1;
+  --ai-violet: #4d9d93;
   display: grid;
   grid-template-columns: 250px minmax(0, 1fr);
   width: min(1760px, 100%);
@@ -3662,7 +3662,7 @@ body:has(.app-shell) {
 /* ==========================================================================
    Prefeitura Conecta v5.1 — dashboard editorial, compacto e sem roxo
    Composição baseada na referência: shell branco, sidebar grafite, cards
-   arredondados, hierarquia em três colunas e verde-lima como cor de ação.
+   arredondados, hierarquia em três colunas e teal como cor de ação.
    ========================================================================== */
 
 body:has(.reference-ui-2026) {
@@ -4954,4 +4954,365 @@ body:has(.reference-ui-2026) {
     width: 44px;
     height: 44px;
   }
+}
+
+/* IA Conecta em faixa horizontal abaixo das demandas recentes. */
+.reference-dashboard-ai {
+  width: 100%;
+  margin-top: 18px;
+}
+
+.reference-dashboard-ai .municipal-ai-command-center {
+  min-height: 286px;
+  margin: 0;
+  border-radius: 18px;
+}
+
+.reference-dashboard-ai .municipal-ai-command-center > header {
+  align-items: center;
+  gap: 24px;
+  padding: 20px 24px 18px;
+}
+
+.reference-dashboard-ai .municipal-ai-command-title {
+  min-width: 0;
+}
+
+.reference-dashboard-ai .municipal-ai-command-title > div {
+  min-width: 0;
+}
+
+.reference-dashboard-ai .municipal-ai-command-title h2 {
+  font-size: clamp(20px, 2vw, 26px);
+}
+
+.reference-dashboard-ai .municipal-ai-command-title p {
+  max-width: 760px;
+  line-height: 1.5;
+}
+
+.reference-dashboard-ai .municipal-ai-live {
+  flex: 0 0 auto;
+}
+
+.reference-dashboard-ai .municipal-ai-command-body {
+  display: grid;
+  grid-template-columns: minmax(360px, .9fr) minmax(420px, 1.1fr);
+  grid-template-areas:
+    "snapshot command"
+    "snapshot actions"
+    "result result";
+  align-items: start;
+  gap: 12px 18px;
+  padding: 18px 24px 22px;
+}
+
+.reference-dashboard-ai .municipal-ai-snapshot {
+  grid-area: snapshot;
+  height: 100%;
+  margin: 0;
+}
+
+.reference-dashboard-ai .municipal-ai-snapshot article {
+  display: grid;
+  min-height: 96px;
+  align-content: center;
+}
+
+.reference-dashboard-ai .municipal-ai-command-form {
+  grid-area: command;
+}
+
+.reference-dashboard-ai .municipal-ai-command-actions {
+  grid-area: actions;
+  align-self: start;
+  margin-top: 0;
+}
+
+.reference-dashboard-ai .municipal-ai-command-result {
+  grid-area: result;
+  margin-top: 2px;
+}
+
+@media (max-width: 1120px) {
+  .reference-dashboard-ai .municipal-ai-command-body {
+    grid-template-columns: 1fr;
+    grid-template-areas:
+      "snapshot"
+      "command"
+      "actions"
+      "result";
+  }
+
+  .reference-dashboard-ai .municipal-ai-snapshot article {
+    min-height: 82px;
+  }
+}
+
+@media (max-width: 760px) {
+  .reference-dashboard-ai {
+    margin-top: 14px;
+  }
+
+  .reference-dashboard-ai .municipal-ai-command-center > header {
+    align-items: flex-start;
+    padding: 18px;
+  }
+
+  .reference-dashboard-ai .municipal-ai-command-body {
+    padding: 16px 18px 20px;
+  }
+}
+
+@media (max-width: 560px) {
+  .reference-dashboard-ai .municipal-ai-snapshot {
+    grid-template-columns: 1fr;
+  }
+
+  .reference-dashboard-ai .municipal-ai-snapshot article:last-child {
+    grid-column: auto;
+  }
+}
+
+/* ==========================================================================
+   Paleta institucional — teal, grafite e menta, sem verde-lima
+   ========================================================================== */
+
+.app-shell.reference-ui-2026 {
+  --ui-lime: #5dafa4;
+  --ui-lime-dark: #4a978e;
+  --teal: #4d9d93;
+  --teal-dark: #33776f;
+  --violet-soft: #e7f3f1;
+  --ai-violet: #4d9d93;
+}
+
+/* Destaques principais e estados ativos. */
+.app-shell .brand-mark,
+.app-shell .button.primary,
+.app-shell .quick-action-trigger,
+.reference-ui-2026 .organized-nav-item.active,
+.reference-ui-2026 .sidebar-reference-card,
+.reference-ui-2026 .reference-bar-chart i.highlight,
+.reference-ui-2026 .reference-municipal-card > header > span,
+.reference-ui-2026 .reference-municipal-card > button,
+.reference-ui-2026 .reference-calendar-days > button.active,
+.reference-ui-2026 .reference-assignments-card > header button,
+.reference-ui-2026 :where(.sector-hero-icon,.sector-notes-hero-icon,.settings-hero-icon,.news-source-icon,.exec-central-hero-icon),
+.reference-ui-2026 :where(.sector-hero-actions,.news-hero-actions,.exec-central-hero-actions) .button.primary,
+.reference-ui-2026 :where(.sector-tabs,.settings-tabs,.module-tabs,.management-tabs,.integrated-tabs,.chat-tabs) button.active,
+.reference-ui-2026 .message-composer button,
+.reference-ui-2026 .event-date,
+.reference-ui-2026 .news-featured-marker,
+.reference-ui-2026 .toggle.active,
+.reference-ui-2026 :where(.settings-hero-status i,.persistence-status i),
+.onboarding-icon,
+.reference-ui-2026 :where(.municipal-ai-brand > span,.municipal-ai-heading > span,.mayor-ai-heading > span),
+.module-page-header-icon,
+.module-rail-identity > header > span,
+.reference-ui-2026 .module-main-v3 .contextual-ai-orb,
+.reference-ui-2026 .module-main-v3 .contextual-ai-actions button.primary,
+.events-command-icon,
+.events-calendar-days button.active,
+.events-calendar-legend i,
+.events-layout-v3 .event-date,
+.process-stepper-v3 li.done > span,
+.process-stepper-v3 li.current > span,
+.process-context-v3 > button,
+.integrated-task-command-v3 > header > span,
+.executive-profile-stack-v3 .executive-profile-card.mayor .executive-profile-office,
+.login-showcase > header > span,
+.login-showcase-copy > span,
+.login-showcase-stats article > span,
+.login-showcase-chart i.active,
+.login-brand > span,
+.login-loading-icon,
+.login-submit,
+.login-loading-line::after,
+.evaluation-brand > span,
+.citizen-front-heading > span,
+.tracking-card-icon,
+.citizen-send,
+.citizen-track-cta,
+.tracking-timeline li > span,
+.nps-scale button.active {
+  color: #102e2b !important;
+  border-color: #5dafa4 !important;
+  background: #5dafa4 !important;
+}
+
+.app-shell .button.primary:hover,
+.app-shell .quick-action-trigger:hover,
+.app-shell .quick-action-dock.open .quick-action-trigger,
+.reference-ui-2026 .sidebar-reference-card:hover,
+.login-submit:hover {
+  border-color: #4a978e !important;
+  background: #4a978e !important;
+}
+
+/* Variações claras para filtros, cartões e indicadores. */
+.app-shell .dashboard-ai-brief > button > span,
+.app-shell .municipal-ai-brand > span,
+.reference-ui-2026 :where(.reference-kpi-grid .lime,.reference-schedule-list .lime,.reference-assignments-card .lime),
+.reference-ui-2026 .integrated-command-score,
+.reference-ui-2026 :where(.filter-chip,.news-category-row button,.sector-chip-group button,.widget-controls button).active,
+.reference-ui-2026 :where(.process-row.active,.conversation.active,.mayor-feedback-items > button.active),
+.reference-ui-2026 .new-group-row,
+.reference-ui-2026 :where(.message-bubble.mine,.message.user),
+.reference-ui-2026 .news-category-mark,
+.reference-ui-2026 .news-ai-button,
+.reference-ui-2026 .help-articles .violet,
+.reference-ui-2026 .municipal-ai-context,
+.module-rail-today .lime,
+.module-rail-alert,
+.events-calendar-summary,
+.events-layout-v3 .event-sector-tags span,
+.process-navigation-kpis > button.active,
+.process-navigation-kpis .lime,
+.process-context-v3 .lime,
+.integrated-task-counts .lime,
+.citizen-kind-grid button.active,
+.citizen-ai-assistant,
+.tracking-status,
+.tracking-status.status-concluido {
+  color: #286b64 !important;
+  border-color: #c7e1dc !important;
+  background: #e7f3f1 !important;
+}
+
+.app-shell .quick-action-menu button.quick-action-ai,
+.app-shell .quick-action-menu .quick-action-ai {
+  color: #286b64 !important;
+  border-color: #c7e1dc !important;
+  background: linear-gradient(135deg, #edf7f5, #f4faf9) !important;
+}
+
+.app-shell .municipal-ai-bubble.user,
+.app-shell .municipal-ai-confirm,
+.app-shell .municipal-ai-rich-text > p:has(> strong:first-child) {
+  color: #315f5a !important;
+  border-color: #c9e2dd !important;
+  background: #edf7f5 !important;
+}
+
+/* Acentos sobre superfícies escuras. */
+.reference-ui-2026 :where(.sector-hero,.sector-notes-hero,.settings-hero,.news-source-hero,.exec-central-hero,.command-hero,.ai-hero) .eyebrow,
+.login-showcase-chart > header b,
+.login-showcase > footer,
+.evaluation-copy .eyebrow,
+.tracking-copy .eyebrow,
+.tracking-copy > div,
+.module-rail-identity > div strong,
+.process-detail-v2 .process-protocol-line > span,
+.integrated-task-health strong,
+.executive-profile-stack-v3 .executive-profile-card.mayor a {
+  color: #82d4c8 !important;
+}
+
+.reference-ui-2026 :where(.ticket-detail-button,.flow-card-open,.process-detail footer button),
+.reference-ui-2026 .onboarding-card > small,
+.login-copy .eyebrow,
+.reference-section-heading > button,
+.reference-ui-2026 .text-button {
+  color: #347c74 !important;
+}
+
+/* Fundos escuros recebem brilho teal discreto, sem neon. */
+.reference-ui-2026 :where(.sector-hero,.sector-notes-hero,.settings-hero,.help-hero,.news-source-hero,.exec-central-hero,.command-hero,.ai-hero) {
+  background: radial-gradient(circle at 88% 8%, rgba(93,175,164,.18), transparent 31%), #202631 !important;
+}
+
+.login-showcase,
+.evaluation-copy,
+.tracking-copy {
+  background: radial-gradient(circle at 84% 12%, rgba(93,175,164,.2), transparent 29%), #202631 !important;
+}
+
+.app-shell .municipal-ai-command-center {
+  background: radial-gradient(circle at 88% 5%, rgba(93,175,164,.24), transparent 28%), radial-gradient(circle at 8% 110%, rgba(61,140,131,.2), transparent 35%), linear-gradient(135deg, #202631 0%, #203336 56%, #183b38 100%) !important;
+}
+
+.app-shell .municipal-ai-command-title > span {
+  background: linear-gradient(145deg, #68bdb1, #3f8d85) !important;
+}
+
+.app-shell .municipal-ai-command-form button {
+  color: #fff !important;
+  background: linear-gradient(135deg, #5dafa4, #3f8d85) !important;
+}
+
+.app-shell .municipal-ai-command-form > span,
+.app-shell .municipal-ai-loading svg,
+.app-shell .municipal-ai-loading.compact,
+.app-shell .municipal-ai-rich-text li::marker,
+.app-shell .municipal-ai-table-cards dt {
+  color: #3f8d85 !important;
+}
+
+.app-shell .municipal-ai-command-result {
+  border-color: rgba(125,211,199,.28) !important;
+  background: rgba(13,46,43,.34) !important;
+}
+
+.app-shell .municipal-ai-command-result > div span {
+  color: #c7f1ea !important;
+  background: rgba(93,175,164,.25) !important;
+}
+
+/* Foco, linhas de progresso e pequenos estados. */
+.reference-ui-2026 :where(input,select,textarea):focus,
+.login-shell :where(input,select,textarea):focus,
+.evaluation-shell :where(input,select,textarea):focus,
+.tracking-shell :where(input,select,textarea):focus,
+.login-form label > div:focus-within,
+.app-shell .municipal-ai-composer textarea:focus {
+  border-color: #70b6ad !important;
+  box-shadow: 0 0 0 3px rgba(77,157,147,.14) !important;
+}
+
+.reference-ui-2026 :where(.process-row.active,.conversation.active,.mayor-feedback-items > button.active) {
+  box-shadow: inset 3px 0 #5dafa4 !important;
+}
+
+.reference-ui-2026 :where(.process-timeline .current i,.sector-metric-progress > i,.project-progress i,.integrated-goal-mini i,.goals-table i),
+.reference-ui-2026 .conversation.active::before,
+.onboarding-progress i.active {
+  border-color: #5dafa4 !important;
+  background: #5dafa4 !important;
+}
+
+.reference-ui-2026 :where(.settings-hero-status i,.persistence-status i),
+.reference-ui-2026 .reference-bar-chart i.highlight,
+.login-showcase-chart i.active {
+  box-shadow: 0 0 0 4px rgba(93,175,164,.13) !important;
+}
+
+.reference-ui-2026 .module-page-header-context i {
+  background: #5dafa4 !important;
+  box-shadow: 0 0 0 3px rgba(93,175,164,.13) !important;
+}
+
+.evaluation-track-link:hover,
+.evaluation-admin-link:hover,
+.public-nav-links a:hover,
+.test-access-note {
+  color: #286b64 !important;
+  border-color: #c7e1dc !important;
+  background: #edf7f5 !important;
+}
+
+.reference-ui-2026 .event-date span,
+.reference-ui-2026 .municipal-ai-context strong,
+.citizen-rating button.active,
+.reference-ui-2026 :where(.status-pill.violet,.priority-label.violet,.activity-avatar.violet,.exec-central-metrics span.violet),
+.reference-ui-2026 .kanban-column.violet > header {
+  color: #286b64 !important;
+}
+
+.reference-ui-2026 :where(.status-pill.violet,.priority-label.violet,.activity-avatar.violet,.exec-central-metrics span.violet) {
+  background: #e7f3f1 !important;
+}
+
+.app-shell .municipal-ai-command-result > .municipal-ai-rich-text li::marker {
+  color: #82d4c8 !important;
 }

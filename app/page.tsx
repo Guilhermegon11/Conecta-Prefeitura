@@ -1452,9 +1452,12 @@ function Dashboard({ tickets, allTickets, audit, executive, department, userName
             <header><div><span>Acompanhamento</span><h3>Demandas prioritárias</h3></div><button type="button" onClick={() => onNavigate("Chamados")}><Plus size={14}/></button></header>
             <div>{openTickets.slice(0, 3).map((ticket, index) => <button type="button" key={ticket.id} onClick={() => onNavigate("Chamados")}><span className={["peach","lime","blue"][index % 3]}><ClipboardList size={14}/></span><div><strong>{ticket.title}</strong><small>{ticket.protocol}</small></div><em>{ticket.status}</em></button>)}</div>
           </article>
-          <DashboardAiBrief department={department} tickets={tickets}/>
         </aside>
       </section>
+
+      <div className="reference-dashboard-ai">
+        <DashboardAiBrief department={department} tickets={tickets}/>
+      </div>
 
       <div className="reference-dashboard-footer">
         <div className="task-choice-guide"><strong>Criar registro:</strong><button type="button" onClick={() => onNavigate("Chamados")}><ClipboardList size={14}/><span><b>Chamado</b><small>pedido a outro setor</small></span></button><button type="button" onClick={() => onNavigate("Central Integrada")}><ListTodo size={14}/><span><b>Tarefa</b><small>trabalho interno</small></span></button><button type="button" onClick={() => onNavigate("Processos Digitais")}><FileText size={14}/><span><b>Processo</b><small>procedimento formal</small></span></button><button type="button" onClick={() => onNavigate("Fluxos e Anotações")}><Pencil size={14}/><span><b>Anotação</b><small>registro rápido</small></span></button></div>
