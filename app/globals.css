@@ -3372,15 +3372,15 @@ body:has(.app-shell) {
   --line: #ebeaf0;
   --ink: #242532;
   --muted: #747581;
-  --teal: #4d9d93;
-  --teal-dark: #33776f;
+  --teal: #176057;
+  --teal-dark: #104b44;
   --ui-navy: #202130;
   --ui-navy-soft: #292a3b;
-  --ui-lime: #5dafa4;
-  --ui-lime-dark: #4a978e;
+  --ui-lime: #176057;
+  --ui-lime-dark: #104b44;
   --ui-neutral-soft: #f2f3f5;
   --violet-soft: #e7f3f1;
-  --ai-violet: #4d9d93;
+  --ai-violet: #176057;
   display: grid;
   grid-template-columns: 250px minmax(0, 1fr);
   width: min(1760px, 100%);
@@ -3818,12 +3818,17 @@ body:has(.reference-ui-2026) {
 .reference-chart-summary { display: flex; align-items: center; gap: 9px; margin-top: 12px; }
 .reference-chart-summary strong { color: #242532; font-size: 18px; }
 .reference-chart-summary span { display: inline-flex; align-items: center; gap: 3px; color: #6f852f; font-size: 13px; }
-.reference-bar-chart { display: grid; height: 142px; grid-template-columns: repeat(6, 1fr); align-items: end; gap: 11px; margin-top: 8px; padding: 10px 5px 0; background: repeating-linear-gradient(to top, transparent 0, transparent 34px, #f0f0f3 35px); }
-.reference-bar-chart > div { display: grid; height: 100%; grid-template-rows: 1fr auto; justify-items: center; gap: 7px; }
-.reference-bar-chart > div > span { display: flex; width: 100%; height: 100%; align-items: end; justify-content: center; }
-.reference-bar-chart i { display: block; width: 7px; min-height: 12px; border-radius: 999px 999px 3px 3px; background: #292a38; }
+.reference-chart-summary em { overflow: hidden; margin-left: auto; color: #70717c; font-size: 13px; font-style: normal; text-overflow: ellipsis; white-space: nowrap; }
+.reference-bar-chart { display: grid; height: 142px; grid-template-columns: repeat(7, minmax(0, 1fr)); align-items: end; gap: 8px; margin-top: 8px; padding: 10px 3px 0; background: repeating-linear-gradient(to top, transparent 0, transparent 34px, #f0f0f3 35px); }
+.reference-bar-chart > button { display: grid; width: 100%; height: 100%; grid-template-rows: 1fr auto; justify-items: center; gap: 7px; padding: 0; border: 0; border-radius: 8px; color: inherit; background: transparent; }
+.reference-bar-chart > button > span { position: relative; display: flex; width: 100%; height: 100%; align-items: end; justify-content: center; }
+.reference-bar-chart b { position: absolute; top: 0; display: grid; min-width: 22px; height: 22px; place-items: center; padding: 0 5px; border-radius: 999px; color: #fff; background: #176057; font-size: 12px; font-weight: 600; box-shadow: 0 4px 10px rgba(23,96,87,.18); }
+.reference-bar-chart i { display: block; width: 8px; min-height: 10px; border-radius: 999px 999px 3px 3px; background: #292a38; transition: height .22s ease, background .16s ease, transform .16s ease; }
 .reference-bar-chart i.highlight { background: #c9f25b; box-shadow: 0 0 0 4px rgba(201,242,91,.13); }
-.reference-bar-chart small { color: #a0a1a9; font-size: 13px; text-transform: uppercase; }
+.reference-bar-chart small { color: #8f9099; font-size: 13px; text-transform: none; transition: color .16s ease; }
+.reference-bar-chart > button:hover i { transform: scaleX(1.25); }
+.reference-bar-chart > button:hover small,.reference-bar-chart > button.active small { color: #176057; font-weight: 600; }
+.reference-bar-chart > button:focus-visible { outline: 2px solid #176057; outline-offset: 2px; }
 
 .reference-schedule-list { display: grid; gap: 2px; margin-top: 9px; }
 .reference-schedule-list > button { display: grid; width: 100%; grid-template-columns: auto minmax(0, 1fr) auto; align-items: center; gap: 9px; padding: 8px 0; border: 0; border-bottom: 1px solid #f0eff3; color: #343541; background: #fff; text-align: left; }
@@ -5079,12 +5084,12 @@ body:has(.reference-ui-2026) {
    ========================================================================== */
 
 .app-shell.reference-ui-2026 {
-  --ui-lime: #5dafa4;
-  --ui-lime-dark: #4a978e;
-  --teal: #4d9d93;
-  --teal-dark: #33776f;
+  --ui-lime: #176057;
+  --ui-lime-dark: #104b44;
+  --teal: #176057;
+  --teal-dark: #104b44;
   --violet-soft: #e7f3f1;
-  --ai-violet: #4d9d93;
+  --ai-violet: #176057;
 }
 
 /* Destaques principais e estados ativos. */
@@ -5136,9 +5141,9 @@ body:has(.reference-ui-2026) {
 .citizen-track-cta,
 .tracking-timeline li > span,
 .nps-scale button.active {
-  color: #102e2b !important;
-  border-color: #5dafa4 !important;
-  background: #5dafa4 !important;
+  color: #fff !important;
+  border-color: #176057 !important;
+  background: #176057 !important;
 }
 
 .app-shell .button.primary:hover,
@@ -5146,8 +5151,8 @@ body:has(.reference-ui-2026) {
 .app-shell .quick-action-dock.open .quick-action-trigger,
 .reference-ui-2026 .sidebar-reference-card:hover,
 .login-submit:hover {
-  border-color: #4a978e !important;
-  background: #4a978e !important;
+  border-color: #104b44 !important;
+  background: #104b44 !important;
 }
 
 /* Variações claras para filtros, cartões e indicadores. */
@@ -5219,17 +5224,17 @@ body:has(.reference-ui-2026) {
 
 /* Fundos escuros recebem brilho teal discreto, sem neon. */
 .reference-ui-2026 :where(.sector-hero,.sector-notes-hero,.settings-hero,.help-hero,.news-source-hero,.exec-central-hero,.command-hero,.ai-hero) {
-  background: radial-gradient(circle at 88% 8%, rgba(93,175,164,.18), transparent 31%), #202631 !important;
+  background: radial-gradient(circle at 88% 8%, rgba(23,96,87,.18), transparent 31%), #202631 !important;
 }
 
 .login-showcase,
 .evaluation-copy,
 .tracking-copy {
-  background: radial-gradient(circle at 84% 12%, rgba(93,175,164,.2), transparent 29%), #202631 !important;
+  background: radial-gradient(circle at 84% 12%, rgba(23,96,87,.2), transparent 29%), #202631 !important;
 }
 
 .app-shell .municipal-ai-command-center {
-  background: radial-gradient(circle at 88% 5%, rgba(93,175,164,.24), transparent 28%), radial-gradient(circle at 8% 110%, rgba(61,140,131,.2), transparent 35%), linear-gradient(135deg, #202631 0%, #203336 56%, #183b38 100%) !important;
+  background: radial-gradient(circle at 88% 5%, rgba(23,96,87,.24), transparent 28%), radial-gradient(circle at 8% 110%, rgba(23,96,87,.2), transparent 35%), linear-gradient(135deg, #202631 0%, #203336 56%, #183b38 100%) !important;
 }
 
 .app-shell .municipal-ai-command-title > span {
@@ -5238,7 +5243,7 @@ body:has(.reference-ui-2026) {
 
 .app-shell .municipal-ai-command-form button {
   color: #fff !important;
-  background: linear-gradient(135deg, #5dafa4, #3f8d85) !important;
+  background: linear-gradient(135deg, #176057, #104b44) !important;
 }
 
 .app-shell .municipal-ai-command-form > span,
@@ -5256,7 +5261,7 @@ body:has(.reference-ui-2026) {
 
 .app-shell .municipal-ai-command-result > div span {
   color: #c7f1ea !important;
-  background: rgba(93,175,164,.25) !important;
+  background: rgba(23,96,87,.32) !important;
 }
 
 /* Foco, linhas de progresso e pequenos estados. */
@@ -5271,25 +5276,25 @@ body:has(.reference-ui-2026) {
 }
 
 .reference-ui-2026 :where(.process-row.active,.conversation.active,.mayor-feedback-items > button.active) {
-  box-shadow: inset 3px 0 #5dafa4 !important;
+  box-shadow: inset 3px 0 #176057 !important;
 }
 
 .reference-ui-2026 :where(.process-timeline .current i,.sector-metric-progress > i,.project-progress i,.integrated-goal-mini i,.goals-table i),
 .reference-ui-2026 .conversation.active::before,
 .onboarding-progress i.active {
-  border-color: #5dafa4 !important;
-  background: #5dafa4 !important;
+  border-color: #176057 !important;
+  background: #176057 !important;
 }
 
 .reference-ui-2026 :where(.settings-hero-status i,.persistence-status i),
 .reference-ui-2026 .reference-bar-chart i.highlight,
 .login-showcase-chart i.active {
-  box-shadow: 0 0 0 4px rgba(93,175,164,.13) !important;
+  box-shadow: 0 0 0 4px rgba(23,96,87,.13) !important;
 }
 
 .reference-ui-2026 .module-page-header-context i {
-  background: #5dafa4 !important;
-  box-shadow: 0 0 0 3px rgba(93,175,164,.13) !important;
+  background: #176057 !important;
+  box-shadow: 0 0 0 3px rgba(23,96,87,.13) !important;
 }
 
 .evaluation-track-link:hover,
@@ -5315,4 +5320,54 @@ body:has(.reference-ui-2026) {
 
 .app-shell .municipal-ai-command-result > .municipal-ai-rich-text li::marker {
   color: #82d4c8 !important;
+}
+
+/* Comunicação — ações alinhadas no centro dos botões. */
+.reference-ui-2026 .message-composer .compose-actions {
+  display: flex;
+  align-self: center;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+}
+
+.reference-ui-2026 .message-composer .compose-actions button {
+  display: grid;
+  width: 36px;
+  height: 36px;
+  place-items: center;
+  padding: 0;
+  color: #fff !important;
+  border-radius: 50% !important;
+  background: #176057 !important;
+}
+
+.reference-ui-2026 .message-composer .compose-actions button:hover,
+.reference-ui-2026 .message-composer .compose-actions button:focus-visible {
+  background: #104b44 !important;
+}
+
+.reference-ui-2026 .message-composer .compose-actions svg[data-business-icon] {
+  display: block;
+  width: 18px;
+  height: 18px;
+  margin: 0;
+}
+
+/* Contraste correto para o novo verde-petróleo escuro. */
+.reference-ui-2026 .organized-nav-item.active > svg[data-business-icon]:first-child {
+  color: #fff !important;
+}
+
+.reference-ui-2026 .sidebar-reference-card > span {
+  color: #176057 !important;
+  background: #fff !important;
+}
+
+.reference-ui-2026 .sidebar-reference-card small {
+  color: rgba(255,255,255,.78) !important;
+}
+
+.reference-ui-2026 .reference-chart-summary span {
+  color: #176057 !important;
 }

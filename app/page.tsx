@@ -1375,8 +1375,22 @@ function CommunicationEditorialCalendar({ onNavigate }: { onNavigate: (item: Nav
   </section>;
 }
 
+const DASHBOARD_WEEKDAYS = ["Seg.", "Ter.", "Qua.", "Qui.", "Sex", "Sab.", "Dom."] as const;
+
+function startOfDashboardWeek(value: Date) {
+  const start = new Date(value);
+  start.setHours(0, 0, 0, 0);
+  start.setDate(start.getDate() - ((start.getDay() + 6) % 7));
+  return start;
+}
+
+function dashboardWeekdayIndex(value: Date) {
+  return (value.getDay() + 6) % 7;
+}
+
 function Dashboard({ tickets, allTickets, audit, executive, department, userName, userRole, events, unreadCount, now, onNavigate }: { tickets: Ticket[]; allTickets: Ticket[]; audit: AuditItem[]; executive: boolean; department: string; userName: string; userRole: string; events: SectorEvent[]; unreadCount: number; now: Date; onNavigate: (item: NavItem) => void }) {
   const [showDetails, setShowDetails] = useState(false);
+  const [selectedChartDay, setSelectedChartDay] = useState<number | null>(null);
   const stats = statuses.map((status, index) => ({
     label: statusMeta[status].short,
     value: String(tickets.filter((ticket) => ticket.status === status).length).padStart(2, "0"),
@@ -1389,8 +1403,38 @@ function Dashboard({ tickets, allTickets, audit, executive, department, userName
   const roleLabel = executive ? "Visão executiva" : normalizeText(userRole).includes("secret") || normalizeText(userRole).includes("gestor") ? "Gestão da equipe" : "Meu trabalho";
   const completedTickets = tickets.filter((ticket) => ticket.status === "Concluído").length;
   const completionRate = tickets.length ? Math.round((completedTickets / tickets.length) * 100) : 100;
-  const chartItems = statuses.slice(0, 6).map((status) => ({ label: statusMeta[status].short, value: tickets.filter((ticket) => ticket.status === status).length }));
+  const currentWeekStart = startOfDashboardWeek(now);
+  const currentWeekEnd = new Date(currentWeekStart);
+  currentWeekEnd.setDate(currentWeekEnd.getDate() + 7);
+  const currentWeekHasTickets = tickets.some((ticket) => {
+    const createdAt = new Date(ticket.createdAt).getTime();
+    return createdAt >= currentWeekStart.getTime() && createdAt < currentWeekEnd.getTime();
+  });
+  const latestTicketTimestamp = tickets.reduce((latest, ticket) => {
+    const createdAt = new Date(ticket.createdAt).getTime();
+    return Number.isFinite(createdAt) ? Math.max(latest, createdAt) : latest;
+  }, 0);
+  const chartAnchor = currentWeekHasTickets || !latestTicketTimestamp ? now : new Date(latestTicketTimestamp);
+  const chartWeekStart = startOfDashboardWeek(chartAnchor);
+  const chartWeekEnd = new Date(chartWeekStart);
+  chartWeekEnd.setDate(chartWeekEnd.getDate() + 6);
+  const chartItems = DASHBOARD_WEEKDAYS.map((label, index) => {
+    const dayStart = new Date(chartWeekStart);
+    dayStart.setDate(dayStart.getDate() + index);
+    const dayEnd = new Date(dayStart);
+    dayEnd.setDate(dayEnd.getDate() + 1);
+    const value = tickets.filter((ticket) => {
+      const createdAt = new Date(ticket.createdAt).getTime();
+      return createdAt >= dayStart.getTime() && createdAt < dayEnd.getTime();
+    }).length;
+    return { label, value, date: dayStart };
+  });
   const chartMax = Math.max(1, ...chartItems.map((item) => item.value));
+  const lastDayWithDemand = chartItems.reduce((lastIndex, item, index) => item.value > 0 ? index : lastIndex, 0);
+  const chartShowsCurrentWeek = chartWeekStart.getTime() === currentWeekStart.getTime();
+  const activeChartDay = selectedChartDay ?? (chartShowsCurrentWeek ? dashboardWeekdayIndex(now) : lastDayWithDemand);
+  const activeChartItem = chartItems[activeChartDay];
+  const chartRangeLabel = `${chartWeekStart.toLocaleDateString("pt-BR", { day: "2-digit", month: "short" })} a ${chartWeekEnd.toLocaleDateString("pt-BR", { day: "2-digit", month: "short" })}`;
   const calendarDays = Array.from({ length: 31 }, (_, index) => index + 1);
   const schedule = events.slice(0, 4);
 
@@ -1410,10 +1454,10 @@ function Dashboard({ tickets, allTickets, audit, executive, department, userName
 
           <div className="reference-middle-grid">
             <article className="panel reference-activity-card">
-              <header><div><span>Desempenho</span><h3>Fluxo de demandas</h3></div><button type="button" onClick={() => setShowDetails(true)}>Semanal <ChevronRight size={13}/></button></header>
-              <div className="reference-chart-summary"><strong>{completionRate}%</strong><span><ArrowUpRight size={12}/> índice de conclusão</span></div>
-              <div className="reference-bar-chart" aria-label="Demandas por etapa">
-                {chartItems.map((item, index) => <div key={item.label}><span><i className={index === 3 ? "highlight" : ""} style={{ height: `${32 + (item.value / chartMax) * 68}%` }}/></span><small>{item.label.slice(0, 3)}</small></div>)}
+              <header><div><span>Desempenho</span><h3>Fluxo de demandas</h3></div><button type="button" aria-expanded={showDetails} title={`Ver detalhes · ${chartRangeLabel}`} onClick={() => setShowDetails((current) => !current)}>Semanal <ChevronRight size={13}/></button></header>
+              <div className="reference-chart-summary"><strong>{completionRate}%</strong><span><ArrowUpRight size={12}/> índice de conclusão</span><em aria-live="polite">{activeChartItem.value} {activeChartItem.value === 1 ? "demanda" : "demandas"} · {activeChartItem.label}</em></div>
+              <div className="reference-bar-chart" aria-label={`Demandas criadas por dia da semana · ${chartRangeLabel}`}>
+                {chartItems.map((item, index) => <button type="button" className={index === activeChartDay ? "active" : ""} aria-pressed={index === activeChartDay} aria-label={`${item.label}, ${item.date.toLocaleDateString("pt-BR")}: ${item.value} ${item.value === 1 ? "demanda criada" : "demandas criadas"}`} title={`${item.value} ${item.value === 1 ? "demanda" : "demandas"} em ${item.label}`} key={item.label} onClick={() => setSelectedChartDay(index)}><span>{index === activeChartDay && <b>{item.value}</b>}<i className={index === activeChartDay ? "highlight" : ""} style={{ height: `${item.value ? 22 + (item.value / chartMax) * 78 : 10}%` }}/></span><small>{item.label}</small></button>)}
               </div>
             </article>
 

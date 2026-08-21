@@ -119,8 +119,8 @@ test("applies the neutral dashboard design system from the reference", async () 
   assert.match(styles, /grid-template-columns: 250px minmax\(0, 1fr\)/);
   assert.match(styles, /border-radius: 22px/);
   assert.match(styles, /--ui-navy: #202130/);
-  assert.match(styles, /--ui-lime: #5dafa4/);
-  assert.match(styles, /--ai-violet: #4d9d93/);
+  assert.match(styles, /--ui-lime: #176057/);
+  assert.match(styles, /--ai-violet: #176057/);
   assert.doesNotMatch(styles, /#b296ee|#c3a8f2|--ui-lilac-soft/);
   assert.match(styles, /\.app-shell \.organized-nav-item\.active[^{]*\{[^}]*background: var\(--ui-lime\)/);
   assert.match(styles, /\.app-shell \.municipal-ai-command-center \{ background: radial-gradient\([^}]*#202130/);
@@ -143,6 +143,20 @@ test("recreates the reference dashboard composition across the whole home view",
   assert.match(styles, /\.reference-dashboard \{ display: grid; grid-template-columns: minmax\(0, 1fr\) 310px/);
   assert.match(styles, /\.reference-municipal-card \{[^}]*background: #20212f/);
   assert.match(styles, /\.reference-calendar-days > button\.active \{[^}]*background: #c9f25b/);
+});
+
+test("shows a functional seven-day demand flow and centers communication actions", async () => {
+  const [page, styles] = await Promise.all([
+    readSource("page.tsx"),
+    readSource("globals.css"),
+  ]);
+  assert.match(page, /const DASHBOARD_WEEKDAYS = \["Seg\.", "Ter\.", "Qua\.", "Qui\.", "Sex", "Sab\.", "Dom\."\]/);
+  assert.match(page, /new Date\(ticket\.createdAt\)\.getTime\(\)/);
+  assert.match(page, /setSelectedChartDay\(index\)/);
+  assert.match(page, /aria-pressed=\{index === activeChartDay\}/);
+  assert.match(styles, /\.reference-bar-chart \{[^}]*grid-template-columns: repeat\(7, minmax\(0, 1fr\)\)/);
+  assert.match(styles, /\.reference-ui-2026 \.message-composer \.compose-actions \{[^}]*justify-content: center/);
+  assert.doesNotMatch(styles, /#5dafa4/i);
 });
 
 test("keeps the universal create action perfectly circular", async () => {
