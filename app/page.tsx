@@ -55,8 +55,8 @@ import {
   Workflow,
   X,
   XCircle,
-} from "lucide-react";
-import type { LucideIcon } from "lucide-react";
+} from "./site-icons";
+import type { LucideIcon } from "./site-icons";
 import {
   CitizenServiceSection,
   HelpCenterSection,
@@ -73,7 +73,6 @@ import {
   ApprovalCenterPanel,
   DocumentGovernancePanel,
   FormBuilderPanel,
-  OperationalCommandCenter,
   SmartNotificationRules,
 } from "./enhanced-features";
 import { GlobalSearchPanel, playNotificationChime, useNotificationChime } from "./experience-tools";
@@ -1022,6 +1021,7 @@ export default function Home() {
 
   const heading = getHeading(activeNav);
   const headingTitle = activeNav === "Visão geral" ? `${greetingFor(clockNow)}, ${currentUser.fullName.split(" ")[0]}.` : activeNav === "Área do Setor" ? activeDepartment : heading.title;
+  const ActiveModuleIcon = moduleIconForNav(activeNav);
 
   const canViewMenuItem = (item: NavItem) => {
     if (item === "Central Executiva") return executiveAccess;
@@ -1064,7 +1064,7 @@ export default function Home() {
   };
 
   return (
-    <div className={`app-shell ${motionEnabled ? "motion-enabled" : "motion-reduced"} ${contrastEnabled ? "contrast-enabled" : ""} ${simplifiedMode ? "simplified-mode" : ""} text-scale-${textScale}`}>
+    <div className={`app-shell reference-ui-2026 ${motionEnabled ? "motion-enabled" : "motion-reduced"} ${contrastEnabled ? "contrast-enabled" : ""} ${simplifiedMode ? "simplified-mode" : ""} text-scale-${textScale}`}>
       <aside className={`sidebar ${sidebarOpen ? "sidebar-open" : ""}`}>
         <div className="brand">
           <div className="brand-mark" aria-hidden="true"><Landmark size={21} strokeWidth={2.2} /></div>
@@ -1112,6 +1112,11 @@ export default function Home() {
             );
           })}
         </nav>
+        <button type="button" className="sidebar-reference-card" onClick={() => { setActiveNav("Central de Ajuda"); setSidebarOpen(false); }}>
+          <span><ArrowUpRight size={16}/></span>
+          <div><strong>Central de ajuda</strong><small>Guias rápidos para usar a plataforma</small></div>
+          <ChevronRight size={15}/>
+        </button>
         <div className={`sidebar-profile ${executiveAccess ? "sidebar-profile-executive" : ""}`}>
           <div className="profile-avatar-wrap"><div className="avatar avatar-large">{currentUser.initials}</div>{executiveAccess&&<span className="executive-avatar-badge"><Crown size={10}/></span>}</div>
           <div className="profile-copy"><strong>{currentUser.fullName}</strong><span>{executiveAccess ? `${currentUser.role} · acesso executivo` : currentUser.department}</span></div>
@@ -1145,8 +1150,10 @@ export default function Home() {
 
         <PermissionProvider key={`${currentUser.id}-${activeDepartment}`} permission={currentPermission}>
         <div className={`content-wrap ${activeNav === "Comunicação" ? "chat-content" : ""} ${currentPermission.register ? "can-register" : "read-only-register"} ${currentPermission.edit ? "can-edit" : "read-only-edit"}`}>
-          <section className="page-heading">
-            <div><p className="eyebrow">{activeNav === "Visão geral" ? `${formatHeadingDate(clockNow)} · ${formatHeadingClock(clockNow)}` : heading.eyebrow}</p><h1>{headingTitle}</h1><p>{heading.subtitle}</p></div>
+          <section className={activeNav === "Visão geral" ? "page-heading" : "module-page-header-v3"}>
+            {activeNav !== "Visão geral" && <span className="module-page-header-icon"><ActiveModuleIcon size={20}/></span>}
+            <div className="module-page-header-copy"><p className="eyebrow">{activeNav === "Visão geral" ? `${formatHeadingDate(clockNow)} · ${formatHeadingClock(clockNow)}` : heading.eyebrow}</p><h1>{headingTitle}</h1><p>{heading.subtitle}</p></div>
+            {activeNav !== "Visão geral" && <div className="module-page-header-context"><small>AMBIENTE ATUAL</small><strong>{activeDepartment}</strong><span><i/> {viewingOtherDepartment ? "Consulta executiva" : "Operação do setor"}</span></div>}
             <div className="heading-actions">
               {activeNav === "Comunicação" ? (
                 currentPermission.register && <button className="button secondary" onClick={() => setGroupModal(true)}><Plus size={15} /> Novo grupo</button>
@@ -1171,9 +1178,10 @@ export default function Home() {
 
           {viewingOtherDepartment && activeNav !== "Central Executiva" && <div className="executive-sector-readonly" role="status"><ShieldCheck size={19}/><span><strong>Modo de consulta executiva · {activeDepartment}</strong><small>Prefeito e Vice-Prefeito podem visualizar e abrir as informações deste setor, mas não podem criar, editar, mover, comentar, excluir ou executar ações por IA.</small></span></div>}
 
-          {!executiveReadOnlyScope && activeNav !== "Visão geral" && activeNav !== "Central Executiva" && <ContextualAiBar activeModule={activeNav} department={activeDepartment} tickets={privateTickets} events={currentEvents} />}
-
-          {activeNav === "Visão geral" && <Dashboard tickets={filteredTickets} allTickets={privateTickets} audit={privateAudit} executive={executiveAccess} department={activeDepartment} userName={currentUser.fullName} userRole={currentUser.role} events={currentEvents} unreadCount={unreadCount} onNavigate={setActiveNav} />}
+          {activeNav === "Visão geral" && <Dashboard tickets={filteredTickets} allTickets={privateTickets} audit={privateAudit} executive={executiveAccess} department={activeDepartment} userName={currentUser.fullName} userRole={currentUser.role} events={currentEvents} unreadCount={unreadCount} now={clockNow} onNavigate={setActiveNav} />}
+          {activeNav !== "Visão geral" && <div className={`module-layout-v3 ${activeNav === "Comunicação" ? "module-layout-chat" : ""}`}>
+            <div className="module-main-v3">
+          {!executiveReadOnlyScope && activeNav !== "Central Executiva" && <ContextualAiBar activeModule={activeNav} department={activeDepartment} tickets={privateTickets} events={currentEvents} />}
           {activeNav === "Central Executiva" && executiveAccess && <ExecutiveCommandCenter tickets={ticketData} departments={allDepartments} currentUser={{ fullName: currentUser.fullName, role: currentUser.role }} onOpenDepartment={openExecutiveDepartment} notify={notify} />}
           {activeNav === "Últimas Notícias Prefeitura" && <PrefeituraNewsSection />}
           {activeNav === "Área do Setor" && <><SectorWorkspaceSection key={activeDepartment} department={activeDepartment} userName={currentUser.fullName} userRole={currentUser.role} departments={availableDepartments} notify={notify} />{!viewingOtherDepartment&&<FormBuilderPanel department={activeDepartment} notify={notify} />}</>}
@@ -1198,6 +1206,9 @@ export default function Home() {
           {activeNav === "Auditoria" && <AuditSection audit={privateAudit} department={activeDepartment} notify={notify} />}
           {activeNav === "Central de Ajuda" && <HelpCenterSection notify={notify} />}
           {activeNav === "Configurações" && canManageEmployees && <SettingsSection key={activeDepartment} department={activeDepartment} managerName={currentUser.fullName} employees={sectorEmployees} settings={departmentPermissionSettings} soundEnabled={soundEnabled} motionEnabled={motionEnabled} contrastEnabled={contrastEnabled} textScale={textScale} simplifiedMode={simplifiedMode} isMayor={executiveAccess} crossSectorCommunicationEnabled={executiveCommunicationAccess} secretariatsContent={<TeamSection offices={scopedOffices} />} onExportContacts={exportContacts} onSettingsChange={updatePermissionSettings} onSoundChange={setSoundEnabled} onMotionChange={setMotionEnabled} onContrastChange={setContrastEnabled} onTextScaleChange={setTextScale} onSimplifiedModeChange={setSimplifiedMode} onCrossSectorCommunicationChange={(enabled) => { setExecutiveCommunicationAccess(enabled); notify(enabled ? "Acesso executivo à comunicação de outros setores habilitado." : "Comunicações de outros setores voltaram ao modo privado."); }} onTestSound={() => { playNotificationChime(); notify("Som de notificação reproduzido."); }} notify={notify} />}
+            </div>
+            <ModuleExperienceRail activeNav={activeNav} department={activeDepartment} tickets={filteredTickets} documents={privateDocuments} events={currentEvents} unreadCount={unreadCount} pendingCount={currentInvitations.length + pendingTickets.length} onNavigate={setActiveNav}/>
+          </div>}
         </div>
         </PermissionProvider>
       </main>
@@ -1247,6 +1258,80 @@ function getHeading(active: NavItem) {
   return headings[active];
 }
 
+function moduleIconForNav(active: NavItem): LucideIcon {
+  const icons: Partial<Record<NavItem, LucideIcon>> = {
+    "Central Executiva": Crown,
+    "Últimas Notícias Prefeitura": Newspaper,
+    "Área do Setor": Building2,
+    "Fluxos e Anotações": Pencil,
+    Chamados: ClipboardList,
+    Comunicação: MessagesSquare,
+    "Atendimento ao Cidadão": Inbox,
+    "Central Integrada": LayoutDashboard,
+    "Processos Digitais": FileText,
+    "Gestão Municipal": Landmark,
+    Indicadores: LayoutDashboard,
+    Notificações: BellRing,
+    Pendências: Clock3,
+    "Anexos e Arquivos": Files,
+    "Próximos Eventos": CalendarDays,
+    Funcionários: UsersRound,
+    Secretarias: Building2,
+    "Segurança e LGPD": ShieldCheck,
+    Auditoria: History,
+    "Central de Ajuda": HelpCircle,
+    Configurações: Settings,
+  };
+  return icons[active] ?? LayoutDashboard;
+}
+
+function ModuleExperienceRail({ activeNav, department, tickets, documents, events, unreadCount, pendingCount, onNavigate }: {
+  activeNav: NavItem;
+  department: string;
+  tickets: Ticket[];
+  documents: DocumentItem[];
+  events: SectorEvent[];
+  unreadCount: number;
+  pendingCount: number;
+  onNavigate: (item: NavItem) => void;
+}) {
+  const openTickets = tickets.filter((ticket) => !["Concluído", "Cancelado"].includes(ticket.status));
+  const nextEvent = [...events].sort((a, b) => a.startsAt.localeCompare(b.startsAt))[0];
+  const quickLinks: NavItem[] = activeNav === "Próximos Eventos"
+    ? ["Central Integrada", "Comunicação", "Anexos e Arquivos"]
+    : activeNav === "Processos Digitais"
+      ? ["Anexos e Arquivos", "Pendências", "Auditoria"]
+      : activeNav === "Comunicação"
+        ? ["Chamados", "Notificações", "Anexos e Arquivos"]
+        : activeNav === "Central Executiva"
+          ? ["Indicadores", "Central Integrada", "Próximos Eventos"]
+          : ["Chamados", "Central Integrada", "Próximos Eventos"];
+  const moduleTitle = getHeading(activeNav).title;
+  const RailIcon = moduleIconForNav(activeNav);
+
+  return <aside className="module-experience-rail" aria-label={`Resumo de ${moduleTitle}`}>
+    <article className="module-rail-identity">
+      <header><span><RailIcon size={16}/></span><small>VISÃO DO MÓDULO</small></header>
+      <h2>{moduleTitle}</h2>
+      <p>{department}</p>
+      <div><span><strong>{openTickets.length}</strong><small>demandas ativas</small></span><span><strong>{pendingCount}</strong><small>ações pendentes</small></span></div>
+    </article>
+
+    <article className="panel module-rail-today">
+      <header><div><span>Hoje</span><h3>Resumo operacional</h3></div><Clock3 size={15}/></header>
+      <button type="button" onClick={() => onNavigate("Chamados")}><span className="peach"><ClipboardList size={14}/></span><div><strong>{openTickets.length} chamados ativos</strong><small>{openTickets[0]?.title ?? "Nenhuma demanda em aberto"}</small></div><ChevronRight size={13}/></button>
+      <button type="button" onClick={() => onNavigate("Próximos Eventos")}><span className="lime"><CalendarDays size={14}/></span><div><strong>{nextEvent ? formatDate(nextEvent.startsAt) : "Agenda disponível"}</strong><small>{nextEvent?.title ?? "Nenhum compromisso próximo"}</small></div><ChevronRight size={13}/></button>
+      <button type="button" onClick={() => onNavigate("Anexos e Arquivos")}><span className="blue"><Files size={14}/></span><div><strong>{documents.length} arquivos</strong><small>Biblioteca do setor</small></div><ChevronRight size={13}/></button>
+    </article>
+
+    <article className="panel module-rail-shortcuts">
+      <header><div><span>Navegação</span><h3>Acessos relacionados</h3></div><ArrowUpRight size={14}/></header>
+      <div>{quickLinks.map((item) => { const Icon = moduleIconForNav(item); return <button type="button" key={item} onClick={() => onNavigate(item)}><span><Icon size={14}/></span><strong>{getHeading(item).title}</strong><ChevronRight size={13}/></button>; })}</div>
+      {unreadCount > 0 && <button type="button" className="module-rail-alert" onClick={() => onNavigate("Notificações")}><BellRing size={14}/><span><strong>{unreadCount} novos avisos</strong><small>Abrir central de notificações</small></span></button>}
+    </article>
+  </aside>;
+}
+
 const COMMUNICATION_EDITORIAL_DATES = [
   { date: "2026-08-19", day: "19", month: "AGO", title: "Dia Mundial da Fotografia", suggestion: "Valorizar registros da cidade, equipes e bastidores dos serviços municipais." },
   { date: "2026-08-22", day: "22", month: "AGO", title: "Dia do Folclore", suggestion: "Conteúdo sobre tradições, memória local, cultura popular e patrimônio imaterial." },
@@ -1286,7 +1371,7 @@ function CommunicationEditorialCalendar({ onNavigate }: { onNavigate: (item: Nav
   </section>;
 }
 
-function Dashboard({ tickets, allTickets, audit, executive, department, userName, userRole, events, unreadCount, onNavigate }: { tickets: Ticket[]; allTickets: Ticket[]; audit: AuditItem[]; executive: boolean; department: string; userName: string; userRole: string; events: SectorEvent[]; unreadCount: number; onNavigate: (item: NavItem) => void }) {
+function Dashboard({ tickets, allTickets, audit, executive, department, userName, userRole, events, unreadCount, now, onNavigate }: { tickets: Ticket[]; allTickets: Ticket[]; audit: AuditItem[]; executive: boolean; department: string; userName: string; userRole: string; events: SectorEvent[]; unreadCount: number; now: Date; onNavigate: (item: NavItem) => void }) {
   const [showDetails, setShowDetails] = useState(false);
   const stats = statuses.map((status, index) => ({
     label: statusMeta[status].short,
@@ -1295,64 +1380,83 @@ function Dashboard({ tickets, allTickets, audit, executive, department, userName
     status,
   }));
   const openTickets = tickets.filter((ticket) => ticket.status !== "Concluído" && ticket.status !== "Cancelado");
-  const overdueTickets = openTickets.filter((ticket) => ticket.dueDate && new Date(ticket.dueDate).getTime() < Date.now());
-  const dueSoon = openTickets.filter((ticket) => ticket.dueDate).slice(0, 3).length;
-  const nextEvent = events.find((event) => new Date(event.startsAt).getTime() >= Date.now());
+  const overdueTickets = openTickets.filter((ticket) => ticket.dueDate && new Date(ticket.dueDate).getTime() < now.getTime());
+  const nextEvent = events.find((event) => new Date(event.startsAt).getTime() >= now.getTime());
   const roleLabel = executive ? "Visão executiva" : normalizeText(userRole).includes("secret") || normalizeText(userRole).includes("gestor") ? "Gestão da equipe" : "Meu trabalho";
+  const completedTickets = tickets.filter((ticket) => ticket.status === "Concluído").length;
+  const completionRate = tickets.length ? Math.round((completedTickets / tickets.length) * 100) : 100;
+  const chartItems = statuses.slice(0, 6).map((status) => ({ label: statusMeta[status].short, value: tickets.filter((ticket) => ticket.status === status).length }));
+  const chartMax = Math.max(1, ...chartItems.map((item) => item.value));
+  const calendarDays = Array.from({ length: 31 }, (_, index) => index + 1);
+  const schedule = events.slice(0, 4);
 
   return (
     <>
-      <section className="my-day-section" aria-label="Resumo do meu dia">
-        <div className="my-day-heading">
-          <div><span className="my-day-kicker">{roleLabel}</span><h2>O que precisa da sua atenção</h2><p>Comece pelas prioridades. Os indicadores detalhados ficam disponíveis mais abaixo.</p></div>
-          <button type="button" className="text-button" onClick={() => onNavigate("Central Integrada")}>Abrir meu trabalho <ArrowRight size={14}/></button>
-        </div>
-        <div className="my-day-grid">
-          <button type="button" className={`my-day-card ${overdueTickets.length ? "urgent" : ""}`} onClick={() => onNavigate("Chamados")}>
-            <span><AlertTriangle size={18}/></span><div><strong>{overdueTickets.length}</strong><small>{overdueTickets.length === 1 ? "demanda atrasada" : "demandas atrasadas"}</small></div><ChevronRight size={16}/>
-          </button>
-          <button type="button" className="my-day-card" onClick={() => onNavigate("Central Integrada")}>
-            <span><ListTodo size={18}/></span><div><strong>{openTickets.length}</strong><small>itens em andamento</small></div><ChevronRight size={16}/>
-          </button>
-          <button type="button" className="my-day-card" onClick={() => onNavigate("Notificações")}>
-            <span><BellRing size={18}/></span><div><strong>{unreadCount}</strong><small>{unreadCount === 1 ? "aviso novo" : "avisos novos"}</small></div><ChevronRight size={16}/>
-          </button>
-          <button type="button" className="my-day-card" onClick={() => onNavigate("Próximos Eventos")}>
-            <span><CalendarDays size={18}/></span><div><strong>{nextEvent ? formatDate(nextEvent.startsAt) : "—"}</strong><small>{nextEvent ? nextEvent.title : "sem compromisso próximo"}</small></div><ChevronRight size={16}/>
-          </button>
-        </div>
-        <div className="task-choice-guide">
-          <strong>Não sabe onde registrar?</strong>
-          <button type="button" onClick={() => onNavigate("Chamados")}><ClipboardList size={14}/><span><b>Chamado</b><small>pedido a outro setor</small></span></button>
-          <button type="button" onClick={() => onNavigate("Central Integrada")}><ListTodo size={14}/><span><b>Tarefa</b><small>trabalho interno</small></span></button>
-          <button type="button" onClick={() => onNavigate("Processos Digitais")}><FileText size={14}/><span><b>Processo</b><small>procedimento formal</small></span></button>
-          <button type="button" onClick={() => onNavigate("Fluxos e Anotações")}><Pencil size={14}/><span><b>Anotação</b><small>registro sem fluxo</small></span></button>
-        </div>
-      </section>
-      <OperationalCommandCenter tickets={tickets} allTickets={allTickets} executive={executive} department={department} userName={userName} onNavigate={onNavigate} />
-      <DashboardAiBrief department={department} tickets={tickets} />
-      {department === "Secretaria de Comunicação e Eventos" && <CommunicationEditorialCalendar onNavigate={onNavigate} />}
+      <section className="reference-dashboard" aria-label="Painel principal">
+        <div className="reference-dashboard-main">
+          <section className="reference-priorities" aria-label="Prioridades do dia">
+            <header className="reference-section-heading"><div><span>{roleLabel}</span><h2>Prioridades do dia</h2></div><button type="button" onClick={() => onNavigate("Central Integrada")}>Ver tudo <ArrowRight size={13}/></button></header>
+            <div className="reference-kpi-grid">
+              <button type="button" className={overdueTickets.length ? "urgent" : ""} onClick={() => onNavigate("Chamados")}><span className="peach"><AlertTriangle size={16}/></span><div><strong>{overdueTickets.length}</strong><small>Demandas atrasadas</small><em>Exigem atenção</em></div></button>
+              <button type="button" onClick={() => onNavigate("Central Integrada")}><span className="lime"><ListTodo size={16}/></span><div><strong>{openTickets.length}</strong><small>Em andamento</small><em>Trabalho ativo</em></div></button>
+              <button type="button" onClick={() => onNavigate("Notificações")}><span className="blue"><BellRing size={16}/></span><div><strong>{unreadCount}</strong><small>Novos avisos</small><em>Atualizações recentes</em></div></button>
+              <button type="button" onClick={() => onNavigate("Próximos Eventos")}><span className="sand"><CalendarDays size={16}/></span><div><strong>{nextEvent ? formatDate(nextEvent.startsAt) : "—"}</strong><small>Próximo evento</small><em>{nextEvent?.title ?? "Agenda livre"}</em></div></button>
+            </div>
+          </section>
 
-      <section className="dashboard-grid clean-dashboard-grid">
-        <article className="panel tickets-panel">
-          <div className="panel-heading">
-            <div><h2>Demandas recentes</h2><p>O que entrou por último e pode exigir acompanhamento</p></div>
-            <button className="text-button" onClick={() => onNavigate("Chamados")}>Ver demandas <ArrowRight size={14} /></button>
+          <div className="reference-middle-grid">
+            <article className="panel reference-activity-card">
+              <header><div><span>Desempenho</span><h3>Fluxo de demandas</h3></div><button type="button" onClick={() => setShowDetails(true)}>Semanal <ChevronRight size={13}/></button></header>
+              <div className="reference-chart-summary"><strong>{completionRate}%</strong><span><ArrowUpRight size={12}/> índice de conclusão</span></div>
+              <div className="reference-bar-chart" aria-label="Demandas por etapa">
+                {chartItems.map((item, index) => <div key={item.label}><span><i className={index === 3 ? "highlight" : ""} style={{ height: `${32 + (item.value / chartMax) * 68}%` }}/></span><small>{item.label.slice(0, 3)}</small></div>)}
+              </div>
+            </article>
+
+            <article className="panel reference-schedule-card">
+              <header><div><span>Hoje</span><h3>Agenda operacional</h3></div><button type="button" onClick={() => onNavigate("Próximos Eventos")}><ArrowRight size={14}/></button></header>
+              <div className="reference-schedule-list">
+                {(schedule.length ? schedule : [
+                  { id: "agenda-1", title: "Alinhamento da equipe", startsAt: "2026-08-20T09:00:00.000Z" },
+                  { id: "agenda-2", title: "Revisão de pendências", startsAt: "2026-08-20T11:30:00.000Z" },
+                  { id: "agenda-3", title: "Fechamento operacional", startsAt: "2026-08-20T16:00:00.000Z" },
+                ]).slice(0, 4).map((event, index) => <button type="button" key={event.id} onClick={() => onNavigate("Próximos Eventos")}><span className={["peach","blue","lime","sand"][index % 4]}><CalendarDays size={14}/></span><div><strong>{event.title}</strong><small>{formatDate(event.startsAt)}</small></div><ChevronRight size={13}/></button>)}
+              </div>
+            </article>
           </div>
-          <TicketTable tickets={tickets.slice(0, 6)} onOpen={() => onNavigate("Chamados")} />
-        </article>
-        <aside className="side-stack clean-side-stack">
-          <article className="panel deadline-panel">
-            <div className="deadline-icon"><AlertTriangle size={16} /></div>
-            <div><strong>{dueSoon || 2} demandas pedem atenção</strong><p>Veja somente o que está próximo do prazo ou precisa de decisão.</p></div>
-            <button onClick={() => onNavigate("Chamados")}>Revisar agora <ArrowRight size={12} /></button>
+
+          <article className="panel reference-ticket-panel">
+            <div className="panel-heading"><div><h2>Demandas recentes</h2><p>Solicitações que podem exigir acompanhamento</p></div><button className="text-button" onClick={() => onNavigate("Chamados")}>Ver todas <ArrowRight size={14}/></button></div>
+            <TicketTable tickets={tickets.slice(0, 5)} onOpen={() => onNavigate("Chamados")} />
           </article>
-          <button className="dashboard-details-toggle" type="button" onClick={() => setShowDetails((current) => !current)}>
-            <span><LayoutDashboard size={17} /><span><strong>{showDetails ? "Ocultar detalhes" : "Ver mais indicadores"}</strong><small>Abra apenas quando precisar aprofundar</small></span></span>
-            <ChevronRight className={showDetails ? "expanded" : ""} size={17} />
-          </button>
+        </div>
+
+        <aside className="reference-dashboard-rail">
+          <article className="reference-municipal-card">
+            <header><span><Landmark size={17}/></span><strong>Prefeitura Conecta</strong></header>
+            <div><small>{userName.split(" ")[0]} · {roleLabel}</small><h3>{department}</h3><p>{openTickets.length} demandas ativas em uma base de {executive ? allTickets.length : tickets.length} registros, com {completionRate}% de conclusão.</p></div>
+            <button type="button" onClick={() => onNavigate(executive ? "Central Executiva" : "Indicadores")}>Ver indicadores <ArrowUpRight size={14}/></button>
+          </article>
+
+          <article className="panel reference-calendar-card">
+            <header><button type="button" aria-label="Mês anterior"><ChevronRight size={13}/></button><strong>Agosto, 2026</strong><button type="button" aria-label="Próximo mês"><ChevronRight size={13}/></button></header>
+            <div className="reference-calendar-week"><span>D</span><span>S</span><span>T</span><span>Q</span><span>Q</span><span>S</span><span>S</span></div>
+            <div className="reference-calendar-days">{Array.from({ length: 6 }, (_, index) => <span key={`empty-${index}`}/>) }{calendarDays.map((day) => <button type="button" className={day === 20 ? "active" : ""} key={day} onClick={() => onNavigate("Próximos Eventos")}>{day}</button>)}</div>
+          </article>
+
+          <article className="panel reference-assignments-card">
+            <header><div><span>Acompanhamento</span><h3>Demandas prioritárias</h3></div><button type="button" onClick={() => onNavigate("Chamados")}><Plus size={14}/></button></header>
+            <div>{openTickets.slice(0, 3).map((ticket, index) => <button type="button" key={ticket.id} onClick={() => onNavigate("Chamados")}><span className={["peach","lime","blue"][index % 3]}><ClipboardList size={14}/></span><div><strong>{ticket.title}</strong><small>{ticket.protocol}</small></div><em>{ticket.status}</em></button>)}</div>
+          </article>
+          <DashboardAiBrief department={department} tickets={tickets}/>
         </aside>
       </section>
+
+      <div className="reference-dashboard-footer">
+        <div className="task-choice-guide"><strong>Criar registro:</strong><button type="button" onClick={() => onNavigate("Chamados")}><ClipboardList size={14}/><span><b>Chamado</b><small>pedido a outro setor</small></span></button><button type="button" onClick={() => onNavigate("Central Integrada")}><ListTodo size={14}/><span><b>Tarefa</b><small>trabalho interno</small></span></button><button type="button" onClick={() => onNavigate("Processos Digitais")}><FileText size={14}/><span><b>Processo</b><small>procedimento formal</small></span></button><button type="button" onClick={() => onNavigate("Fluxos e Anotações")}><Pencil size={14}/><span><b>Anotação</b><small>registro rápido</small></span></button></div>
+        <button className="dashboard-details-toggle" type="button" onClick={() => setShowDetails((current) => !current)}><span><LayoutDashboard size={17}/><span><strong>{showDetails ? "Ocultar detalhes" : "Ver indicadores detalhados"}</strong><small>Análise completa por status</small></span></span><ChevronRight className={showDetails ? "expanded" : ""} size={17}/></button>
+      </div>
+      {department === "Secretaria de Comunicação e Eventos" && <CommunicationEditorialCalendar onNavigate={onNavigate}/>} 
 
       {showDetails && <section className="dashboard-progressive-details" aria-label="Detalhes operacionais">
         <section className="stats-grid" aria-label="Resumo detalhado dos chamados">
@@ -1742,17 +1846,36 @@ function DocumentsSection({ documents, department, currentUserId, onUpload }: { 
 
 function EventsSection({ events, department, onNew, onEdit, onDelete }: { events: SectorEvent[]; department: string; onNew: () => void; onEdit: (event: SectorEvent) => void; onDelete: (event: SectorEvent) => void }) {
   const access = useCurrentPermission();
+  const orderedEvents = [...events].sort((a, b) => a.startsAt.localeCompare(b.startsAt));
+  const calendarDays = Array.from({ length: 14 }, (_, index) => index + 14);
   return (
-    <section className="events-layout">
-      <div className="access-note events-access-note"><span><CalendarDays size={20} /></span><div><strong>Agenda de {department}</strong><p>Exibe apenas eventos destinados a este setor. Edição e exclusão respeitam as permissões definidas pelo responsável.</p></div><strong className="directory-total">{events.length} {events.length === 1 ? "evento" : "eventos"}</strong></div>
-      {events.length ? <div className="events-grid">{events.map((event) => {
+    <section className="events-layout events-layout-v3">
+      <article className="panel events-command-v3">
+        <div><span className="events-command-icon"><CalendarDays size={19}/></span><div><p className="eyebrow">AGENDA COMPARTILHADA</p><h2>Agosto de 2026</h2><p>Compromissos, reuniões e prazos de {department} organizados em uma única linha de trabalho.</p></div></div>
+        <div className="events-command-stats"><span><strong>{events.length}</strong><small>eventos</small></span><span><strong>{events.filter((event) => Boolean(event.location)).length}</strong><small>com local</small></span>{access.register && <button type="button" className="button primary" onClick={onNew}><CalendarPlus size={14}/> Novo evento</button>}</div>
+      </article>
+
+      <div className="events-workspace-v3">
+        <aside className="panel events-calendar-v3">
+          <header><div><span>Calendário</span><h3>Próximos dias</h3></div><button type="button" aria-label="Avançar período"><ChevronRight size={14}/></button></header>
+          <div className="events-calendar-week"><span>S</span><span>T</span><span>Q</span><span>Q</span><span>S</span><span>S</span><span>D</span></div>
+          <div className="events-calendar-days">{calendarDays.map((day) => <button type="button" className={day === 20 ? "active" : orderedEvents.some((event) => new Date(event.startsAt).getDate() === day) ? "has-event" : ""} key={day}>{day}</button>)}</div>
+          <div className="events-calendar-legend"><span><i/> Dia atual</span><span><i/> Com compromisso</span></div>
+          <div className="events-calendar-summary"><span><CalendarDays size={15}/></span><div><strong>{orderedEvents[0]?.title ?? "Agenda livre"}</strong><small>{orderedEvents[0] ? formatEventRange(orderedEvents[0].startsAt, orderedEvents[0].endsAt) : "Nenhum compromisso programado"}</small></div></div>
+        </aside>
+
+        <div className="events-feed-v3">
+          <header className="events-feed-heading"><div><p className="eyebrow">PRÓXIMOS COMPROMISSOS</p><h2>Linha do tempo da agenda</h2></div><span>{events.length} {events.length === 1 ? "registro" : "registros"}</span></header>
+      {events.length ? <div className="events-grid">{orderedEvents.map((event, index) => {
         const calendar = eventDateParts(event.startsAt);
         const canManageEvent = access.edit && sameDepartment(event.department, department);
-        return <article className="panel event-card" key={event.id}>
+        return <article className={`panel event-card ${index === 0 ? "featured" : ""}`} key={event.id}>
           <div className="event-date"><small>{calendar.month}</small><strong>{calendar.day}</strong><span>{calendar.weekday}</span></div>
-          <div className="event-copy"><div className="event-card-top"><div className="event-meta"><span><Clock3 size={13} /> {formatEventRange(event.startsAt, event.endsAt)}</span>{event.location && <span><MapPin size={13} /> {event.location}</span>}</div>{canManageEvent && <div className="event-card-actions"><button type="button" onClick={() => onEdit(event)} aria-label={`Editar ${event.title}`}><Pencil size={13} /> Editar</button><button type="button" className="danger" onClick={() => onDelete(event)} aria-label={`Excluir ${event.title}`}><Trash2 size={13} /> Excluir</button></div>}</div><h2>{event.title}</h2><p>{event.description || "Sem observações adicionais."}</p><div className="event-sector-tags" aria-label={`Visível em ${department}`}><span><Building2 size={11} /> {department}</span></div><footer><span className="mini-avatar">{event.creatorInitials}</span><span>Criado por <strong>{event.creatorName}</strong></span><i>Agenda do setor</i></footer></div>
+          <div className="event-copy"><div className="event-card-top"><div className="event-meta"><span><Clock3 size={13} /> {formatEventRange(event.startsAt, event.endsAt)}</span>{event.location && <span><MapPin size={13} /> {event.location}</span>}</div>{canManageEvent && <div className="event-card-actions"><button type="button" onClick={() => onEdit(event)} aria-label={`Editar ${event.title}`}><Pencil size={13} /></button><button type="button" className="danger" onClick={() => onDelete(event)} aria-label={`Excluir ${event.title}`}><Trash2 size={13} /></button></div>}</div><h2>{event.title}</h2><p>{event.description || "Sem observações adicionais."}</p><div className="event-sector-tags" aria-label={`Visível em ${department}`}><span><Building2 size={11} /> {department}</span><span><ShieldCheck size={11}/> Agenda do setor</span></div><footer><span className="mini-avatar">{event.creatorInitials}</span><span>Criado por <strong>{event.creatorName}</strong></span><button type="button" onClick={() => canManageEvent ? onEdit(event) : undefined}>Ver detalhes <ChevronRight size={12}/></button></footer></div>
         </article>;
       })}</div> : <div className="panel module-empty events-empty"><CalendarDays size={34} /><strong>Nenhum evento agendado</strong><p>{access.register ? "Cadastre reuniões, prazos e compromissos importantes para o seu setor." : "Os próximos compromissos autorizados aparecerão aqui."}</p>{access.register && <button type="button" className="button primary" onClick={onNew}><CalendarPlus size={15} /> Criar primeiro evento</button>}</div>}
+        </div>
+      </div>
     </section>
   );
 }

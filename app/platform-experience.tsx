@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { CalendarDays, CalendarPlus, Check, ClipboardList, Download, FileText, Files, Home, Landmark, Menu, MessageSquare, Plus, Smartphone, Sparkles, Workflow, X } from "lucide-react";
+import { CalendarDays, CalendarPlus, Check, ClipboardList, Download, FileText, Files, Home, Landmark, Menu, MessageSquare, Plus, Smartphone, Sparkles, Workflow, X } from "./site-icons";
 import { flushOfflineQueue } from "./offline-sync";
 import { flushPendingOfflineLogout } from "./offline-auth";
 import { openMunicipalAi } from "./municipal-ai-copilot";
@@ -103,7 +103,7 @@ export function QuickActionDock({ onNavigate, onNewTicket, onNewEvent, onUpload 
       <button type="button" onClick={()=>{onUpload();setOpen(false)}}><Files size={15}/><span><strong>Adicionar arquivo</strong><small>Guardar documento no setor</small></span></button>
       <button type="button" onClick={()=>{onNewEvent();setOpen(false)}}><CalendarPlus size={15}/><span><strong>Novo evento</strong><small>Adicionar compromisso à agenda</small></span></button>
     </div>
-    <button type="button" className="quick-action-trigger" aria-label={open?"Fechar menu Criar":"Abrir menu Criar"} aria-expanded={open} aria-controls="quick-action-menu" onClick={()=>setOpen(!open)}><Plus size={22}/><span className="quick-action-trigger-label">Criar</span></button>
+    <button type="button" className="quick-action-trigger" aria-label={open?"Fechar menu Criar":"Abrir menu Criar"} title={open?"Fechar menu Criar":"Criar"} aria-expanded={open} aria-controls="quick-action-menu" onClick={()=>setOpen(!open)}><Plus size={24}/></button>
   </div>;
 }
 

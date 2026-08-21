@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { FormEvent, useState } from "react";
 import { queueCitizenFeedback } from "../offline-sync";
-import { Bot, CheckCircle2, HeartHandshake, Landmark, MessageSquareText, Send, ShieldCheck, Sparkles, Star } from "lucide-react";
+import { Bot, CheckCircle2, HeartHandshake, Landmark, MessageSquareText, Send, ShieldCheck, Sparkles, Star } from "../site-icons";
 
 type FeedbackKind = "Reclamação" | "Elogio" | "Sugestão";
 type FeedbackResponse = { ok?: boolean; protocol?: string; accessCode?: string; error?: string; code?: string };

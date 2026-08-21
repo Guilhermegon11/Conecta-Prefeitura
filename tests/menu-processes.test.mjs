@@ -29,9 +29,11 @@ test("keeps Secretarias inside Configurações instead of the main navigation", 
 
 test("presents a reduced process workspace without removing advanced actions", async () => {
   const source = await readSource("municipal-modules.tsx");
-  assert.match(source, /className="process-summary-strip panel"/);
+  assert.match(source, /className="process-navigation-v3 panel"/);
   assert.match(source, /className="process-filter-menu"/);
   assert.match(source, /className="process-detail-grid process-detail-grid-simple"/);
+  assert.match(source, /className="process-stepper-v3"/);
+  assert.match(source, /className="process-context-v3"/);
   assert.match(source, /className="process-more-actions"/);
   assert.match(source, /className="process-history-simple"/);
 });
@@ -57,18 +59,143 @@ test("adds accessible dashboard progress and motion-aware visual feedback", asyn
   assert.match(styles, /@media \(prefers-reduced-motion: reduce\)/);
 });
 
-test("uses Inter with the original interface type scale", async () => {
+test("uses self-hosted Poppins across the interface", async () => {
   const [layout, styles] = await Promise.all([
     readSource("layout.tsx"),
     readSource("globals.css"),
   ]);
-  assert.match(styles, /font-family: "Inter Variable"/);
-  assert.match(styles, /\/fonts\/inter\/inter-latin-wght-normal\.woff2/);
-  assert.match(styles, /--font-interface: "Inter Variable"/);
+  assert.match(styles, /\/fonts\/poppins\/poppins-latin-100-normal\.woff2/);
+  assert.match(styles, /\/fonts\/poppins\/poppins-latin-400-normal\.woff2/);
+  assert.match(styles, /\/fonts\/poppins\/poppins-latin-500-normal\.woff2/);
+  assert.match(styles, /\/fonts\/poppins\/poppins-latin-600-normal\.woff2/);
+  assert.match(styles, /\/fonts\/poppins\/poppins-latin-700-normal\.woff2/);
+  assert.match(styles, /\/fonts\/poppins\/poppins-latin-900-normal\.woff2/);
+  assert.match(styles, /\/fonts\/poppins\/poppins-latin-400-italic\.woff2/);
+  assert.match(styles, /\/fonts\/poppins\/poppins-latin-900-italic\.woff2/);
+  assert.doesNotMatch(styles, /@fontsource\/poppins/);
+  assert.match(styles, /--font-interface: "Poppins", "Geist"/);
+  assert.match(styles, /font-synthesis: none/);
+  assert.match(styles, /font-feature-settings: "rlig" 1, "calt" 1/);
+  assert.doesNotMatch(styles, /font-family: "R-Flex"/);
+  assert.doesNotMatch(styles, /font-family: "Polly Rounded"/);
+  assert.doesNotMatch(styles, /font-family: "Lextrall"/);
+  assert.doesNotMatch(styles, /font-family: "Cal Sans"/);
+  assert.doesNotMatch(styles, /font-family: "Inter Variable"/);
   assert.doesNotMatch(styles, /font-family: "Gunterz"/);
   assert.match(styles, /tamanhos originais e movimento funcional/);
   assert.doesNotMatch(styles, /\.my-day-heading h2 \{ font-size: 1\.45rem/);
   assert.doesNotMatch(styles, /\.content-wrap \.integrated-shell \{ font-size: 15px/);
   assert.doesNotMatch(styles, /\.exec-sector-card header h3 \{ font-size: 15px/);
   assert.doesNotMatch(layout, /next\/font\/google/);
+});
+
+test("gives Poppins comfortable tracking across the interface", async () => {
+  const styles = await readSource("globals.css");
+  assert.match(styles, /--letter-spacing-interface: \.012em/);
+  assert.match(styles, /body \{[^}]*letter-spacing: var\(--letter-spacing-interface\)[^}]*font-kerning: normal/);
+  assert.match(styles, /\.organized-nav-item \{[^}]*letter-spacing: \.018em/);
+});
+
+test("uses the supplied digital-business icon system throughout the app", async () => {
+  const [page, icons, styles] = await Promise.all([
+    readSource("page.tsx"),
+    readSource("site-icons.tsx"),
+    readSource("globals.css"),
+  ]);
+  assert.match(page, /from "\.\/site-icons"/);
+  assert.doesNotMatch(page, /from "lucide-react"/);
+  assert.match(icons, /data-business-icon=\{asset\}/);
+  assert.match(icons, /\/icons\/business\/\$\{asset\}\.svg/);
+  assert.match(icons, /createBusinessIcon\("analytics-board", "LayoutDashboard"\)/);
+  assert.match(icons, /createBusinessIcon\("task-management", "ListTodo"\)/);
+  assert.match(icons, /createBusinessIcon\("ai-assistant", "Bot"\)/);
+  assert.match(styles, /svg\[data-business-icon\]/);
+});
+
+test("applies the neutral dashboard design system from the reference", async () => {
+  const styles = await readSource("globals.css");
+  assert.match(styles, /Prefeitura Conecta v5\.0 — UI inspirada no painel de referência/);
+  assert.match(styles, /body:has\(\.app-shell\)[^{]*\{[^}]*padding: 16px[^}]*#eef0f3/);
+  assert.match(styles, /grid-template-columns: 250px minmax\(0, 1fr\)/);
+  assert.match(styles, /border-radius: 22px/);
+  assert.match(styles, /--ui-navy: #202130/);
+  assert.match(styles, /--ui-lime: #c9f25b/);
+  assert.match(styles, /--ai-violet: #728e29/);
+  assert.doesNotMatch(styles, /#b296ee|#c3a8f2|--ui-lilac-soft/);
+  assert.match(styles, /\.app-shell \.organized-nav-item\.active[^{]*\{[^}]*background: var\(--ui-lime\)/);
+  assert.match(styles, /\.app-shell \.municipal-ai-command-center \{ background: radial-gradient\([^}]*#202130/);
+  assert.match(styles, /@media \(max-width: 820px\)[\s\S]*body:has\(\.app-shell\) \{ padding: 0/);
+});
+
+test("recreates the reference dashboard composition across the whole home view", async () => {
+  const [page, styles] = await Promise.all([
+    readSource("page.tsx"),
+    readSource("globals.css"),
+  ]);
+  assert.match(page, /app-shell reference-ui-2026/);
+  assert.match(page, /className="reference-dashboard"/);
+  assert.match(page, /className="reference-kpi-grid"/);
+  assert.match(page, /className="reference-middle-grid"/);
+  assert.match(page, /className="panel reference-calendar-card"/);
+  assert.match(page, /className="reference-municipal-card"/);
+  assert.match(page, /className="sidebar-reference-card"/);
+  assert.match(styles, /Prefeitura Conecta v5\.1 — dashboard editorial, compacto e sem roxo/);
+  assert.match(styles, /\.reference-dashboard \{ display: grid; grid-template-columns: minmax\(0, 1fr\) 310px/);
+  assert.match(styles, /\.reference-municipal-card \{[^}]*background: #20212f/);
+  assert.match(styles, /\.reference-calendar-days > button\.active \{[^}]*background: #c9f25b/);
+});
+
+test("keeps the universal create action perfectly circular", async () => {
+  const [experience, styles] = await Promise.all([
+    readSource("platform-experience.tsx"),
+    readSource("globals.css"),
+  ]);
+  assert.match(experience, /className="quick-action-trigger"/);
+  assert.match(experience, /title=\{open\?"Fechar menu Criar":"Criar"\}/);
+  assert.doesNotMatch(experience, /quick-action-trigger-label/);
+  assert.match(styles, /\.quick-action-trigger\{display:flex;width:56px!important;height:56px;min-width:56px;aspect-ratio:1/);
+  assert.match(styles, /align-items:center;justify-content:center/);
+  assert.match(styles, /\.quick-action-dock\.open \.quick-action-trigger svg\{transform:rotate\(45deg\)\}/);
+  assert.doesNotMatch(styles, /\.quick-action-trigger\{width:auto!important;min-width:54px/);
+});
+
+test("extends the reference UI to every workspace, public flow, and login", async () => {
+  const [login, styles] = await Promise.all([
+    readSource("test-login.tsx"),
+    readSource("globals.css"),
+  ]);
+  assert.match(login, /function LoginShowcase\(\)/);
+  assert.match(login, /className="login-frame"/);
+  assert.match(login, /className="login-showcase"/);
+  assert.match(login, /Uma gestão mais clara, de ponta a ponta\./);
+  assert.match(styles, /Prefeitura Conecta v5\.2 — sistema visual aplicado à plataforma inteira/);
+  assert.match(styles, /\.reference-ui-2026 :where\([\s\S]*?\.sector-hero/);
+  assert.match(styles, /\.reference-ui-2026 :where\(\.sector-tabs,[^}]*\) button\.active \{[^}]*background: #c9f25b/);
+  assert.match(styles, /\.modal,\.integrated-modal,\.onboarding-card/);
+  assert.match(styles, /\.login-frame \{[^}]*grid-template-columns: minmax\(360px,\.92fr\) minmax\(420px,1\.08fr\)/);
+  assert.match(styles, /\.login-showcase \{[^}]*background:/);
+  assert.match(styles, /\.evaluation-shell,\.tracking-shell/);
+  assert.match(styles, /@media \(max-width: 700px\)[\s\S]*\.login-frame \{ display: block/);
+});
+
+test("rebuilds every internal module with the dashboard composition instead of a color-only skin", async () => {
+  const [page, events, integrated, executive, leadership, styles] = await Promise.all([
+    readSource("page.tsx"),
+    readSource("page.tsx"),
+    readSource("integrated-platform.tsx"),
+    readSource("executive-command-center.tsx"),
+    readSource("executive-leadership.tsx"),
+    readSource("globals.css"),
+  ]);
+  assert.match(page, /module-page-header-v3/);
+  assert.match(page, /module-layout-v3/);
+  assert.match(page, /function ModuleExperienceRail/);
+  assert.match(events, /events-workspace-v3/);
+  assert.match(events, /events-calendar-v3/);
+  assert.match(integrated, /integrated-task-layout-v3/);
+  assert.match(integrated, /integrated-task-command-v3/);
+  assert.match(executive, /exec-command-layout-v3/);
+  assert.match(leadership, /executive-leadership-body-v3/);
+  assert.match(styles, /Prefeitura Conecta v5\.3 — reformulação estrutural de todos os módulos/);
+  assert.match(styles, /\.module-layout-v3 \{[^}]*grid-template-columns: minmax\(0,1fr\) 246px/);
 });

@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Crosshair, LoaderCircle, MapPin, ShieldCheck } from "lucide-react";
+import { Crosshair, LoaderCircle, MapPin, ShieldCheck } from "./site-icons";
 
 export const MUNICIPAL_NEIGHBORHOODS = [
   "Centro", "Caiçara I", "Caiçara II", "Cidade Nova", "Conjunto Palmas", "Distrito Industrial", "Eldorado", "Estância da Palma",

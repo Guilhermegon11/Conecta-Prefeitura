@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { CalendarDays, ChevronRight, CircleAlert, ExternalLink, Newspaper, RefreshCw, Rss, Search, ShieldCheck, Sparkles } from "lucide-react";
+import { CalendarDays, ChevronRight, CircleAlert, ExternalLink, Newspaper, RefreshCw, Rss, Search, ShieldCheck, Sparkles } from "./site-icons";
 import { openMunicipalAi } from "./municipal-ai-copilot";
 
 type NewsItem = {

@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
-import { Crosshair, LoaderCircle, MapPin, Minus, Plus } from "lucide-react";
+import { Crosshair, LoaderCircle, MapPin, Minus, Plus } from "./site-icons";
 
 export type RealMapPoint = {
   id: string;

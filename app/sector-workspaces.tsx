@@ -40,8 +40,8 @@ import {
   Save,
   Trash2,
   X,
-} from "lucide-react";
-import type { LucideIcon } from "lucide-react";
+} from "./site-icons";
+import type { LucideIcon } from "./site-icons";
 import { useCurrentPermission } from "./permission-context";
 import { persistenceKey, usePersistentState } from "./persistence";
 import { ExecutiveLeadershipPanel } from "./executive-leadership";

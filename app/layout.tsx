@@ -4,12 +4,12 @@ import { PwaRegistrar } from "./platform-experience";
 
 export const metadata: Metadata = {
   title: "Prefeitura Conecta",
-  description: "Gestão municipal inteligente, integrada e próxima do cidadão.",
+  description: "Gestão municipal clara, integrada e inteligente.",
   manifest: "/manifest.webmanifest",
   applicationName: "Prefeitura Conecta",
   openGraph: {
     title: "Prefeitura Conecta",
-    description: "Gestão municipal inteligente, integrada e próxima do cidadão.",
+    description: "Gestão municipal clara, integrada e inteligente.",
     type: "website",
     images: [
       {
@@ -23,7 +23,7 @@ export const metadata: Metadata = {
   twitter: {
     card: "summary_large_image",
     title: "Prefeitura Conecta",
-    description: "Gestão municipal inteligente, integrada e próxima do cidadão.",
+    description: "Gestão municipal clara, integrada e inteligente.",
     images: ["/og.png"],
   },
   icons: {

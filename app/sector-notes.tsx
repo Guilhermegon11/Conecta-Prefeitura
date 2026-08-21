@@ -18,7 +18,7 @@ import {
   UserRound,
   Workflow,
   X,
-} from "lucide-react";
+} from "./site-icons";
 import { useCurrentPermission } from "./permission-context";
 import { persistenceKey, usePersistentState } from "./persistence";
 

@@ -26,7 +26,7 @@ import {
   UsersRound,
   Volume2,
   VolumeX,
-} from "lucide-react";
+} from "./site-icons";
 import { PwaInstallCard } from "./platform-experience";
 import {
   clonePermissionSettings,

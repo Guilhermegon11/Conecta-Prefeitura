@@ -18,7 +18,7 @@ import {
   Search,
   ShieldCheck,
   Target,
-} from "lucide-react";
+} from "./site-icons";
 import {
   INITIAL_GOALS,
   INITIAL_PROJECTS,
@@ -386,43 +386,48 @@ export function ExecutiveCommandCenter({
       </div>
     </article>
 
-    <div className="exec-central-metrics" aria-label="Resumo de pendências">
-      <article><span className="blue"><ListTodo size={19} /></span><div><small>Pendências abertas</small><strong>{allItems.length}</strong><p>em {activeSectorCount} {activeSectorCount === 1 ? "setor" : "setores"}</p></div></article>
-      <article><span className="red"><AlertTriangle size={19} /></span><div><small>Vencidas</small><strong>{overdueItems.length}</strong><p>exigem reprogramação</p></div></article>
-      <article><span className="amber"><Gauge size={19} /></span><div><small>Urgentes</small><strong>{urgentItems.length}</strong><p>prioridade máxima</p></div></article>
-      <article><span className="violet"><Clock3 size={19} /></span><div><small>Aguardando decisão</small><strong>{approvalItems.length}</strong><p>aprovações e retornos</p></div></article>
-      <article><span className="green"><Target size={19} /></span><div><small>Metas em atenção</small><strong>{goalsInAttention.length}</strong><p>{projectsInAttention.length} projeto(s) em risco</p></div></article>
-      <article><span className="slate"><Building2 size={19} /></span><div><small>Sem responsável</small><strong>{unassignedItems.length}</strong><p>aguardam atribuição</p></div></article>
-    </div>
+    <div className="exec-command-layout-v3">
+      <div className="exec-command-main-v3">
+        <div className="exec-central-priority-grid">
+          <PriorityPanel
+            icon={<AlertTriangle size={18} />}
+            eyebrow="PRIORIDADES DO DIA"
+            title="O que precisa de atenção agora"
+            description="Inclui itens vencidos e com prazo hoje."
+            items={dailyItems}
+            now={now}
+            empty="Nenhuma pendência vencida ou com prazo para hoje."
+            onOpen={openItem}
+          />
+          <PriorityPanel
+            icon={<CalendarDays size={18} />}
+            eyebrow="PRIORIDADES DA SEMANA"
+            title="Próximos sete dias"
+            description="Prazos futuros que precisam entrar na agenda."
+            items={weeklyItems}
+            now={now}
+            empty="Nenhuma entrega com prazo nos próximos sete dias."
+            onOpen={openItem}
+          />
+        </div>
 
-    <div className="exec-central-priority-grid">
-      <PriorityPanel
-        icon={<AlertTriangle size={18} />}
-        eyebrow="PRIORIDADES DO DIA"
-        title="O que precisa de atenção agora"
-        description="Inclui itens vencidos e com prazo hoje."
-        items={dailyItems}
-        now={now}
-        empty="Nenhuma pendência vencida ou com prazo para hoje."
-        onOpen={openItem}
-      />
-      <PriorityPanel
-        icon={<CalendarDays size={18} />}
-        eyebrow="PRIORIDADES DA SEMANA"
-        title="Próximos sete dias"
-        description="Prazos futuros que precisam entrar na agenda."
-        items={weeklyItems}
-        now={now}
-        empty="Nenhuma entrega com prazo nos próximos sete dias."
-        onOpen={openItem}
-      />
-    </div>
+        <article className="panel exec-central-brief">
+          <span><Gauge size={20} /></span>
+          <div><small>LEITURA EXECUTIVA</small><strong>{topSector ? `${topSector.department} concentra a maior atenção no recorte atual` : "Nenhum setor possui pendências neste recorte"}</strong><p>{topSector ? `${topSector.openItems.length} item(ns) aberto(s), ${topSector.criticalCount} crítico(s), ${topSector.approvalCount} aguardando decisão e ${topSector.attentionGoals + topSector.attentionProjects} alerta(s) estratégico(s).` : "Altere os filtros ou exiba os setores sem pendências para consultar toda a estrutura municipal."}</p></div>
+          {topSector && <button type="button" onClick={() => onOpenDepartment(topSector.department, topSector.ticketCount ? "Chamados" : "Central Integrada")}>Abrir setor <ChevronRight size={14} /></button>}
+        </article>
+      </div>
 
-    <article className="panel exec-central-brief">
-      <span><Gauge size={20} /></span>
-      <div><small>LEITURA EXECUTIVA</small><strong>{topSector ? `${topSector.department} concentra a maior atenção no recorte atual` : "Nenhum setor possui pendências neste recorte"}</strong><p>{topSector ? `${topSector.openItems.length} item(ns) aberto(s), ${topSector.criticalCount} crítico(s), ${topSector.approvalCount} aguardando decisão e ${topSector.attentionGoals + topSector.attentionProjects} alerta(s) estratégico(s).` : "Altere os filtros ou exiba os setores sem pendências para consultar toda a estrutura municipal."}</p></div>
-      {topSector && <button type="button" onClick={() => onOpenDepartment(topSector.department, topSector.ticketCount ? "Chamados" : "Central Integrada")}>Abrir setor <ChevronRight size={14} /></button>}
-    </article>
+      <aside className="exec-central-metrics" aria-label="Resumo de pendências">
+        <header><span>Visão executiva</span><h3>Resumo municipal</h3></header>
+        <article><span className="blue"><ListTodo size={19} /></span><div><small>Pendências abertas</small><strong>{allItems.length}</strong><p>em {activeSectorCount} {activeSectorCount === 1 ? "setor" : "setores"}</p></div></article>
+        <article><span className="red"><AlertTriangle size={19} /></span><div><small>Vencidas</small><strong>{overdueItems.length}</strong><p>exigem reprogramação</p></div></article>
+        <article><span className="amber"><Gauge size={19} /></span><div><small>Urgentes</small><strong>{urgentItems.length}</strong><p>prioridade máxima</p></div></article>
+        <article><span className="violet"><Clock3 size={19} /></span><div><small>Aguardando decisão</small><strong>{approvalItems.length}</strong><p>aprovações e retornos</p></div></article>
+        <article><span className="green"><Target size={19} /></span><div><small>Metas em atenção</small><strong>{goalsInAttention.length}</strong><p>{projectsInAttention.length} projeto(s) em risco</p></div></article>
+        <article><span className="slate"><Building2 size={19} /></span><div><small>Sem responsável</small><strong>{unassignedItems.length}</strong><p>aguardam atribuição</p></div></article>
+      </aside>
+    </div>
 
     <section className="exec-central-sector-section">
       <header className="exec-central-section-heading">

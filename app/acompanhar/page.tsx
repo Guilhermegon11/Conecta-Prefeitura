@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { FormEvent, useState } from "react";
 import { cacheCitizenTracking, loadCachedCitizenTracking, queueJsonRequest, resolveOfflineCitizenProtocol } from "../offline-sync";
-import { ArrowRight, CheckCircle2, Clock3, FileSearch, Landmark, MessageSquareText, Send, ShieldCheck, Star } from "lucide-react";
+import { ArrowRight, CheckCircle2, Clock3, FileSearch, Landmark, MessageSquareText, Send, ShieldCheck, Star } from "../site-icons";
 
 type Tracking = {
   protocol: string; kind: string; subject: string; neighborhood: string; status: string; forwardedDepartment: string; citizenResponse: string;

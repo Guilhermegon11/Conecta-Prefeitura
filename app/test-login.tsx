@@ -1,9 +1,26 @@
 "use client";
 
 import { FormEvent, useEffect, useState } from "react";
-import { Landmark, LockKeyhole, LogIn, ShieldCheck, Smartphone, UserRound } from "lucide-react";
+import { ArrowUpRight, BarChart3, CalendarDays, CheckCircle2, Landmark, LockKeyhole, LogIn, ShieldCheck, Smartphone, UserRound } from "./site-icons";
 
 type LoginResult = { ok?: boolean; error?: string; twoFactorRequired?: boolean; phone?: string; smsConfigured?: boolean };
+
+function LoginShowcase() {
+  return <aside className="login-showcase" aria-label="Resumo da plataforma">
+    <header><span><Landmark size={20}/></span><div><strong>Prefeitura Conecta</strong><small>Gestão Integrada + IA</small></div></header>
+    <div className="login-showcase-copy"><span>Portal administrativo</span><h2>Uma gestão mais clara, de ponta a ponta.</h2><p>Demandas, equipes, processos e indicadores em uma experiência única e organizada.</p></div>
+    <div className="login-showcase-stats">
+      <article><span><CheckCircle2 size={15}/></span><div><strong>Fluxos</strong><small>Acompanhamento central</small></div></article>
+      <article><span><CalendarDays size={15}/></span><div><strong>Agenda</strong><small>Rotinas do município</small></div></article>
+      <article><span><BarChart3 size={15}/></span><div><strong>Indicadores</strong><small>Decisões mais rápidas</small></div></article>
+    </div>
+    <article className="login-showcase-chart">
+      <header><span>Visão operacional</span><b><ArrowUpRight size={12}/> dados organizados</b></header>
+      <div><i style={{height:"42%"}}/><i style={{height:"66%"}}/><i className="active" style={{height:"88%"}}/><i style={{height:"58%"}}/><i style={{height:"76%"}}/><i style={{height:"52%"}}/></div>
+    </article>
+    <footer><ShieldCheck size={14}/><span><strong>Acesso protegido</strong><small>Ambiente exclusivo para a gestão municipal</small></span></footer>
+  </aside>;
+}
 
 export function TestLoginScreen({ onAuthenticated }: { onAuthenticated: () => void }) {
   const [step, setStep] = useState<"credentials" | "code">("credentials");
@@ -42,7 +59,9 @@ export function TestLoginScreen({ onAuthenticated }: { onAuthenticated: () => vo
   }
 
   return <main className="login-shell">
-    <section className="login-panel">
+    <div className="login-frame">
+      <LoginShowcase/>
+      <section className="login-panel">
       <div className="login-brand"><span><Landmark size={24} /></span><div><strong>Prefeitura Conecta</strong><small>Gestão Integrada</small></div></div>
       <div className="login-copy"><p className="eyebrow">ACESSO ADMINISTRATIVO</p><h1>{step === "credentials" ? "Entrar no sistema" : "Confirmar código SMS"}</h1><p>{step === "credentials" ? "Área restrita para servidores, secretários e Gabinete do Prefeito." : `Enviamos um código de verificação para ${phone}.`}</p></div>
       {!online && <p className="login-error">Sem internet. O primeiro login neste dispositivo exige conexão. Depois de um login válido, o aparelho poderá reabrir o sistema offline por até 24 horas.</p>}
@@ -59,10 +78,11 @@ export function TestLoginScreen({ onAuthenticated }: { onAuthenticated: () => vo
         <button className="login-back" type="button" onClick={() => { setStep("credentials"); setCode(""); setError(""); }}>Voltar ao login</button>
       </form>}
       <footer><LockKeyhole size={13} /> Sessão administrativa protegida por cookie HttpOnly.</footer>
-    </section>
+      </section>
+    </div>
   </main>;
 }
 
 export function LoginLoadingScreen() {
-  return <main className="login-shell"><section className="login-panel login-loading"><span className="login-loading-icon"><Landmark size={25} /></span><strong>Prefeitura Conecta</strong><p>Verificando sessão...</p></section></main>;
+  return <main className="login-shell"><div className="login-frame login-loading-frame"><LoginShowcase/><section className="login-panel login-loading"><span className="login-loading-icon"><Landmark size={25} /></span><strong>Prefeitura Conecta</strong><p>Preparando seu painel...</p><i className="login-loading-line"/></section></div></main>;
 }

@@ -4,9 +4,9 @@ import { FormEvent, ReactNode, useEffect, useMemo, useState } from "react";
 import {
   Activity, AlertTriangle, ArrowRight, BarChart3, Bot, BriefcaseBusiness, Building2, CalendarClock, Check, CheckCircle2,
   ChevronRight, CircleDot, ClipboardList, Clock3, Cloud, Database, FileCheck2, Gauge, HeartHandshake, History, Landmark,
-  ListChecks, Map as MapIcon, MapPin, Network, Plus, RefreshCcw, Search, ServerCog, ShieldCheck, Sparkles, Star, Target, UsersRound,
+  ListChecks, ListTodo, Map as MapIcon, MapPin, Network, Plus, RefreshCcw, Search, ServerCog, ShieldCheck, Sparkles, Star, Target, UsersRound,
   Wifi, WifiOff, Workflow, X,
-} from "lucide-react";
+} from "./site-icons";
 import { loadPersistentValue, persistenceKey, usePersistentState } from "./persistence";
 import { RealMunicipalMap, type RealMapPoint } from "./real-municipal-map";
 
@@ -185,8 +185,16 @@ export function IntegratedManagementSection({ department, currentUser, tickets, 
 
     {tab==="Tarefas"&&<>
       <div className="integrated-section-heading"><div><p className="eyebrow">TAREFAS E SOLICITAÇÕES INTERNAS</p><h2>Fluxo operacional com SLA</h2><p>Tarefas, vistorias e pedidos entre setores mantêm responsável, prazo, comentários, menções e histórico.</p></div>{!readOnly&&<button className="button primary" onClick={()=>setTaskModal(true)}><Plus size={15}/> Nova tarefa</button>}</div>
-      <div className="module-toolbar"><label className="module-search"><Search size={15}/><input value={query} onChange={(e)=>setQuery(e.target.value)} placeholder="Buscar tarefa, setor, responsável ou tag..." /></label><span className="sla-legend"><i className="ok"/> SLA normal <i className="warning"/> vencendo <i className="late"/> atraso/escalado</span></div>
-      <div className="integrated-kanban">{WORK_COLUMNS.map((status)=><section key={status} className="integrated-kanban-column" onDragOver={(e)=>{if(!readOnly)e.preventDefault()}} onDrop={()=>{if(!readOnly&&dragId){moveTask(dragId,status);setDragId(null)}}}><header><span><CircleDot size={13}/>{status}</span><strong>{filteredTasks.filter((t)=>t.status===status).length}</strong></header><div>{filteredTasks.filter((t)=>t.status===status).map((task)=>{const risk=taskRisk(task);return <article draggable={!readOnly} onDragStart={()=>{if(!readOnly)setDragId(task.id)}} key={task.id} className={`integrated-task-card risk-${risk.className}`}><div className="task-card-meta"><span>{task.kind}</span><b>{task.priority}</b></div><h3>{task.title}</h3><p>{task.description}</p><small>{task.department}</small><div className="task-owner"><UsersRound size={13}/><span>{task.assignee}</span></div><div className={`task-risk ${risk.className}`}><Clock3 size={12}/>{risk.label}</div><footer><span>{task.comments.length} comentários</span><button onClick={()=>setSelectedTask(task)}>Abrir <ChevronRight size={12}/></button></footer></article>})}</div></section>)}</div>
+      <div className="integrated-task-layout-v3">
+        <aside className="panel integrated-task-command-v3">
+          <header><span><ListTodo size={18}/></span><div><small>FLUXO DO SETOR</small><h3>Visão por etapa</h3></div></header>
+          <label className="module-search"><Search size={15}/><input value={query} onChange={(e)=>setQuery(e.target.value)} placeholder="Buscar tarefa..." /></label>
+          <div className="integrated-task-counts">{WORK_COLUMNS.map((status,index)=><button type="button" key={status}><span className={["peach","blue","sand","lime"][index]}><CircleDot size={13}/></span><div><strong>{status}</strong><small>{filteredTasks.filter((task)=>task.status===status).length} registros</small></div><ChevronRight size={12}/></button>)}</div>
+          <div className="integrated-task-health"><span><strong>{overdue.length}</strong><small>em atraso</small></span><span><strong>{urgent.length}</strong><small>urgentes</small></span></div>
+          <div className="sla-legend"><span><i className="ok"/> normal</span><span><i className="warning"/> vencendo</span><span><i className="late"/> escalado</span></div>
+        </aside>
+        <div className="integrated-kanban integrated-kanban-v3">{WORK_COLUMNS.map((status)=><section key={status} className="integrated-kanban-column" onDragOver={(e)=>{if(!readOnly)e.preventDefault()}} onDrop={()=>{if(!readOnly&&dragId){moveTask(dragId,status);setDragId(null)}}}><header><span><CircleDot size={13}/>{status}</span><strong>{filteredTasks.filter((t)=>t.status===status).length}</strong></header><div>{filteredTasks.filter((t)=>t.status===status).map((task)=>{const risk=taskRisk(task);return <article draggable={!readOnly} onDragStart={()=>{if(!readOnly)setDragId(task.id)}} key={task.id} className={`integrated-task-card risk-${risk.className}`}><div className="task-card-meta"><span>{task.kind}</span><b>{task.priority}</b></div><h3>{task.title}</h3><p>{task.description}</p><small>{task.department}</small><div className="task-owner"><UsersRound size={13}/><span>{task.assignee}</span></div><div className={`task-risk ${risk.className}`}><Clock3 size={12}/>{risk.label}</div><footer><span>{task.comments.length} comentários</span><button onClick={()=>setSelectedTask(task)}>Abrir <ChevronRight size={12}/></button></footer></article>})}</div></section>)}</div>
+      </div>
     </>}
 
     {tab==="Projetos e metas"&&<>

@@ -22,6 +22,7 @@ import {
   Gauge,
   HardHat,
   HelpCircle,
+  History,
   Landmark,
   ListChecks,
   LockKeyhole,
@@ -41,8 +42,8 @@ import {
   UserRound,
   Warehouse,
   X,
-} from "lucide-react";
-import type { LucideIcon } from "lucide-react";
+} from "./site-icons";
+import type { LucideIcon } from "./site-icons";
 import { AddressRegistrationField } from "./municipal-location";
 import { useCurrentPermission } from "./permission-context";
 import { FieldOperationsPanel } from "./enhanced-features";
@@ -816,21 +817,19 @@ export function ProcessesSection({ department, currentUser, users, departments, 
 
   return <section className="municipal-module-shell process-digital-v2">
     <small className={`module-sync-banner ${processSaveStatus}`}>{processSaveStatus === "carregando" ? "Carregando processos…" : processSaveStatus === "salvando" ? "Salvando alterações…" : processSaveStatus === "offline" ? "Aguardando conexão com o servidor" : "Processos sincronizados"}</small>
-    <div className="process-command-center panel process-command-simple">
-      <div><p className="eyebrow">PROCESSOS DO SETOR</p><h2>Processos digitais</h2><p>Localize um processo e execute a próxima ação com menos etapas.</p></div>
-      <div className="process-command-actions">{access.register && <button className="button primary" onClick={() => setProcessModal({ mode: "create" })}><Plus size={15} /> Novo processo</button>}<button className="button secondary" onClick={() => setQueueFilter("Minha fila")}><UserRound size={15} /> Minha fila</button></div>
-    </div>
-
-    <div className="process-summary-strip panel" aria-label="Resumo dos processos">
-      <button className={queueFilter === "Todos" ? "active" : ""} onClick={() => { setQueueFilter("Todos"); setTab("Processos"); }}><FileText size={16} /><strong>{activeCount}</strong><span>em tramitação</span></button>
-      <button className={queueFilter === "Atrasados" ? "active danger" : ""} onClick={() => { setQueueFilter("Atrasados"); setTab("Processos"); }}><Clock3 size={16} /><strong>{overdueCount}</strong><span>com prazo vencido</span></button>
-      <button className={queueFilter === "Assinatura" ? "active" : ""} onClick={() => { setQueueFilter("Assinatura"); setTab("Assinaturas"); }}><FileSignature size={16} /><strong>{signatureCount}</strong><span>aguardando assinatura</span></button>
+    <div className="process-navigation-v3 panel" aria-label="Resumo e navegação dos processos">
+      <div className="process-navigation-kpis">
+        <button className={queueFilter === "Todos" ? "active" : ""} onClick={() => { setQueueFilter("Todos"); setTab("Processos"); }}><span className="lime"><FileText size={16} /></span><div><strong>{activeCount}</strong><small>Em tramitação</small><em>Fluxos ativos do setor</em></div></button>
+        <button className={queueFilter === "Atrasados" ? "active danger" : ""} onClick={() => { setQueueFilter("Atrasados"); setTab("Processos"); }}><span className="peach"><Clock3 size={16} /></span><div><strong>{overdueCount}</strong><small>Prazo vencido</small><em>Exigem providência</em></div></button>
+        <button className={queueFilter === "Assinatura" ? "active" : ""} onClick={() => { setQueueFilter("Assinatura"); setTab("Assinaturas"); }}><span className="blue"><FileSignature size={16} /></span><div><strong>{signatureCount}</strong><small>Assinaturas</small><em>Aguardando validação</em></div></button>
+      </div>
       <nav className="process-view-switch" aria-label="Áreas do processo">
         <button className={tab === "Processos" ? "active" : ""} onClick={() => setTab("Processos")}>Processos</button>
         <button className={tab === "Documentos e versões" ? "active" : ""} onClick={() => setTab("Documentos e versões")}>Documentos</button>
         <button className={tab === "Assinaturas" ? "active" : ""} onClick={() => setTab("Assinaturas")}>Assinaturas</button>
         {tab === "Despachos e pareceres" && <button className="active" onClick={() => setTab("Despachos e pareceres")}>Despacho</button>}
       </nav>
+      <div className="process-command-actions">{access.register && <button className="button primary" onClick={() => setProcessModal({ mode: "create" })}><Plus size={15} /> Novo processo</button>}<button className="button secondary" onClick={() => setQueueFilter("Minha fila")}><UserRound size={15} /> Minha fila</button></div>
     </div>
 
     {tab === "Processos" && <div className="process-layout process-layout-v2">
@@ -848,9 +847,20 @@ export function ProcessesSection({ department, currentUser, users, departments, 
 
       {selected && <aside className="panel process-detail process-detail-v2">
         <header className="process-detail-header"><div><div className="process-protocol-line"><span>{selected.protocol}</span><i className={`priority-${selected.priority.toLowerCase()}`}>{selected.priority}</i>{selectedOverdue && <i className="process-overdue">Prazo vencido</i>}</div><h2>{selected.subject}</h2><p>{selected.description || "Sem descrição complementar."}</p></div><StatusTag>{selected.status}</StatusTag></header>
-        <div className="process-progress-block process-progress-simple"><div><span>Etapa atual: <strong>{selected.workflowSteps[selected.currentStep] ?? selected.status}</strong></span><b>{progress}%</b></div><i><span style={{ width: `${progress}%` }} /></i><small>{selected.workflowName}</small></div>
-        <div className="process-detail-grid process-detail-grid-simple"><div><span>Setor atual</span><strong>{selected.currentDepartment}</strong></div><div><span>Responsável</span><strong>{selected.owner}</strong></div><div><span>Prazo</span><strong>{selected.dueDate ? new Date(`${selected.dueDate}T12:00:00`).toLocaleDateString("pt-BR") : "Sem prazo"}</strong></div><div><span>Acesso</span><strong><ShieldCheck size={12} /> {selected.access}</strong></div></div>
-        <div className="process-primary-actions">{access.edit && <button className="button secondary" onClick={() => setProcessModal({ mode: "edit", item: selected })}><Pencil size={14} /> Editar</button>}<button className="button secondary" onClick={() => setTab("Documentos e versões")}><FileText size={14} /> Documentos</button>{access.edit && <button className="button primary" onClick={() => setMoveModal(true)}>Movimentar <ChevronRight size={14} /></button>}<details className="process-more-actions"><summary aria-label="Mais ações"><MoreHorizontal size={18} /> Mais</summary><div><button onClick={() => access.register ? setTab("Despachos e pareceres") : notify("Seu perfil pode consultar despachos, mas não registrar novos documentos.")}><FileCheck2 size={15} /> Novo despacho</button><button onClick={() => access.register ? openDocumentUpload() : notify("Seu perfil não possui permissão para juntar documentos.")}><Plus size={15} /> Juntar documento</button><button onClick={() => access.register ? setSignatureModal(true) : notify("Seu perfil não possui permissão para solicitar assinatura.")}><FileSignature size={15} /> Solicitar assinatura</button><button onClick={() => access.register ? duplicateProcess() : notify("Seu perfil não possui permissão para duplicar processos.")}><Copy size={15} /> Duplicar</button>{access.edit && <button onClick={toggleConclusion}>{selected.status === "Concluído" ? "Reabrir processo" : "Concluir processo"}</button>}</div></details></div>
+        <ol className="process-stepper-v3" aria-label={`Fluxo ${selected.workflowName}`}>{selected.workflowSteps.map((step, index) => <li className={index < selected.currentStep ? "done" : index === selected.currentStep ? "current" : ""} key={step}><span>{index < selected.currentStep ? <Check size={11}/> : index + 1}</span><small>{step}</small></li>)}</ol>
+        <div className="process-detail-body-v3">
+          <div className="process-detail-main-v3">
+            <div className="process-progress-block process-progress-simple"><div><span>Etapa atual: <strong>{selected.workflowSteps[selected.currentStep] ?? selected.status}</strong></span><b>{progress}%</b></div><i><span style={{ width: `${progress}%` }} /></i><small>{selected.workflowName}</small></div>
+            <div className="process-detail-grid process-detail-grid-simple"><div><span>Setor atual</span><strong>{selected.currentDepartment}</strong></div><div><span>Responsável</span><strong>{selected.owner}</strong></div><div><span>Prazo</span><strong>{selected.dueDate ? new Date(`${selected.dueDate}T12:00:00`).toLocaleDateString("pt-BR") : "Sem prazo"}</strong></div><div><span>Acesso</span><strong><ShieldCheck size={12} /> {selected.access}</strong></div></div>
+            <div className="process-primary-actions">{access.edit && <button className="button secondary" onClick={() => setProcessModal({ mode: "edit", item: selected })}><Pencil size={14} /> Editar</button>}<button className="button secondary" onClick={() => setTab("Documentos e versões")}><FileText size={14} /> Documentos</button>{access.edit && <button className="button primary" onClick={() => setMoveModal(true)}>Movimentar <ChevronRight size={14} /></button>}<details className="process-more-actions"><summary aria-label="Mais ações"><MoreHorizontal size={18} /> Mais</summary><div><button onClick={() => access.register ? setTab("Despachos e pareceres") : notify("Seu perfil pode consultar despachos, mas não registrar novos documentos.")}><FileCheck2 size={15} /> Novo despacho</button><button onClick={() => access.register ? openDocumentUpload() : notify("Seu perfil não possui permissão para juntar documentos.")}><Plus size={15} /> Juntar documento</button><button onClick={() => access.register ? setSignatureModal(true) : notify("Seu perfil não possui permissão para solicitar assinatura.")}><FileSignature size={15} /> Solicitar assinatura</button><button onClick={() => access.register ? duplicateProcess() : notify("Seu perfil não possui permissão para duplicar processos.")}><Copy size={15} /> Duplicar</button>{access.edit && <button onClick={toggleConclusion}>{selected.status === "Concluído" ? "Reabrir processo" : "Concluir processo"}</button>}</div></details></div>
+          </div>
+          <aside className="process-context-v3">
+            <div><span className="blue"><FileText size={15}/></span><strong>{selected.documents.length}</strong><small>documentos</small></div>
+            <div><span className="lime"><FileSignature size={15}/></span><strong>{selected.signatures.length}</strong><small>assinaturas</small></div>
+            <div><span className="peach"><History size={15}/></span><strong>{selected.movements.length}</strong><small>movimentações</small></div>
+            <button type="button" onClick={() => setTab("Despachos e pareceres")}><FileCheck2 size={14}/> Abrir documentos <ChevronRight size={13}/></button>
+          </aside>
+        </div>
         <details className="process-history-simple"><summary>Linha do tempo <span>{selected.movements.length} movimentações</span></summary><div className="process-timeline">{selected.movements.slice(0,3).map((movement, index) => <div className={index === 0 ? "current" : ""} key={movement.id}><i /><span><strong>{movement.action}</strong><small>{movement.createdAt} · {movement.actor}</small><em>{movement.fromDepartment !== movement.toDepartment ? `${movement.fromDepartment} → ${movement.toDepartment}` : movement.toDepartment}{movement.note ? ` · ${movement.note}` : ""}</em></span></div>)}</div></details>
       </aside>}
     </div>}

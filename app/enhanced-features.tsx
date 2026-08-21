@@ -7,7 +7,7 @@ import {
   ClipboardCheck, Clock3, FileCheck2, FilePlus2, FileText, Gauge, ListChecks, MapPin,
   Plus, Settings2, ShieldCheck, Smartphone, Sparkles, TimerReset, UserCheck,
   UsersRound, Workflow, X,
-} from "lucide-react";
+} from "./site-icons";
 
 type TicketLike = { id: string; protocol: string; title: string; department: string; status: string; priority: string; dueDate: string | null; assigneeName?: string };
 type Navigate = (item: "Chamados" | "Auditoria") => void;

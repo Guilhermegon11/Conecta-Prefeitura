@@ -1,6 +1,6 @@
 "use client";
 import { FormEvent, useEffect, useMemo, useRef, useState } from "react";
-import { AlertTriangle, Bot, CheckCircle2, ChevronRight, History, LoaderCircle, MessageSquarePlus, MessageSquareText, Send, ShieldCheck, Sparkles, Target, Trash2, X, Zap } from "lucide-react";
+import { AlertTriangle, Bot, CheckCircle2, ChevronRight, History, LoaderCircle, MessageSquarePlus, MessageSquareText, Send, ShieldCheck, Sparkles, Target, Trash2, X, Zap } from "./site-icons";
 import { persistenceKey, usePersistentState } from "./persistence";
 import type { MunicipalAgentAction, MunicipalAgentExecutionResult, MunicipalAgentTurnResult } from "./municipal-agent-types";
 import { runOfflineMunicipalAgent } from "./municipal-agent-offline";
