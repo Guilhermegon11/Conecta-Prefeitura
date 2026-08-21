@@ -3778,6 +3778,8 @@ body:has(.reference-ui-2026) {
 .reference-kpi-grid .lime,.reference-schedule-list .lime,.reference-assignments-card .lime { color: #627d1d; background: #edf6d3; }
 .reference-kpi-grid .blue,.reference-schedule-list .blue,.reference-assignments-card .blue { color: #55739c; background: #e7eef8; }
 .reference-kpi-grid .sand,.reference-schedule-list .sand,.reference-assignments-card .sand { color: #967022; background: #fff3d9; }
+.reference-kpi-grid > button > span { color: #111 !important; }
+.reference-kpi-grid > button > span svg { stroke-width: 2.35; }
 
 .reference-middle-grid { display: grid; grid-template-columns: minmax(0, 1.08fr) minmax(250px, .92fr); gap: 11px; }
 .reference-activity-card,.reference-schedule-card { min-height: 235px; padding: 14px 15px; }
