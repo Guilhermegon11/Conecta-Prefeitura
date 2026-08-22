@@ -24,6 +24,7 @@ import {
   FileText,
   FileSearch,
   Files,
+  Gauge,
   Hash,
   HelpCircle,
   History,
@@ -43,6 +44,7 @@ import {
   MoreHorizontal,
   Newspaper,
   Paperclip,
+  PanelsTopLeft,
   Pencil,
   Plus,
   Phone,
@@ -387,6 +389,7 @@ export default function Home() {
   const [contrastEnabled, setContrastEnabled] = useState(false);
   const [textScale, setTextScale] = useState<"normal" | "large" | "larger">("normal");
   const [simplifiedMode, setSimplifiedMode] = useState(false);
+  const [sidebarCompact, setSidebarCompact] = useState(false);
   const [executiveCommunicationAccess, setExecutiveCommunicationAccess] = useState(false);
   const [recentlyDeletedEvent, setRecentlyDeletedEvent] = useState<SectorEvent | null>(null);
   const [citizenFeedbackUnread, setCitizenFeedbackUnread] = useState(0);
@@ -507,7 +510,7 @@ export default function Home() {
     let cancelled = false;
     setPersistenceStatus("carregando");
     void Promise.all([
-      loadPersistentValue<{ soundEnabled?: boolean; motionEnabled?: boolean; contrastEnabled?: boolean; textScale?: "normal" | "large" | "larger"; simplifiedMode?: boolean }>(EXPERIENCE_SETTINGS_KEY),
+      loadPersistentValue<{ soundEnabled?: boolean; motionEnabled?: boolean; contrastEnabled?: boolean; textScale?: "normal" | "large" | "larger"; simplifiedMode?: boolean; sidebarCompact?: boolean }>(EXPERIENCE_SETTINGS_KEY),
       loadPersistentValue<{ enabled?: boolean }>(EXECUTIVE_COMMUNICATION_KEY),
       loadPersistentValue<Record<string, DepartmentPermissionSettings>>(PERMISSION_SETTINGS_KEY),
       loadPersistentValue<{
@@ -521,6 +524,7 @@ export default function Home() {
       if (typeof experience?.contrastEnabled === "boolean") setContrastEnabled(experience.contrastEnabled);
       if (experience?.textScale === "normal" || experience?.textScale === "large" || experience?.textScale === "larger") setTextScale(experience.textScale);
       if (typeof experience?.simplifiedMode === "boolean") setSimplifiedMode(experience.simplifiedMode);
+      if (typeof experience?.sidebarCompact === "boolean") setSidebarCompact(experience.sidebarCompact);
       setExecutiveCommunicationAccess(executiveCommunication?.enabled === true);
       if (savedPermissions) setPermissionConfigs(savedPermissions);
       if (stored) {
@@ -539,7 +543,7 @@ export default function Home() {
       setAppReady(true);
     }).catch(() => {
       if (cancelled) return;
-      const cachedExperience = loadCachedPersistentValue<{ soundEnabled?: boolean; motionEnabled?: boolean; contrastEnabled?: boolean; textScale?: "normal" | "large" | "larger"; simplifiedMode?: boolean }>(EXPERIENCE_SETTINGS_KEY);
+      const cachedExperience = loadCachedPersistentValue<{ soundEnabled?: boolean; motionEnabled?: boolean; contrastEnabled?: boolean; textScale?: "normal" | "large" | "larger"; simplifiedMode?: boolean; sidebarCompact?: boolean }>(EXPERIENCE_SETTINGS_KEY);
       const cachedExecutive = loadCachedPersistentValue<{ enabled?: boolean }>(EXECUTIVE_COMMUNICATION_KEY);
       const cachedPermissions = loadCachedPersistentValue<Record<string, DepartmentPermissionSettings>>(PERMISSION_SETTINGS_KEY);
       const cached = loadCachedPersistentValue<{
@@ -551,6 +555,7 @@ export default function Home() {
       if (typeof cachedExperience?.contrastEnabled === "boolean") setContrastEnabled(cachedExperience.contrastEnabled);
       if (cachedExperience?.textScale === "normal" || cachedExperience?.textScale === "large" || cachedExperience?.textScale === "larger") setTextScale(cachedExperience.textScale);
       if (typeof cachedExperience?.simplifiedMode === "boolean") setSimplifiedMode(cachedExperience.simplifiedMode);
+      if (typeof cachedExperience?.sidebarCompact === "boolean") setSidebarCompact(cachedExperience.sidebarCompact);
       if (cachedExecutive) setExecutiveCommunicationAccess(cachedExecutive.enabled === true);
       if (cachedPermissions) setPermissionConfigs(cachedPermissions);
       if (cached) {
@@ -575,10 +580,10 @@ export default function Home() {
     if (authState !== "authenticated" || !appReady) return;
     const timer = window.setTimeout(() => {
       setPersistenceStatus("salvando");
-      void savePersistentValue(EXPERIENCE_SETTINGS_KEY, { soundEnabled, motionEnabled, contrastEnabled, textScale, simplifiedMode }).then((result) => setPersistenceStatus(result.queued ? "offline" : "salvo")).catch(() => setPersistenceStatus("offline"));
+      void savePersistentValue(EXPERIENCE_SETTINGS_KEY, { soundEnabled, motionEnabled, contrastEnabled, textScale, simplifiedMode, sidebarCompact }).then((result) => setPersistenceStatus(result.queued ? "offline" : "salvo")).catch(() => setPersistenceStatus("offline"));
     }, 350);
     return () => window.clearTimeout(timer);
-  }, [appReady, authState, contrastEnabled, motionEnabled, soundEnabled, textScale, simplifiedMode]);
+  }, [appReady, authState, contrastEnabled, motionEnabled, sidebarCompact, soundEnabled, textScale, simplifiedMode]);
 
   useEffect(() => {
     if (authState !== "authenticated" || !appReady) return;
@@ -1072,7 +1077,7 @@ export default function Home() {
   };
 
   return (
-    <div className={`app-shell reference-ui-2026 ${motionEnabled ? "motion-enabled" : "motion-reduced"} ${contrastEnabled ? "contrast-enabled" : ""} ${simplifiedMode ? "simplified-mode" : ""} text-scale-${textScale}`}>
+    <div className={`app-shell reference-ui-2026 municipal-ui-v6 ${motionEnabled ? "motion-enabled" : "motion-reduced"} ${contrastEnabled ? "contrast-enabled" : ""} ${simplifiedMode ? "simplified-mode" : ""} ${sidebarCompact ? "sidebar-compact" : ""} text-scale-${textScale}`}>
       <aside className={`sidebar ${sidebarOpen ? "sidebar-open" : ""}`}>
         <div className="brand">
           <div className="brand-mark" aria-hidden="true"><Landmark size={21} strokeWidth={2.2} /></div>
@@ -1086,7 +1091,7 @@ export default function Home() {
             const expanded = !section.compact || expandedNavGroup === section.label || visibleItems.includes(activeNav);
             return (
               <div className={`clean-nav-section ${section.compact ? "secondary-nav-section" : ""}`} key={section.label}>
-                {section.compact ? <button type="button" className="clean-nav-section-toggle" aria-expanded={expanded} onClick={() => setExpandedNavGroup(expandedNavGroup === section.label ? null : section.label)}><span>••• Mais</span><ChevronRight className={expanded ? "expanded" : ""} size={15}/></button> : <span className="clean-nav-section-label">Principais</span>}
+                {section.compact ? <button type="button" className="clean-nav-section-toggle" aria-label="Mais módulos" title="Mais módulos" aria-expanded={expanded} onClick={() => setExpandedNavGroup(expandedNavGroup === section.label ? null : section.label)}><span>••• Mais</span><ChevronRight className={expanded ? "expanded" : ""} size={15}/></button> : <span className="clean-nav-section-label">Principais</span>}
                 {expanded && <div className="clean-nav-section-items">
                   {visibleItems.map((item) => {
                     const ItemIcon = navIcons[item];
@@ -1107,6 +1112,7 @@ export default function Home() {
                         key={item}
                         className={activeNav === item ? "clean-nav-child organized-nav-item active" : "clean-nav-child organized-nav-item"}
                         aria-current={activeNav === item ? "page" : undefined}
+                        title={cleanNavLabel[item] ?? item}
                         onClick={() => { setActiveNav(item); setSidebarOpen(false); }}
                       >
                         <ItemIcon size={17} strokeWidth={2} />
@@ -1136,6 +1142,7 @@ export default function Home() {
       <main id="main-content" className="main-area" tabIndex={-1}>
         <header className={`topbar ${executiveAccess ? "executive-topbar" : ""}`}>
           <button className="mobile-menu" aria-label="Abrir menu" onClick={() => setSidebarOpen(true)}><Menu size={21} /></button>
+          <button className="desktop-sidebar-toggle" type="button" aria-pressed={sidebarCompact} aria-label={sidebarCompact ? "Expandir menu lateral" : "Recolher menu lateral"} title={sidebarCompact ? "Expandir menu lateral" : "Recolher menu lateral"} onClick={() => setSidebarCompact((current) => !current)}><PanelsTopLeft size={18}/></button>
           <div className="global-search-wrap">
             <label className="search-box">
               <Search size={18} aria-hidden="true" />
@@ -1397,9 +1404,14 @@ function dashboardWeekdayIndex(value: Date) {
   return (value.getDay() + 6) % 7;
 }
 
+function dashboardCalendarKey(value: Date) {
+  return `${value.getFullYear()}-${String(value.getMonth() + 1).padStart(2, "0")}-${String(value.getDate()).padStart(2, "0")}`;
+}
+
 function Dashboard({ tickets, allTickets, audit, executive, department, userName, userRole, events, unreadCount, now, onNavigate }: { tickets: Ticket[]; allTickets: Ticket[]; audit: AuditItem[]; executive: boolean; department: string; userName: string; userRole: string; events: SectorEvent[]; unreadCount: number; now: Date; onNavigate: (item: NavItem) => void }) {
   const [showDetails, setShowDetails] = useState(false);
   const [selectedChartDay, setSelectedChartDay] = useState<number | null>(null);
+  const [calendarCursor, setCalendarCursor] = useState(() => new Date(now.getFullYear(), now.getMonth(), 1));
   const stats = statuses.map((status, index) => ({
     label: statusMeta[status].short,
     value: String(tickets.filter((ticket) => ticket.status === status).length).padStart(2, "0"),
@@ -1412,6 +1424,9 @@ function Dashboard({ tickets, allTickets, audit, executive, department, userName
   const roleLabel = executive ? "Visão executiva" : normalizeText(userRole).includes("secret") || normalizeText(userRole).includes("gestor") ? "Gestão da equipe" : "Meu trabalho";
   const completedTickets = tickets.filter((ticket) => ticket.status === "Concluído").length;
   const completionRate = tickets.length ? Math.round((completedTickets / tickets.length) * 100) : 100;
+  const onTimeRate = openTickets.length ? Math.round(((openTickets.length - overdueTickets.length) / openTickets.length) * 100) : 100;
+  const awaitingDecision = openTickets.filter((ticket) => ticket.status === "Aguardando aprovação" || ticket.status === "Aguardando resposta").length;
+  const unassignedTickets = openTickets.filter((ticket) => !ticket.assigneeId).length;
   const currentWeekStart = startOfDashboardWeek(now);
   const currentWeekEnd = new Date(currentWeekStart);
   currentWeekEnd.setDate(currentWeekEnd.getDate() + 7);
@@ -1444,7 +1459,13 @@ function Dashboard({ tickets, allTickets, audit, executive, department, userName
   const activeChartDay = selectedChartDay ?? (chartShowsCurrentWeek ? dashboardWeekdayIndex(now) : lastDayWithDemand);
   const activeChartItem = chartItems[activeChartDay];
   const chartRangeLabel = `${chartWeekStart.toLocaleDateString("pt-BR", { day: "2-digit", month: "short" })} a ${chartWeekEnd.toLocaleDateString("pt-BR", { day: "2-digit", month: "short" })}`;
-  const calendarDays = Array.from({ length: 31 }, (_, index) => index + 1);
+  const calendarMonthStart = new Date(calendarCursor.getFullYear(), calendarCursor.getMonth(), 1);
+  const calendarDaysInMonth = new Date(calendarCursor.getFullYear(), calendarCursor.getMonth() + 1, 0).getDate();
+  const calendarLeadingDays = calendarMonthStart.getDay();
+  const calendarDays = Array.from({ length: calendarDaysInMonth }, (_, index) => index + 1);
+  const calendarMonthLabel = calendarCursor.toLocaleDateString("pt-BR", { month: "long", year: "numeric" });
+  const todayCalendarKey = dashboardCalendarKey(now);
+  const calendarEventKeys = new Set(events.map((event) => dashboardCalendarKey(new Date(event.startsAt))));
   const schedule = events.slice(0, 4);
 
   return (
@@ -1459,6 +1480,14 @@ function Dashboard({ tickets, allTickets, audit, executive, department, userName
               <button type="button" onClick={() => onNavigate("Notificações")}><span className="blue"><BellRing size={16}/></span><div><strong>{unreadCount}</strong><small>Novos avisos</small><em>Atualizações recentes</em></div></button>
               <button type="button" onClick={() => onNavigate("Próximos Eventos")}><span className="sand"><CalendarDays size={16}/></span><div><strong>{nextEvent ? formatDate(nextEvent.startsAt) : "—"}</strong><small>Próximo evento</small><em>{nextEvent?.title ?? "Agenda livre"}</em></div></button>
             </div>
+          </section>
+
+          <section className="panel municipal-health-strip" aria-label="Saúde operacional do setor">
+            <header><span><Gauge size={19}/></span><div><small>SAÚDE OPERACIONAL</small><strong>Ritmo do setor</strong></div></header>
+            <button type="button" onClick={() => onNavigate("Indicadores")}><span><small>Conclusão</small><strong>{completionRate}%</strong></span><i className="municipal-health-progress" role="progressbar" aria-label="Índice de conclusão" aria-valuemin={0} aria-valuemax={100} aria-valuenow={completionRate}><b style={{ width: `${completionRate}%` }}/></i></button>
+            <button type="button" onClick={() => onNavigate("Indicadores")}><span><small>Dentro do prazo</small><strong>{onTimeRate}%</strong></span><i className="municipal-health-progress" role="progressbar" aria-label="Demandas dentro do prazo" aria-valuemin={0} aria-valuemax={100} aria-valuenow={onTimeRate}><b style={{ width: `${onTimeRate}%` }}/></i></button>
+            <button type="button" className={awaitingDecision ? "attention" : ""} onClick={() => onNavigate("Pendências")}><span><small>Aguardam decisão</small><strong>{awaitingDecision}</strong></span><em>{awaitingDecision ? "Revisar fila" : "Tudo em dia"}</em></button>
+            <button type="button" className={unassignedTickets ? "attention" : ""} onClick={() => onNavigate("Chamados")}><span><small>Sem responsável</small><strong>{unassignedTickets}</strong></span><em>{unassignedTickets ? "Distribuir" : "Fila distribuída"}</em></button>
           </section>
 
           <div className="reference-middle-grid">
@@ -1496,9 +1525,15 @@ function Dashboard({ tickets, allTickets, audit, executive, department, userName
           </article>
 
           <article className="panel reference-calendar-card">
-            <header><button type="button" aria-label="Mês anterior"><ChevronRight size={13}/></button><strong>Agosto, 2026</strong><button type="button" aria-label="Próximo mês"><ChevronRight size={13}/></button></header>
+            <header><button type="button" aria-label="Mês anterior" onClick={() => setCalendarCursor((current) => new Date(current.getFullYear(), current.getMonth() - 1, 1))}><ChevronRight size={13}/></button><strong>{calendarMonthLabel}</strong><button type="button" aria-label="Próximo mês" onClick={() => setCalendarCursor((current) => new Date(current.getFullYear(), current.getMonth() + 1, 1))}><ChevronRight size={13}/></button></header>
             <div className="reference-calendar-week"><span>D</span><span>S</span><span>T</span><span>Q</span><span>Q</span><span>S</span><span>S</span></div>
-            <div className="reference-calendar-days">{Array.from({ length: 6 }, (_, index) => <span key={`empty-${index}`}/>) }{calendarDays.map((day) => <button type="button" className={day === 20 ? "active" : ""} key={day} onClick={() => onNavigate("Próximos Eventos")}>{day}</button>)}</div>
+            <div className="reference-calendar-days">{Array.from({ length: calendarLeadingDays }, (_, index) => <span key={`empty-${index}`}/>) }{calendarDays.map((day) => {
+              const date = new Date(calendarCursor.getFullYear(), calendarCursor.getMonth(), day);
+              const dateKey = dashboardCalendarKey(date);
+              const isToday = dateKey === todayCalendarKey;
+              const hasEvent = calendarEventKeys.has(dateKey);
+              return <button type="button" className={`${isToday ? "active" : ""} ${hasEvent ? "has-event" : ""}`.trim()} aria-label={`${date.toLocaleDateString("pt-BR", { day: "numeric", month: "long" })}${hasEvent ? ", com evento agendado" : ""}`} key={dateKey} onClick={() => onNavigate("Próximos Eventos")}>{day}</button>;
+            })}</div>
           </article>
 
           <article className="panel reference-assignments-card">
@@ -1907,21 +1942,41 @@ function DocumentsSection({ documents, department, currentUserId, onUpload }: { 
 function EventsSection({ events, department, onNew, onEdit, onDelete }: { events: SectorEvent[]; department: string; onNew: () => void; onEdit: (event: SectorEvent) => void; onDelete: (event: SectorEvent) => void }) {
   const access = useCurrentPermission();
   const orderedEvents = [...events].sort((a, b) => a.startsAt.localeCompare(b.startsAt));
-  const calendarDays = Array.from({ length: 14 }, (_, index) => index + 14);
+  const [calendarCursor, setCalendarCursor] = useState(() => {
+    const anchor = orderedEvents.find((event) => new Date(event.startsAt).getTime() >= Date.now()) ?? orderedEvents[0];
+    const initialDate = anchor ? new Date(anchor.startsAt) : new Date();
+    return new Date(initialDate.getFullYear(), initialDate.getMonth(), 1);
+  });
+  const today = new Date();
+  const calendarDaysInMonth = new Date(calendarCursor.getFullYear(), calendarCursor.getMonth() + 1, 0).getDate();
+  const calendarLeadingDays = (new Date(calendarCursor.getFullYear(), calendarCursor.getMonth(), 1).getDay() + 6) % 7;
+  const calendarDays = Array.from({ length: calendarDaysInMonth }, (_, index) => index + 1);
+  const calendarMonthLabel = calendarCursor.toLocaleDateString("pt-BR", { month: "long", year: "numeric" });
+  const eventDateKeys = new Set(orderedEvents.map((event) => dashboardCalendarKey(new Date(event.startsAt))));
+  const displayedMonthEvent = orderedEvents.find((event) => {
+    const date = new Date(event.startsAt);
+    return date.getFullYear() === calendarCursor.getFullYear() && date.getMonth() === calendarCursor.getMonth();
+  });
   return (
     <section className="events-layout events-layout-v3">
       <article className="panel events-command-v3">
-        <div><span className="events-command-icon"><CalendarDays size={19}/></span><div><p className="eyebrow">AGENDA COMPARTILHADA</p><h2>Agosto de 2026</h2><p>Compromissos, reuniões e prazos de {department} organizados em uma única linha de trabalho.</p></div></div>
+        <div><span className="events-command-icon"><CalendarDays size={19}/></span><div><p className="eyebrow">AGENDA COMPARTILHADA</p><h2>{calendarMonthLabel}</h2><p>Compromissos, reuniões e prazos de {department} organizados em uma única linha de trabalho.</p></div></div>
         <div className="events-command-stats"><span><strong>{events.length}</strong><small>eventos</small></span><span><strong>{events.filter((event) => Boolean(event.location)).length}</strong><small>com local</small></span>{access.register && <button type="button" className="button primary" onClick={onNew}><CalendarPlus size={14}/> Novo evento</button>}</div>
       </article>
 
       <div className="events-workspace-v3">
         <aside className="panel events-calendar-v3">
-          <header><div><span>Calendário</span><h3>Próximos dias</h3></div><button type="button" aria-label="Avançar período"><ChevronRight size={14}/></button></header>
+          <header><div><span>Calendário</span><h3>{calendarMonthLabel}</h3></div><nav aria-label="Navegar entre meses"><button type="button" className="previous" aria-label="Mês anterior" onClick={() => setCalendarCursor((current) => new Date(current.getFullYear(), current.getMonth() - 1, 1))}><ChevronRight size={14}/></button><button type="button" aria-label="Próximo mês" onClick={() => setCalendarCursor((current) => new Date(current.getFullYear(), current.getMonth() + 1, 1))}><ChevronRight size={14}/></button></nav></header>
           <div className="events-calendar-week"><span>S</span><span>T</span><span>Q</span><span>Q</span><span>S</span><span>S</span><span>D</span></div>
-          <div className="events-calendar-days">{calendarDays.map((day) => <button type="button" className={day === 20 ? "active" : orderedEvents.some((event) => new Date(event.startsAt).getDate() === day) ? "has-event" : ""} key={day}>{day}</button>)}</div>
+          <div className="events-calendar-days">{Array.from({ length: calendarLeadingDays }, (_, index) => <span key={`empty-${index}`}/>)}{calendarDays.map((day) => {
+            const date = new Date(calendarCursor.getFullYear(), calendarCursor.getMonth(), day);
+            const dateKey = dashboardCalendarKey(date);
+            const isToday = dateKey === dashboardCalendarKey(today);
+            const hasEvent = eventDateKeys.has(dateKey);
+            return <button type="button" className={`${isToday ? "active" : ""} ${hasEvent ? "has-event" : ""}`.trim()} aria-label={`${date.toLocaleDateString("pt-BR", { day: "numeric", month: "long" })}${hasEvent ? ", com compromisso" : ""}`} key={dateKey}>{day}</button>;
+          })}</div>
           <div className="events-calendar-legend"><span><i/> Dia atual</span><span><i/> Com compromisso</span></div>
-          <div className="events-calendar-summary"><span><CalendarDays size={15}/></span><div><strong>{orderedEvents[0]?.title ?? "Agenda livre"}</strong><small>{orderedEvents[0] ? formatEventRange(orderedEvents[0].startsAt, orderedEvents[0].endsAt) : "Nenhum compromisso programado"}</small></div></div>
+          <div className="events-calendar-summary"><span><CalendarDays size={15}/></span><div><strong>{displayedMonthEvent?.title ?? "Agenda livre neste mês"}</strong><small>{displayedMonthEvent ? formatEventRange(displayedMonthEvent.startsAt, displayedMonthEvent.endsAt) : "Nenhum compromisso programado"}</small></div></div>
         </aside>
 
         <div className="events-feed-v3">

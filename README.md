@@ -6,6 +6,7 @@ Sistema interno de gestão municipal em Next.js, React e TypeScript, com persist
 
 - Visão Geral e Meu Dia
 - Central Executiva do Prefeito e Vice-Prefeito
+- Radar do Instagram com acesso restrito ao Prefeito e Vice-prefeito
 - Chamados
 - Comunicação interna e grupos
 - Processos Digitais
@@ -20,6 +21,12 @@ Sistema interno de gestão municipal em Next.js, React e TypeScript, com persist
 - Central de ajuda
 - Configurações
 - Últimas Notícias Prefeitura
+
+## Versão 6.0 — experiência municipal avançada
+
+A interface foi consolidada em um sistema visual institucional baseado no verde `#176057`, com melhor contraste, superfícies mais claras, navegação hierárquica, estados interativos consistentes e maior legibilidade em desktop, tablet e celular.
+
+Entre as melhorias de produtividade estão o menu lateral recolhível com preferência persistente, a faixa de saúde operacional no painel, indicadores de conclusão e cumprimento de prazo, identificação de demandas sem responsável e calendários mensais navegáveis com sinalização de compromissos reais. As permissões, o isolamento entre setores e o modo de consulta executiva permanecem preservados.
 
 ## Persistência central
 
