@@ -59,17 +59,18 @@ test("adds accessible dashboard progress and motion-aware visual feedback", asyn
   assert.match(styles, /@media \(prefers-reduced-motion: reduce\)/);
 });
 
-test("uses the self-hosted Figtree and Plus Jakarta Sans hierarchy", async () => {
+test("uses self-hosted Poppins as the universal type system", async () => {
   const [layout, styles] = await Promise.all([
     readSource("layout.tsx"),
     readSource("globals.css"),
   ]);
-  assert.match(styles, /\/fonts\/figtree\/figtree-latin-700-normal\.woff2/);
-  assert.match(styles, /\/fonts\/plus-jakarta-sans\/plus-jakarta-sans-latin-500-normal\.woff2/);
-  assert.match(styles, /--font-display: "Figtree", "Geist"/);
-  assert.match(styles, /--font-interface: "Plus Jakarta Sans", "Geist"/);
+  assert.match(styles, /\/fonts\/poppins\/poppins-latin-700-normal\.woff2/);
+  assert.match(styles, /\/fonts\/poppins\/poppins-latin-500-normal\.woff2/);
+  assert.match(styles, /--font-display: "Poppins", sans-serif/);
+  assert.match(styles, /--font-interface: "Poppins", sans-serif/);
   assert.match(styles, /font-family: var\(--font-display\)/);
   assert.match(styles, /body \{[^}]*font-family: var\(--font-interface\)[^}]*font-weight: 500/);
+  assert.match(styles, /\.municipal-ui-v800,[\s\S]*?\.public-ui-v800 \*[\s\S]*?font-family:"Poppins",sans-serif !important/);
   assert.match(styles, /font-synthesis: none/);
   assert.match(styles, /font-feature-settings: "rlig" 1, "calt" 1/);
   assert.doesNotMatch(styles, /font-family: "R-Flex"/);
@@ -78,6 +79,7 @@ test("uses the self-hosted Figtree and Plus Jakarta Sans hierarchy", async () =>
   assert.doesNotMatch(styles, /font-family: "Cal Sans"/);
   assert.doesNotMatch(styles, /font-family: "Inter Variable"/);
   assert.doesNotMatch(styles, /font-family: "Gunterz"/);
+  assert.doesNotMatch(styles, /font-family: "Figtree"|font-family: "Plus Jakarta Sans"|font-family: "Geist"/);
   assert.match(styles, /tamanhos originais e movimento funcional/);
   assert.doesNotMatch(styles, /\.my-day-heading h2 \{ font-size: 1\.45rem/);
   assert.doesNotMatch(styles, /\.content-wrap \.integrated-shell \{ font-size: 15px/);

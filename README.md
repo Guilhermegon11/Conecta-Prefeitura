@@ -23,6 +23,18 @@ Sistema interno de gestão municipal em Next.js, React e TypeScript, com persist
 - Configurações
 - Últimas Notícias Prefeitura
 
+## Versão 8.0.0 — redesign total com Poppins
+
+Todo o sistema foi reformulado, e não apenas a página inicial. A nova arquitetura visual usa uma barra lateral verde-petróleo de alto contraste, conteúdo principal claro sem excesso de branco, cabeçalhos de comando próprios para cada módulo, resumo operacional horizontal, hierarquia mais compacta e ações mais fáceis de localizar. O verde-lima foi removido da camada atual em favor de tons institucionais de verde, menta, âmbar e azul.
+
+A mudança alcança chamados, kanban, tabelas, formulários, comunicação, central integrada, processos digitais, área do setor, atendimento ao cidadão, gestão municipal, frota e quilometragem, indicadores, notificações, documentos, agenda, funcionários, segurança, auditoria, ajuda, configurações, notícias, central executiva, monitoramento social, modais, copiloto de IA e estados de carregamento. Login, avaliação do cidadão e acompanhamento público também seguem o mesmo sistema visual.
+
+Toda a interface agora utiliza somente **Poppins**, servida localmente em pesos de 100 a 900 e respectivas variações itálicas. As regras de negócio, permissões, persistência, isolamento setorial, acessibilidade, API REST e fluxos existentes foram preservados. O layout possui estados específicos para desktop amplo, desktop compacto, tablet e celular.
+
+## Versão 7.0.1 — contraste do menu lateral
+
+A barra lateral deixou de usar o branco puro e agora possui uma superfície verde-cinza suave, com mais profundidade e melhor separação do conteúdo principal. Os ícones inativos passaram do cinza quase branco para verde-petróleo, o estado de passagem recebeu contraste próprio e o módulo ativo combina fundo institucional escuro com ícone verde-lima. Favoritos, recentes, ajuda e perfil também foram ajustados para a nova superfície.
+
 ## Versão 7.0.0 — novo sistema visual municipal
 
 Toda a experiência foi redesenhada com base na referência fornecida: moldura branca flutuante, fundo neutro, menu lateral claro, item ativo em verde-lima, cartões compactos, bordas sutis e uma leitura visual mais direta. A identidade foi adaptada ao contexto público municipal — sem copiar o conteúdo comercial da referência — e utiliza o verde institucional `#176057`, apoio em `#B9DF63` e detalhes âmbar para estados de atenção.

@@ -361,7 +361,7 @@ const PERMISSION_SETTINGS_KEY = "settings:permissions:v1";
 const EXPERIENCE_SETTINGS_KEY = "settings:experience:v1";
 const EXECUTIVE_COMMUNICATION_KEY = "settings:executive-communication:v1";
 const PUBLIC_READ_PERMISSION = { view: true, register: false, edit: false } as const;
-const PRODUCT_VERSION = "7.0.0";
+const PRODUCT_VERSION = "8.0.0";
 
 const breadcrumbParentByNav: Partial<Record<NavItem, NavItem>> = {
   "Central Executiva": "Visão geral",
@@ -1143,7 +1143,7 @@ export default function Home() {
   }
 
   return (
-    <div className={`app-shell reference-ui-2026 municipal-ui-v6 municipal-ui-v61 municipal-ui-v611 municipal-ui-v620 municipal-ui-v700 ${motionEnabled ? "motion-enabled" : "motion-reduced"} ${contrastEnabled ? "contrast-enabled" : ""} ${simplifiedMode ? "simplified-mode" : ""} ${sidebarCompact ? "sidebar-compact" : ""} text-scale-${textScale}`}>
+    <div className={`app-shell reference-ui-2026 municipal-ui-v6 municipal-ui-v61 municipal-ui-v611 municipal-ui-v620 municipal-ui-v700 municipal-ui-v701 municipal-ui-v800 ${motionEnabled ? "motion-enabled" : "motion-reduced"} ${contrastEnabled ? "contrast-enabled" : ""} ${simplifiedMode ? "simplified-mode" : ""} ${sidebarCompact ? "sidebar-compact" : ""} text-scale-${textScale}`}>
       <aside className={`sidebar ${sidebarOpen ? "sidebar-open" : ""}`}>
         <div className="brand" title="Identidade institucional de Várzea da Palma">
           <div className="brand-mark municipal-crest-slot official-municipal-brand" data-crest-slot="brasao-oficial"><img src="/brasao-varzea-da-palma-oficial.png" alt="Brasão oficial da Prefeitura Municipal de Várzea da Palma" /></div>
@@ -1213,6 +1213,7 @@ export default function Home() {
         <header className={`topbar ${executiveAccess ? "executive-topbar" : ""}`}>
           <button className="mobile-menu" aria-label="Abrir menu" onClick={() => setSidebarOpen(true)}><Menu size={21} /></button>
           <button className="desktop-sidebar-toggle" type="button" aria-pressed={sidebarCompact} aria-label={sidebarCompact ? "Expandir menu lateral" : "Recolher menu lateral"} title={sidebarCompact ? "Expandir menu lateral" : "Recolher menu lateral"} onClick={() => setSidebarCompact((current) => !current)}><PanelsTopLeft size={18}/></button>
+          <div className="topbar-context-v8"><small>ÁREA ATUAL</small><strong>{heading.title}</strong></div>
           <div className="global-search-wrap">
             <label className="search-box">
               <Search size={18} aria-hidden="true" />
@@ -1242,7 +1243,7 @@ export default function Home() {
             {breadcrumbParent && breadcrumbParent !== "Visão geral" && <><ChevronRight size={12}/><button type="button" onClick={() => setActiveNav(breadcrumbParent)}>{getHeading(breadcrumbParent).title}</button></>}
             <ChevronRight size={12}/><span aria-current="page">{heading.title}</span>
           </nav>}
-          <section className={activeNav === "Visão geral" ? "page-heading" : "module-page-header-v3"}>
+          <section className={activeNav === "Visão geral" ? "page-heading" : "module-page-header-v3 module-page-header-v8"} data-module={activeNav}>
             {activeNav !== "Visão geral" && <span className="module-page-header-icon"><ActiveModuleIcon size={20}/></span>}
             <div className="module-page-header-copy"><p className="eyebrow">{activeNav === "Visão geral" ? `${formatHeadingDate(clockNow)} · ${formatHeadingClock(clockNow)}` : heading.eyebrow}</p><h1>{headingTitle}</h1><p>{heading.subtitle}</p></div>
             {activeNav !== "Visão geral" && <div className="module-page-header-context"><small>AMBIENTE ATUAL</small><strong>{activeNav === "Monitoramento Instagram" ? "Gabinete Executivo" : activeDepartment}</strong><span><i/> {activeNav === "Monitoramento Instagram" ? "Acesso restrito" : viewingOtherDepartment ? "Consulta executiva" : "Operação do setor"}</span></div>}
@@ -1272,7 +1273,8 @@ export default function Home() {
           {viewingOtherDepartment && activeNav !== "Central Executiva" && activeNav !== "Monitoramento Instagram" && <div className="executive-sector-readonly" role="status"><ShieldCheck size={19}/><span><strong>Modo de consulta executiva · {activeDepartment}</strong><small>Prefeito e Vice-Prefeito podem visualizar e abrir as informações deste setor, mas não podem criar, editar, mover, comentar, excluir ou executar ações por IA.</small></span></div>}
 
           {activeNav === "Visão geral" && <Dashboard tickets={filteredTickets} allTickets={privateTickets} municipalSummary={executiveMunicipalSummary} audit={privateAudit} executive={executiveAccess} department={activeDepartment} userId={currentUser.id} userName={currentUser.fullName} userRole={currentUser.role} events={currentEvents} unreadCount={unreadCount} now={clockNow} onNavigate={setActiveNav} />}
-          {activeNav !== "Visão geral" && <div className={`module-layout-v3 ${activeNav === "Comunicação" ? "module-layout-chat" : ""} ${activeNav === "Monitoramento Instagram" ? "module-layout-social-monitor" : ""}`}>
+          {activeNav !== "Visão geral" && <div className={`module-layout-v3 module-layout-v8 ${activeNav === "Comunicação" ? "module-layout-chat" : ""} ${activeNav === "Monitoramento Instagram" ? "module-layout-social-monitor" : ""}`} data-active-module={activeNav}>
+            <ModuleExperienceRail activeNav={activeNav} department={activeDepartment} tickets={filteredTickets} documents={privateDocuments} events={currentEvents} unreadCount={unreadCount} pendingCount={currentInvitations.length + pendingTickets.length} onNavigate={setActiveNav}/>
             <div className="module-main-v3">
           {!executiveReadOnlyScope && activeNav !== "Central Executiva" && <ContextualAiBar activeModule={activeNav} department={activeDepartment} tickets={privateTickets} events={currentEvents} />}
           {activeNav === "Central Executiva" && executiveAccess && <ExecutiveCommandCenter tickets={ticketData} departments={allDepartments} currentUser={{ fullName: currentUser.fullName, role: currentUser.role }} onOpenDepartment={openExecutiveDepartment} notify={notify} />}
@@ -1302,7 +1304,6 @@ export default function Home() {
           {activeNav === "Central de Ajuda" && <HelpCenterSection notify={notify} />}
           {activeNav === "Configurações" && canManageEmployees && <SettingsSection key={activeDepartment} department={activeDepartment} managerName={currentUser.fullName} employees={sectorEmployees} settings={departmentPermissionSettings} soundEnabled={soundEnabled} motionEnabled={motionEnabled} contrastEnabled={contrastEnabled} textScale={textScale} simplifiedMode={simplifiedMode} isMayor={executiveAccess} crossSectorCommunicationEnabled={executiveCommunicationAccess} secretariatsContent={<TeamSection offices={scopedOffices} />} onExportContacts={exportContacts} onSettingsChange={updatePermissionSettings} onSoundChange={setSoundEnabled} onMotionChange={setMotionEnabled} onContrastChange={setContrastEnabled} onTextScaleChange={setTextScale} onSimplifiedModeChange={setSimplifiedMode} onCrossSectorCommunicationChange={(enabled) => { setExecutiveCommunicationAccess(enabled); notify(enabled ? "Acesso executivo à comunicação de outros setores habilitado." : "Comunicações de outros setores voltaram ao modo privado."); }} onTestSound={() => { playNotificationChime(); notify("Som de notificação reproduzido."); }} notify={notify} />}
             </div>
-            <ModuleExperienceRail activeNav={activeNav} department={activeDepartment} tickets={filteredTickets} documents={privateDocuments} events={currentEvents} unreadCount={unreadCount} pendingCount={currentInvitations.length + pendingTickets.length} onNavigate={setActiveNav}/>
           </div>}
           <footer className="municipal-product-footer">
             <div><span className="municipal-footer-crest"><img src="/brasao-varzea-da-palma-oficial.png" alt="" /></span><span><strong>Prefeitura Municipal de Várzea da Palma</strong><small>Prefeitura Conecta v{PRODUCT_VERSION} · Setor atual: {activeDepartment}</small></span></div>
@@ -1414,7 +1415,7 @@ function ModuleExperienceRail({ activeNav, department, tickets, documents, event
   const moduleTitle = getHeading(activeNav).title;
   const RailIcon = moduleIconForNav(activeNav);
 
-  return <aside className="module-experience-rail" aria-label={`Resumo de ${moduleTitle}`}>
+  return <aside className="module-experience-rail module-command-strip-v8" aria-label={`Resumo de ${moduleTitle}`}>
     <article className="module-rail-identity">
       <header><span><RailIcon size={16}/></span><small>VISÃO DO MÓDULO</small></header>
       <h2>{moduleTitle}</h2>
