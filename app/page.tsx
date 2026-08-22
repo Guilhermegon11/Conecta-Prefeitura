@@ -52,6 +52,7 @@ import {
   Search,
   Send,
   Sparkles,
+  Star,
   Settings,
   ShieldCheck,
   Trash2,
@@ -342,14 +343,14 @@ const navIcons: Record<NavItem, LucideIcon> = {
   Configurações: Settings,
   "Últimas Notícias Prefeitura": Newspaper,
 };
-const statusMeta: Record<TicketStatus, { color: string; short: string; icon: LucideIcon }> = {
-  Recebido: { color: "blue", short: "Recebidos", icon: Inbox },
-  "Em análise": { color: "slate", short: "Em análise", icon: Search },
-  "Aguardando aprovação": { color: "violet", short: "Em aprovação", icon: Clock3 },
-  "Em execução": { color: "amber", short: "Em execução", icon: LoaderCircle },
-  "Aguardando resposta": { color: "orange", short: "Aguardando resposta", icon: MessagesSquare },
-  Concluído: { color: "green", short: "Concluídos", icon: CheckCircle2 },
-  Cancelado: { color: "red", short: "Cancelados", icon: XCircle },
+const statusMeta: Record<TicketStatus, { color: string; short: string; icon: LucideIcon; description: string }> = {
+  Recebido: { color: "blue", short: "Recebido", icon: Inbox, description: "Registro recebido e aguardando triagem." },
+  "Em análise": { color: "slate", short: "Em análise", icon: Search, description: "Equipe conferindo dados e encaminhamento." },
+  "Aguardando aprovação": { color: "violet", short: "Em aprovação", icon: Clock3, description: "Decisão do responsável ainda necessária." },
+  "Em execução": { color: "amber", short: "Em execução", icon: LoaderCircle, description: "Providências em andamento pela equipe." },
+  "Aguardando resposta": { color: "orange", short: "Aguardando resposta", icon: MessagesSquare, description: "Retorno externo ou do solicitante pendente." },
+  Concluído: { color: "green", short: "Concluído", icon: CheckCircle2, description: "Entrega registrada e atendimento finalizado." },
+  Cancelado: { color: "red", short: "Cancelado", icon: XCircle, description: "Fluxo encerrado sem execução." },
 };
 const statuses = Object.keys(statusMeta) as TicketStatus[];
 const APP_STATE_KEY = "app:global:v1";
@@ -357,6 +358,32 @@ const PERMISSION_SETTINGS_KEY = "settings:permissions:v1";
 const EXPERIENCE_SETTINGS_KEY = "settings:experience:v1";
 const EXECUTIVE_COMMUNICATION_KEY = "settings:executive-communication:v1";
 const PUBLIC_READ_PERMISSION = { view: true, register: false, edit: false } as const;
+const PRODUCT_VERSION = "6.1.0";
+
+const breadcrumbParentByNav: Partial<Record<NavItem, NavItem>> = {
+  "Central Executiva": "Visão geral",
+  "Monitoramento Instagram": "Central Executiva",
+  "Últimas Notícias Prefeitura": "Visão geral",
+  "Área do Setor": "Visão geral",
+  "Fluxos e Anotações": "Área do Setor",
+  Chamados: "Área do Setor",
+  Comunicação: "Área do Setor",
+  "Atendimento ao Cidadão": "Gestão Municipal",
+  "Central Integrada": "Área do Setor",
+  "Processos Digitais": "Gestão Municipal",
+  "Gestão Municipal": "Visão geral",
+  Indicadores: "Visão geral",
+  Notificações: "Visão geral",
+  Pendências: "Visão geral",
+  "Anexos e Arquivos": "Área do Setor",
+  "Próximos Eventos": "Área do Setor",
+  Funcionários: "Área do Setor",
+  Secretarias: "Gestão Municipal",
+  "Segurança e LGPD": "Configurações",
+  Auditoria: "Segurança e LGPD",
+  "Central de Ajuda": "Visão geral",
+  Configurações: "Visão geral",
+};
 
 export default function Home() {
   const [activeNav, setActiveNav] = useState<NavItem>("Visão geral");
@@ -390,6 +417,8 @@ export default function Home() {
   const [textScale, setTextScale] = useState<"normal" | "large" | "larger">("normal");
   const [simplifiedMode, setSimplifiedMode] = useState(false);
   const [sidebarCompact, setSidebarCompact] = useState(false);
+  const [favoriteModules, setFavoriteModules] = useState<NavItem[]>(["Chamados", "Próximos Eventos"]);
+  const [recentModules, setRecentModules] = useState<NavItem[]>([]);
   const [executiveCommunicationAccess, setExecutiveCommunicationAccess] = useState(false);
   const [recentlyDeletedEvent, setRecentlyDeletedEvent] = useState<SectorEvent | null>(null);
   const [citizenFeedbackUnread, setCitizenFeedbackUnread] = useState(0);
@@ -408,6 +437,16 @@ export default function Home() {
   ])).sort((first, second) => first.localeCompare(second, "pt-BR")), [events, users]);
   const activeDepartment = executiveAccess ? viewedDepartment : currentUser.department;
   const privateTickets = ticketData.filter((ticket) => sameDepartment(ticket.department, activeDepartment));
+  const municipalOpenTickets = ticketData.filter((ticket) => ticket.status !== "Concluído" && ticket.status !== "Cancelado");
+  const municipalOverdueTickets = municipalOpenTickets.filter((ticket) => ticket.dueDate && new Date(ticket.dueDate).getTime() < clockNow.getTime());
+  const executiveMunicipalSummary = {
+    total: ticketData.length,
+    open: municipalOpenTickets.length,
+    overdue: municipalOverdueTickets.length,
+    riskSectors: new Set(municipalOverdueTickets.map((ticket) => ticket.department)).size,
+    awaitingDecision: municipalOpenTickets.filter((ticket) => ticket.status === "Aguardando aprovação" || ticket.status === "Aguardando resposta").length,
+    completionRate: ticketData.length ? Math.round(ticketData.filter((ticket) => ticket.status === "Concluído").length / ticketData.length * 100) : 100,
+  };
   const privateTicketIds = new Set(privateTickets.map((ticket) => ticket.id));
   const privateDocuments = documents.filter((document) => sameDepartment(document.department, activeDepartment));
   const privateDocumentIds = new Set(privateDocuments.map((document) => document.id));
@@ -510,7 +549,7 @@ export default function Home() {
     let cancelled = false;
     setPersistenceStatus("carregando");
     void Promise.all([
-      loadPersistentValue<{ soundEnabled?: boolean; motionEnabled?: boolean; contrastEnabled?: boolean; textScale?: "normal" | "large" | "larger"; simplifiedMode?: boolean; sidebarCompact?: boolean }>(EXPERIENCE_SETTINGS_KEY),
+      loadPersistentValue<{ soundEnabled?: boolean; motionEnabled?: boolean; contrastEnabled?: boolean; textScale?: "normal" | "large" | "larger"; simplifiedMode?: boolean; sidebarCompact?: boolean; favoriteModules?: NavItem[]; recentModules?: NavItem[] }>(EXPERIENCE_SETTINGS_KEY),
       loadPersistentValue<{ enabled?: boolean }>(EXECUTIVE_COMMUNICATION_KEY),
       loadPersistentValue<Record<string, DepartmentPermissionSettings>>(PERMISSION_SETTINGS_KEY),
       loadPersistentValue<{
@@ -525,6 +564,8 @@ export default function Home() {
       if (experience?.textScale === "normal" || experience?.textScale === "large" || experience?.textScale === "larger") setTextScale(experience.textScale);
       if (typeof experience?.simplifiedMode === "boolean") setSimplifiedMode(experience.simplifiedMode);
       if (typeof experience?.sidebarCompact === "boolean") setSidebarCompact(experience.sidebarCompact);
+      if (Array.isArray(experience?.favoriteModules)) setFavoriteModules(experience.favoriteModules.filter((item) => Object.hasOwn(navIcons, item)));
+      if (Array.isArray(experience?.recentModules)) setRecentModules(experience.recentModules.filter((item) => Object.hasOwn(navIcons, item)));
       setExecutiveCommunicationAccess(executiveCommunication?.enabled === true);
       if (savedPermissions) setPermissionConfigs(savedPermissions);
       if (stored) {
@@ -543,7 +584,7 @@ export default function Home() {
       setAppReady(true);
     }).catch(() => {
       if (cancelled) return;
-      const cachedExperience = loadCachedPersistentValue<{ soundEnabled?: boolean; motionEnabled?: boolean; contrastEnabled?: boolean; textScale?: "normal" | "large" | "larger"; simplifiedMode?: boolean; sidebarCompact?: boolean }>(EXPERIENCE_SETTINGS_KEY);
+      const cachedExperience = loadCachedPersistentValue<{ soundEnabled?: boolean; motionEnabled?: boolean; contrastEnabled?: boolean; textScale?: "normal" | "large" | "larger"; simplifiedMode?: boolean; sidebarCompact?: boolean; favoriteModules?: NavItem[]; recentModules?: NavItem[] }>(EXPERIENCE_SETTINGS_KEY);
       const cachedExecutive = loadCachedPersistentValue<{ enabled?: boolean }>(EXECUTIVE_COMMUNICATION_KEY);
       const cachedPermissions = loadCachedPersistentValue<Record<string, DepartmentPermissionSettings>>(PERMISSION_SETTINGS_KEY);
       const cached = loadCachedPersistentValue<{
@@ -556,6 +597,8 @@ export default function Home() {
       if (cachedExperience?.textScale === "normal" || cachedExperience?.textScale === "large" || cachedExperience?.textScale === "larger") setTextScale(cachedExperience.textScale);
       if (typeof cachedExperience?.simplifiedMode === "boolean") setSimplifiedMode(cachedExperience.simplifiedMode);
       if (typeof cachedExperience?.sidebarCompact === "boolean") setSidebarCompact(cachedExperience.sidebarCompact);
+      if (Array.isArray(cachedExperience?.favoriteModules)) setFavoriteModules(cachedExperience.favoriteModules.filter((item) => Object.hasOwn(navIcons, item)));
+      if (Array.isArray(cachedExperience?.recentModules)) setRecentModules(cachedExperience.recentModules.filter((item) => Object.hasOwn(navIcons, item)));
       if (cachedExecutive) setExecutiveCommunicationAccess(cachedExecutive.enabled === true);
       if (cachedPermissions) setPermissionConfigs(cachedPermissions);
       if (cached) {
@@ -580,10 +623,18 @@ export default function Home() {
     if (authState !== "authenticated" || !appReady) return;
     const timer = window.setTimeout(() => {
       setPersistenceStatus("salvando");
-      void savePersistentValue(EXPERIENCE_SETTINGS_KEY, { soundEnabled, motionEnabled, contrastEnabled, textScale, simplifiedMode, sidebarCompact }).then((result) => setPersistenceStatus(result.queued ? "offline" : "salvo")).catch(() => setPersistenceStatus("offline"));
+      void savePersistentValue(EXPERIENCE_SETTINGS_KEY, { soundEnabled, motionEnabled, contrastEnabled, textScale, simplifiedMode, sidebarCompact, favoriteModules, recentModules }).then((result) => setPersistenceStatus(result.queued ? "offline" : "salvo")).catch(() => setPersistenceStatus("offline"));
     }, 350);
     return () => window.clearTimeout(timer);
-  }, [appReady, authState, contrastEnabled, motionEnabled, sidebarCompact, soundEnabled, textScale, simplifiedMode]);
+  }, [appReady, authState, contrastEnabled, favoriteModules, motionEnabled, recentModules, sidebarCompact, soundEnabled, textScale, simplifiedMode]);
+
+  useEffect(() => {
+    if (authState !== "authenticated" || !appReady) return;
+    setRecentModules((current) => {
+      const next = [activeNav, ...current.filter((item) => item !== activeNav)].slice(0, 5);
+      return next.length === current.length && next.every((item, index) => item === current[index]) ? current : next;
+    });
+  }, [activeNav, appReady, authState]);
 
   useEffect(() => {
     if (authState !== "authenticated" || !appReady) return;
@@ -1075,12 +1126,22 @@ export default function Home() {
     "Central de Ajuda": "Ajuda",
     "Últimas Notícias Prefeitura": "Últimas notícias",
   };
+  const visibleFavoriteModules = favoriteModules.filter((item) => item !== "Visão geral" && canViewMenuItem(item)).slice(0, 4);
+  const visibleRecentModules = recentModules.filter((item) => item !== activeNav && item !== "Visão geral" && canViewMenuItem(item)).slice(0, 3);
+  const breadcrumbParent = breadcrumbParentByNav[activeNav];
+  const activeIsFavorite = favoriteModules.includes(activeNav);
+
+  function toggleFavorite(item: NavItem) {
+    if (item === "Visão geral") return;
+    setFavoriteModules((current) => current.includes(item) ? current.filter((entry) => entry !== item) : [item, ...current].slice(0, 6));
+    notify(activeIsFavorite ? "Módulo removido dos favoritos." : "Módulo adicionado aos favoritos.");
+  }
 
   return (
-    <div className={`app-shell reference-ui-2026 municipal-ui-v6 ${motionEnabled ? "motion-enabled" : "motion-reduced"} ${contrastEnabled ? "contrast-enabled" : ""} ${simplifiedMode ? "simplified-mode" : ""} ${sidebarCompact ? "sidebar-compact" : ""} text-scale-${textScale}`}>
+    <div className={`app-shell reference-ui-2026 municipal-ui-v6 municipal-ui-v61 ${motionEnabled ? "motion-enabled" : "motion-reduced"} ${contrastEnabled ? "contrast-enabled" : ""} ${simplifiedMode ? "simplified-mode" : ""} ${sidebarCompact ? "sidebar-compact" : ""} text-scale-${textScale}`}>
       <aside className={`sidebar ${sidebarOpen ? "sidebar-open" : ""}`}>
-        <div className="brand">
-          <div className="brand-mark" aria-hidden="true"><Landmark size={21} strokeWidth={2.2} /></div>
+        <div className="brand" title="Identidade institucional de Várzea da Palma">
+          <div className="brand-mark municipal-crest-slot official-municipal-brand" data-crest-slot="brasao-oficial"><img src="/brasao-varzea-da-palma-oficial.png" alt="Brasão oficial da Prefeitura Municipal de Várzea da Palma" /></div>
           <div><strong>Prefeitura Conecta</strong><small>Gestão Integrada + IA</small></div>
         </div>
         <nav className="main-nav clean-main-nav organized-main-nav" aria-label="Navegação principal">
@@ -1126,6 +1187,10 @@ export default function Home() {
             );
           })}
         </nav>
+        {(visibleFavoriteModules.length > 0 || visibleRecentModules.length > 0) && <section className="sidebar-quick-access" aria-label="Favoritos e páginas recentes">
+          {visibleFavoriteModules.length > 0 && <div><span><Star size={12}/> FAVORITOS</span>{visibleFavoriteModules.map((item) => { const Icon = moduleIconForNav(item); return <button type="button" key={item} title={getHeading(item).title} onClick={() => { setActiveNav(item); setSidebarOpen(false); }}><Icon size={14}/><span>{cleanNavLabel[item] ?? item}</span></button>; })}</div>}
+          {visibleRecentModules.length > 0 && <div><span><History size={12}/> RECENTES</span>{visibleRecentModules.map((item) => <button type="button" key={item} title={getHeading(item).title} onClick={() => { setActiveNav(item); setSidebarOpen(false); }}><span>{cleanNavLabel[item] ?? item}</span><ChevronRight size={12}/></button>)}</div>}
+        </section>}
         <button type="button" className="sidebar-reference-card" onClick={() => { setActiveNav("Central de Ajuda"); setSidebarOpen(false); }}>
           <span><ArrowUpRight size={16}/></span>
           <div><strong>Central de ajuda</strong><small>Guias rápidos para usar a plataforma</small></div>
@@ -1162,14 +1227,22 @@ export default function Home() {
         </header>
 
         <div className="demo-banner municipal-demo-context" role="note"><span className="demo-banner-mark"><MapPin size={14}/></span><span><strong>Ambiente demonstrativo municipal</strong><small>Cenários, locais e serviços de Várzea da Palma–MG</small></span></div>
+        {persistenceStatus === "carregando" && <div className="interface-state-banner loading" role="status" aria-live="polite"><LoaderCircle className="spin" size={15}/><span><strong>Preparando seu ambiente</strong><small>Carregando preferências, filtros e dados do setor.</small></span><i/><i/><i/></div>}
+        {persistenceStatus === "offline" && <div className="interface-state-banner offline" role="status"><ShieldCheck size={16}/><span><strong>Modo de continuidade ativo</strong><small>Você pode continuar trabalhando. As alterações ficarão protegidas para sincronizar quando a conexão retornar.</small></span></div>}
 
         <PermissionProvider key={`${currentUser.id}-${activeDepartment}`} permission={currentPermission}>
         <div className={`content-wrap ${activeNav === "Comunicação" ? "chat-content" : ""} ${currentPermission.register ? "can-register" : "read-only-register"} ${currentPermission.edit ? "can-edit" : "read-only-edit"}`}>
+          {activeNav !== "Visão geral" && <nav className="module-breadcrumbs" aria-label="Caminho da página">
+            <button type="button" onClick={() => setActiveNav("Visão geral")}><Landmark size={13}/> Início</button>
+            {breadcrumbParent && breadcrumbParent !== "Visão geral" && <><ChevronRight size={12}/><button type="button" onClick={() => setActiveNav(breadcrumbParent)}>{getHeading(breadcrumbParent).title}</button></>}
+            <ChevronRight size={12}/><span aria-current="page">{heading.title}</span>
+          </nav>}
           <section className={activeNav === "Visão geral" ? "page-heading" : "module-page-header-v3"}>
             {activeNav !== "Visão geral" && <span className="module-page-header-icon"><ActiveModuleIcon size={20}/></span>}
             <div className="module-page-header-copy"><p className="eyebrow">{activeNav === "Visão geral" ? `${formatHeadingDate(clockNow)} · ${formatHeadingClock(clockNow)}` : heading.eyebrow}</p><h1>{headingTitle}</h1><p>{heading.subtitle}</p></div>
             {activeNav !== "Visão geral" && <div className="module-page-header-context"><small>AMBIENTE ATUAL</small><strong>{activeNav === "Monitoramento Instagram" ? "Gabinete Executivo" : activeDepartment}</strong><span><i/> {activeNav === "Monitoramento Instagram" ? "Acesso restrito" : viewingOtherDepartment ? "Consulta executiva" : "Operação do setor"}</span></div>}
             <div className="heading-actions">
+              {activeNav !== "Visão geral" && <button type="button" className={`module-favorite-toggle ${activeIsFavorite ? "active" : ""}`} aria-pressed={activeIsFavorite} title={activeIsFavorite ? "Remover dos favoritos" : "Adicionar aos favoritos"} onClick={() => toggleFavorite(activeNav)}><Star size={16}/><span>{activeIsFavorite ? "Favorito" : "Favoritar"}</span></button>}
               {activeNav === "Comunicação" ? (
                 currentPermission.register && <button className="button secondary" onClick={() => setGroupModal(true)}><Plus size={15} /> Novo grupo</button>
               ) : activeNav === "Anexos e Arquivos" ? (
@@ -1193,7 +1266,7 @@ export default function Home() {
 
           {viewingOtherDepartment && activeNav !== "Central Executiva" && activeNav !== "Monitoramento Instagram" && <div className="executive-sector-readonly" role="status"><ShieldCheck size={19}/><span><strong>Modo de consulta executiva · {activeDepartment}</strong><small>Prefeito e Vice-Prefeito podem visualizar e abrir as informações deste setor, mas não podem criar, editar, mover, comentar, excluir ou executar ações por IA.</small></span></div>}
 
-          {activeNav === "Visão geral" && <Dashboard tickets={filteredTickets} allTickets={privateTickets} audit={privateAudit} executive={executiveAccess} department={activeDepartment} userName={currentUser.fullName} userRole={currentUser.role} events={currentEvents} unreadCount={unreadCount} now={clockNow} onNavigate={setActiveNav} />}
+          {activeNav === "Visão geral" && <Dashboard tickets={filteredTickets} allTickets={privateTickets} municipalSummary={executiveMunicipalSummary} audit={privateAudit} executive={executiveAccess} department={activeDepartment} userId={currentUser.id} userName={currentUser.fullName} userRole={currentUser.role} events={currentEvents} unreadCount={unreadCount} now={clockNow} onNavigate={setActiveNav} />}
           {activeNav !== "Visão geral" && <div className={`module-layout-v3 ${activeNav === "Comunicação" ? "module-layout-chat" : ""} ${activeNav === "Monitoramento Instagram" ? "module-layout-social-monitor" : ""}`}>
             <div className="module-main-v3">
           {!executiveReadOnlyScope && activeNav !== "Central Executiva" && <ContextualAiBar activeModule={activeNav} department={activeDepartment} tickets={privateTickets} events={currentEvents} />}
@@ -1202,7 +1275,7 @@ export default function Home() {
           {activeNav === "Últimas Notícias Prefeitura" && <PrefeituraNewsSection />}
           {activeNav === "Área do Setor" && <><SectorWorkspaceSection key={activeDepartment} department={activeDepartment} userName={currentUser.fullName} userRole={currentUser.role} departments={availableDepartments} notify={notify} />{!viewingOtherDepartment&&<FormBuilderPanel department={activeDepartment} notify={notify} />}</>}
           {activeNav === "Fluxos e Anotações" && <SectorNotesSection key={activeDepartment} department={activeDepartment} userName={currentUser.fullName} team={sectorUsers.map((user) => ({ id: user.id, name: user.fullName, role: user.role }))} notify={notify} />}
-          {activeNav === "Chamados" && <TicketsSection tickets={filteredTickets} department={activeDepartment} departments={availableDepartments} onStatus={updateStatus} onNew={() => setTicketModal(true)} />}
+          {activeNav === "Chamados" && <TicketsSection tickets={filteredTickets} department={activeDepartment} departments={availableDepartments} userId={currentUser.id} now={clockNow} onStatus={updateStatus} onNew={() => setTicketModal(true)} />}
           {activeNav === "Comunicação" && (communicationLocked
             ? <CommunicationPrivacyGate department={activeDepartment} isMayor={mayorAccess} onOpenSettings={() => setActiveNav("Configurações")} />
             : executiveCommunicationMonitor
@@ -1213,7 +1286,7 @@ export default function Home() {
           {activeNav === "Processos Digitais" && <ProcessesSection key={`${activeDepartment}-${currentUser.id}`} department={activeDepartment} currentUser={{ id: currentUser.id, fullName: currentUser.fullName, department: currentUser.department, role: currentUser.role }} users={scopedActiveUsers.map((user) => ({ id: user.id, fullName: user.fullName, department: user.department, role: user.role }))} departments={availableDepartments} notify={notify} />}
           {activeNav === "Gestão Municipal" && <MunicipalManagementSection department={activeDepartment} notify={notify} />}
           {activeNav === "Indicadores" && <IndicatorsSection department={activeDepartment} notify={notify} />}
-          {activeNav === "Notificações" && <><NotificationsSection notifications={currentNotifications} onRead={markNotification} onOpenPending={() => setActiveNav("Pendências")} />{!viewingOtherDepartment&&<SmartNotificationRules department={activeDepartment} notify={notify} />}</>}
+          {activeNav === "Notificações" && <><NotificationsSection notifications={currentNotifications} userId={currentUser.id} onRead={markNotification} onOpenPending={() => setActiveNav("Pendências")} />{!viewingOtherDepartment&&<SmartNotificationRules department={activeDepartment} notify={notify} />}</>}
           {activeNav === "Pendências" && <><PendingSection invitations={currentInvitations} tickets={pendingTickets} onRespond={respondInvitation} onOpenTickets={() => setActiveNav("Chamados")} />{!viewingOtherDepartment&&<ApprovalCenterPanel department={activeDepartment} notify={notify} />}</>}
           {activeNav === "Anexos e Arquivos" && <><DocumentsSection documents={privateDocuments} department={activeDepartment} currentUserId={currentUser.id} onUpload={() => fileInput.current?.click()} /><DocumentGovernancePanel department={activeDepartment} notify={notify} /></>}
           {activeNav === "Próximos Eventos" && <EventsSection events={currentEvents} department={activeDepartment} onNew={() => setEventModal("new")} onEdit={setEventModal} onDelete={setEventToDelete} />}
@@ -1225,6 +1298,10 @@ export default function Home() {
             </div>
             <ModuleExperienceRail activeNav={activeNav} department={activeDepartment} tickets={filteredTickets} documents={privateDocuments} events={currentEvents} unreadCount={unreadCount} pendingCount={currentInvitations.length + pendingTickets.length} onNavigate={setActiveNav}/>
           </div>}
+          <footer className="municipal-product-footer">
+            <div><span className="municipal-footer-crest"><img src="/brasao-varzea-da-palma-oficial.png" alt="" /></span><span><strong>Prefeitura Municipal de Várzea da Palma</strong><small>Prefeitura Conecta v{PRODUCT_VERSION} · Setor atual: {activeDepartment}</small></span></div>
+            <nav aria-label="Suporte, privacidade e proteção de dados"><button type="button" onClick={() => setActiveNav("Central de Ajuda")}>Suporte</button><button type="button" onClick={() => setActiveNav("Segurança e LGPD")}>Privacidade</button><button type="button" onClick={() => setActiveNav("Segurança e LGPD")}>LGPD</button></nav>
+          </footer>
         </div>
         </PermissionProvider>
       </main>
@@ -1408,33 +1485,42 @@ function dashboardCalendarKey(value: Date) {
   return `${value.getFullYear()}-${String(value.getMonth() + 1).padStart(2, "0")}-${String(value.getDate()).padStart(2, "0")}`;
 }
 
-function Dashboard({ tickets, allTickets, audit, executive, department, userName, userRole, events, unreadCount, now, onNavigate }: { tickets: Ticket[]; allTickets: Ticket[]; audit: AuditItem[]; executive: boolean; department: string; userName: string; userRole: string; events: SectorEvent[]; unreadCount: number; now: Date; onNavigate: (item: NavItem) => void }) {
+function Dashboard({ tickets, allTickets, municipalSummary, audit, executive, department, userId, userName, userRole, events, unreadCount, now, onNavigate }: { tickets: Ticket[]; allTickets: Ticket[]; municipalSummary: { total: number; open: number; overdue: number; riskSectors: number; awaitingDecision: number; completionRate: number }; audit: AuditItem[]; executive: boolean; department: string; userId: string; userName: string; userRole: string; events: SectorEvent[]; unreadCount: number; now: Date; onNavigate: (item: NavItem) => void }) {
   const [showDetails, setShowDetails] = useState(false);
   const [selectedChartDay, setSelectedChartDay] = useState<number | null>(null);
   const [calendarCursor, setCalendarCursor] = useState(() => new Date(now.getFullYear(), now.getMonth(), 1));
+  const normalizedRole = normalizeText(userRole);
+  const dashboardProfile: "executive" | "manager" | "staff" = executive ? "executive" : normalizedRole.includes("secret") || normalizedRole.includes("gestor") || normalizedRole.includes("administrador") || normalizedRole.includes("responsavel") || normalizedRole.includes("controlador") || normalizedRole.includes("subprefeit") ? "manager" : "staff";
+  const ownTickets = tickets.filter((ticket) => ticket.assigneeId === userId || (!ticket.assigneeId && sameDepartment(ticket.department, department)));
+  const focusTickets = dashboardProfile === "executive" ? allTickets : dashboardProfile === "staff" ? ownTickets : tickets;
   const stats = statuses.map((status, index) => ({
     label: statusMeta[status].short,
-    value: String(tickets.filter((ticket) => ticket.status === status).length).padStart(2, "0"),
+    value: String(focusTickets.filter((ticket) => ticket.status === status).length).padStart(2, "0"),
     change: ["Novos registros", "Triagem inicial", "Decisão pendente", "Serviço em andamento", "Retorno externo", "Entregas confirmadas", "Encerrados sem execução"][index],
     status,
   }));
-  const openTickets = tickets.filter((ticket) => ticket.status !== "Concluído" && ticket.status !== "Cancelado");
+  const openTickets = focusTickets.filter((ticket) => ticket.status !== "Concluído" && ticket.status !== "Cancelado");
   const overdueTickets = openTickets.filter((ticket) => ticket.dueDate && new Date(ticket.dueDate).getTime() < now.getTime());
   const nextEvent = events.find((event) => new Date(event.startsAt).getTime() >= now.getTime());
-  const roleLabel = executive ? "Visão executiva" : normalizeText(userRole).includes("secret") || normalizeText(userRole).includes("gestor") ? "Gestão da equipe" : "Meu trabalho";
-  const completedTickets = tickets.filter((ticket) => ticket.status === "Concluído").length;
-  const completionRate = tickets.length ? Math.round((completedTickets / tickets.length) * 100) : 100;
+  const roleLabel = dashboardProfile === "executive" ? "Visão executiva municipal" : dashboardProfile === "manager" ? "Gestão da equipe" : "Meu trabalho";
+  const completedTickets = focusTickets.filter((ticket) => ticket.status === "Concluído").length;
+  const completionRate = focusTickets.length ? Math.round((completedTickets / focusTickets.length) * 100) : 100;
   const onTimeRate = openTickets.length ? Math.round(((openTickets.length - overdueTickets.length) / openTickets.length) * 100) : 100;
   const awaitingDecision = openTickets.filter((ticket) => ticket.status === "Aguardando aprovação" || ticket.status === "Aguardando resposta").length;
   const unassignedTickets = openTickets.filter((ticket) => !ticket.assigneeId).length;
+  const dashboardCopy = dashboardProfile === "executive"
+    ? { title: "Decisões e riscos do município", first: "Demandas críticas", second: "Setores com risco", third: "Decisões pendentes", fourth: "Conclusão municipal" }
+    : dashboardProfile === "manager"
+      ? { title: "Prioridades da equipe", first: "Demandas atrasadas", second: "Equipe em andamento", third: "Decisões pendentes", fourth: "Dentro do prazo" }
+      : { title: "Minhas prioridades", first: "Meus atrasos", second: "Meu trabalho ativo", third: "Novos avisos", fourth: "Próximo compromisso" };
   const currentWeekStart = startOfDashboardWeek(now);
   const currentWeekEnd = new Date(currentWeekStart);
   currentWeekEnd.setDate(currentWeekEnd.getDate() + 7);
-  const currentWeekHasTickets = tickets.some((ticket) => {
+  const currentWeekHasTickets = focusTickets.some((ticket) => {
     const createdAt = new Date(ticket.createdAt).getTime();
     return createdAt >= currentWeekStart.getTime() && createdAt < currentWeekEnd.getTime();
   });
-  const latestTicketTimestamp = tickets.reduce((latest, ticket) => {
+  const latestTicketTimestamp = focusTickets.reduce((latest, ticket) => {
     const createdAt = new Date(ticket.createdAt).getTime();
     return Number.isFinite(createdAt) ? Math.max(latest, createdAt) : latest;
   }, 0);
@@ -1447,13 +1533,21 @@ function Dashboard({ tickets, allTickets, audit, executive, department, userName
     dayStart.setDate(dayStart.getDate() + index);
     const dayEnd = new Date(dayStart);
     dayEnd.setDate(dayEnd.getDate() + 1);
-    const value = tickets.filter((ticket) => {
+    const value = focusTickets.filter((ticket) => {
       const createdAt = new Date(ticket.createdAt).getTime();
       return createdAt >= dayStart.getTime() && createdAt < dayEnd.getTime();
     }).length;
     return { label, value, date: dayStart };
   });
   const chartMax = Math.max(1, ...chartItems.map((item) => item.value));
+  const previousWeekStart = new Date(chartWeekStart);
+  previousWeekStart.setDate(previousWeekStart.getDate() - 7);
+  const previousWeekTotal = focusTickets.filter((ticket) => {
+    const createdAt = new Date(ticket.createdAt).getTime();
+    return createdAt >= previousWeekStart.getTime() && createdAt < chartWeekStart.getTime();
+  }).length;
+  const currentWeekTotal = chartItems.reduce((sum, item) => sum + item.value, 0);
+  const weeklyDelta = previousWeekTotal ? Math.round(((currentWeekTotal - previousWeekTotal) / previousWeekTotal) * 100) : currentWeekTotal ? 100 : 0;
   const lastDayWithDemand = chartItems.reduce((lastIndex, item, index) => item.value > 0 ? index : lastIndex, 0);
   const chartShowsCurrentWeek = chartWeekStart.getTime() === currentWeekStart.getTime();
   const activeChartDay = selectedChartDay ?? (chartShowsCurrentWeek ? dashboardWeekdayIndex(now) : lastDayWithDemand);
@@ -1473,27 +1567,27 @@ function Dashboard({ tickets, allTickets, audit, executive, department, userName
       <section className="reference-dashboard" aria-label="Painel principal">
         <div className="reference-dashboard-main">
           <section className="reference-priorities" aria-label="Prioridades do dia">
-            <header className="reference-section-heading"><div><span>{roleLabel}</span><h2>Prioridades do dia</h2></div><button type="button" onClick={() => onNavigate("Central Integrada")}>Ver tudo <ArrowRight size={13}/></button></header>
+            <header className="reference-section-heading"><div><span>{roleLabel}</span><h2>{dashboardCopy.title}</h2></div><button type="button" onClick={() => onNavigate(dashboardProfile === "executive" ? "Central Executiva" : "Central Integrada")}>Ver tudo <ArrowRight size={13}/></button></header>
             <div className="reference-kpi-grid">
-              <button type="button" className={overdueTickets.length ? "urgent" : ""} onClick={() => onNavigate("Chamados")}><span className="peach"><AlertTriangle size={16}/></span><div><strong>{overdueTickets.length}</strong><small>Demandas atrasadas</small><em>Exigem atenção</em></div></button>
-              <button type="button" onClick={() => onNavigate("Central Integrada")}><span className="lime"><ListTodo size={16}/></span><div><strong>{openTickets.length}</strong><small>Em andamento</small><em>Trabalho ativo</em></div></button>
-              <button type="button" onClick={() => onNavigate("Notificações")}><span className="blue"><BellRing size={16}/></span><div><strong>{unreadCount}</strong><small>Novos avisos</small><em>Atualizações recentes</em></div></button>
-              <button type="button" onClick={() => onNavigate("Próximos Eventos")}><span className="sand"><CalendarDays size={16}/></span><div><strong>{nextEvent ? formatDate(nextEvent.startsAt) : "—"}</strong><small>Próximo evento</small><em>{nextEvent?.title ?? "Agenda livre"}</em></div></button>
+              <button type="button" className={(dashboardProfile === "executive" ? municipalSummary.overdue : overdueTickets.length) ? "urgent" : ""} onClick={() => onNavigate(dashboardProfile === "executive" ? "Central Executiva" : "Chamados")} title="Demandas abertas com prazo vencido"><span className="peach"><AlertTriangle size={16}/></span><div><strong>{dashboardProfile === "executive" ? municipalSummary.overdue : overdueTickets.length}</strong><small>{dashboardCopy.first}</small><em>{(dashboardProfile === "executive" ? municipalSummary.overdue : overdueTickets.length) ? "Exigem atenção" : "Nenhum atraso"}</em></div></button>
+              <button type="button" onClick={() => onNavigate(dashboardProfile === "executive" ? "Central Executiva" : "Central Integrada")} title={dashboardProfile === "executive" ? "Setores que possuem ao menos uma demanda vencida" : "Demandas abertas sob responsabilidade do perfil"}><span className="teal"><ListTodo size={16}/></span><div><strong>{dashboardProfile === "executive" ? municipalSummary.riskSectors : openTickets.length}</strong><small>{dashboardCopy.second}</small><em>{dashboardProfile === "executive" ? "Visão intersetorial" : "Trabalho ativo"}</em></div></button>
+              <button type="button" onClick={() => onNavigate(dashboardProfile === "staff" ? "Notificações" : "Pendências")} title={dashboardProfile === "staff" ? "Notificações ainda não lidas" : "Itens aguardando aprovação ou resposta"}><span className="blue">{dashboardProfile === "staff" ? <BellRing size={16}/> : <Clock3 size={16}/>}</span><div><strong>{dashboardProfile === "staff" ? unreadCount : dashboardProfile === "executive" ? municipalSummary.awaitingDecision : awaitingDecision}</strong><small>{dashboardCopy.third}</small><em>{dashboardProfile === "staff" ? "Atualizações recentes" : "Aguardam decisão"}</em></div></button>
+              <button type="button" onClick={() => onNavigate(dashboardProfile === "staff" ? "Próximos Eventos" : "Indicadores")} title={dashboardProfile === "staff" ? "Próximo evento da agenda" : "Percentual calculado sobre os registros do período"}><span className="sand">{dashboardProfile === "staff" ? <CalendarDays size={16}/> : <Gauge size={16}/>}</span><div><strong>{dashboardProfile === "staff" ? (nextEvent ? formatDate(nextEvent.startsAt) : "—") : `${dashboardProfile === "executive" ? municipalSummary.completionRate : onTimeRate}%`}</strong><small>{dashboardCopy.fourth}</small><em>{dashboardProfile === "staff" ? (nextEvent?.title ?? "Agenda livre") : "Meta: 85%"}</em></div></button>
             </div>
           </section>
 
-          <section className="panel municipal-health-strip" aria-label="Saúde operacional do setor">
+          {showDetails && <section className="panel municipal-health-strip" aria-label="Saúde operacional do setor">
             <header><span><Gauge size={19}/></span><div><small>SAÚDE OPERACIONAL</small><strong>Ritmo do setor</strong></div></header>
             <button type="button" onClick={() => onNavigate("Indicadores")}><span><small>Conclusão</small><strong>{completionRate}%</strong></span><i className="municipal-health-progress" role="progressbar" aria-label="Índice de conclusão" aria-valuemin={0} aria-valuemax={100} aria-valuenow={completionRate}><b style={{ width: `${completionRate}%` }}/></i></button>
             <button type="button" onClick={() => onNavigate("Indicadores")}><span><small>Dentro do prazo</small><strong>{onTimeRate}%</strong></span><i className="municipal-health-progress" role="progressbar" aria-label="Demandas dentro do prazo" aria-valuemin={0} aria-valuemax={100} aria-valuenow={onTimeRate}><b style={{ width: `${onTimeRate}%` }}/></i></button>
             <button type="button" className={awaitingDecision ? "attention" : ""} onClick={() => onNavigate("Pendências")}><span><small>Aguardam decisão</small><strong>{awaitingDecision}</strong></span><em>{awaitingDecision ? "Revisar fila" : "Tudo em dia"}</em></button>
             <button type="button" className={unassignedTickets ? "attention" : ""} onClick={() => onNavigate("Chamados")}><span><small>Sem responsável</small><strong>{unassignedTickets}</strong></span><em>{unassignedTickets ? "Distribuir" : "Fila distribuída"}</em></button>
-          </section>
+          </section>}
 
           <div className="reference-middle-grid">
             <article className="panel reference-activity-card">
-              <header><div><span>Desempenho</span><h3>Fluxo de demandas</h3></div><button type="button" aria-expanded={showDetails} title={`Ver detalhes · ${chartRangeLabel}`} onClick={() => setShowDetails((current) => !current)}>Semanal <ChevronRight size={13}/></button></header>
-              <div className="reference-chart-summary"><strong>{completionRate}%</strong><span><ArrowUpRight size={12}/> índice de conclusão</span><em aria-live="polite">{activeChartItem.value} {activeChartItem.value === 1 ? "demanda" : "demandas"} · {activeChartItem.label}</em></div>
+              <header><div><span>Desempenho</span><h3>Fluxo de demandas</h3></div><button type="button" aria-expanded={showDetails} title={`Ver detalhes · ${chartRangeLabel}`} onClick={() => setShowDetails((current) => !current)}>{showDetails ? "Ocultar detalhes" : "Ver detalhes"} <ChevronRight size={13}/></button></header>
+              <div className="reference-chart-summary"><strong>{completionRate}%</strong><span className={weeklyDelta < 0 ? "negative" : ""} title={`Semana anterior: ${previousWeekTotal} demandas`}><ArrowUpRight size={12}/> {weeklyDelta >= 0 ? "+" : ""}{weeklyDelta}% vs. semana anterior</span><em aria-live="polite">{activeChartItem.value} {activeChartItem.value === 1 ? "demanda" : "demandas"} · {activeChartItem.label}</em></div>
               <div className="reference-bar-chart" aria-label={`Demandas criadas por dia da semana · ${chartRangeLabel}`}>
                 {chartItems.map((item, index) => <button type="button" className={index === activeChartDay ? "active" : ""} aria-pressed={index === activeChartDay} aria-label={`${item.label}, ${item.date.toLocaleDateString("pt-BR")}: ${item.value} ${item.value === 1 ? "demanda criada" : "demandas criadas"}`} title={`${item.value} ${item.value === 1 ? "demanda" : "demandas"} em ${item.label}`} key={item.label} onClick={() => setSelectedChartDay(index)}><span>{index === activeChartDay && <b>{item.value}</b>}<i className={index === activeChartDay ? "highlight" : ""} style={{ height: `${item.value ? 22 + (item.value / chartMax) * 78 : 10}%` }}/></span><small>{item.label}</small></button>)}
               </div>
@@ -1513,14 +1607,14 @@ function Dashboard({ tickets, allTickets, audit, executive, department, userName
 
           <article className="panel reference-ticket-panel">
             <div className="panel-heading"><div><h2>Demandas recentes</h2><p>Solicitações que podem exigir acompanhamento</p></div><button className="text-button" onClick={() => onNavigate("Chamados")}>Ver todas <ArrowRight size={14}/></button></div>
-            <TicketTable tickets={tickets.slice(0, 5)} onOpen={() => onNavigate("Chamados")} />
+            <TicketTable tickets={focusTickets.slice(0, 5)} onOpen={() => onNavigate("Chamados")} />
           </article>
         </div>
 
         <aside className="reference-dashboard-rail">
           <article className="reference-municipal-card">
             <header><span><Landmark size={17}/></span><strong>Prefeitura Conecta</strong></header>
-            <div><small>{userName.split(" ")[0]} · {roleLabel}</small><h3>{department}</h3><p>{openTickets.length} demandas ativas em uma base de {executive ? allTickets.length : tickets.length} registros, com {completionRate}% de conclusão.</p></div>
+            <div><small>{userName.split(" ")[0]} · {roleLabel}</small><h3>{dashboardProfile === "executive" ? "Visão consolidada municipal" : department}</h3><p>{dashboardProfile === "executive" ? `${municipalSummary.open} demandas ativas em uma base municipal de ${municipalSummary.total} registros, com ${municipalSummary.completionRate}% de conclusão.` : `${openTickets.length} demandas ativas em uma base de ${focusTickets.length} registros, com ${completionRate}% de conclusão.`}</p></div>
             <button type="button" onClick={() => onNavigate(executive ? "Central Executiva" : "Indicadores")}>Ver indicadores <ArrowUpRight size={14}/></button>
           </article>
 
@@ -1544,7 +1638,7 @@ function Dashboard({ tickets, allTickets, audit, executive, department, userName
       </section>
 
       <div className="reference-dashboard-ai">
-        <DashboardAiBrief department={department} tickets={tickets}/>
+        <DashboardAiBrief department={dashboardProfile === "executive" ? "Município" : department} tickets={focusTickets}/>
       </div>
 
       <div className="reference-dashboard-footer">
@@ -1600,46 +1694,73 @@ function TicketTable({ tickets, onOpen }: { tickets: Ticket[]; onOpen: () => voi
   );
 }
 
-function TicketsSection({ tickets, department, departments, onStatus, onNew }: { tickets: Ticket[]; department: string; departments: string[]; onStatus: (id: string, status: TicketStatus) => void; onNew: () => void }) {
+type TicketSavedView = "Todos" | "Urgentes" | "Atrasados" | "Minha equipe" | "Sem responsável";
+type TicketColumn = "protocol" | "department" | "status" | "due" | "assignee";
+type TicketWorkspacePreference = { viewMode: "board" | "table"; savedView: TicketSavedView; query: string; priority: "Todas" | Priority; status: "Todos" | TicketStatus; page: number; columns: TicketColumn[] };
+
+function TicketsSection({ tickets, department, departments, userId, now, onStatus, onNew }: { tickets: Ticket[]; department: string; departments: string[]; userId: string; now: Date; onStatus: (id: string, status: TicketStatus) => void; onNew: () => void }) {
   const access = useCurrentPermission();
   const [selectedTicket, setSelectedTicket] = useState<Ticket | null>(null);
-  const [viewMode, setViewMode] = useState<"board" | "list">("board");
+  const [selectedIds, setSelectedIds] = useState<string[]>([]);
+  const [bulkStatus, setBulkStatus] = useState<TicketStatus>("Em execução");
+  const defaultPreferences: TicketWorkspacePreference = { viewMode: "board", savedView: "Todos", query: "", priority: "Todas", status: "Todos", page: 1, columns: ["protocol", "department", "status", "due", "assignee"] };
+  const [preferences, setPreferences, preferencesReady] = useLocalPreference<TicketWorkspacePreference>(`prefeitura:workspace:tickets:${normalizeText(userId)}:${normalizeText(department)}`, defaultPreferences);
+  const nowTimestamp = now.getTime();
+  const normalizedQuery = normalizeText(preferences.query);
+  const filteredTickets = tickets.filter((ticket) => {
+    const matchesQuery = !normalizedQuery || normalizeText([ticket.protocol, ticket.title, ticket.description, ticket.requester, ticket.department, ticket.assigneeName ?? "", ticket.neighborhood ?? ""].join(" ")).includes(normalizedQuery);
+    const matchesPriority = preferences.priority === "Todas" || ticket.priority === preferences.priority;
+    const matchesStatus = preferences.status === "Todos" || ticket.status === preferences.status;
+    const isOpen = ticket.status !== "Concluído" && ticket.status !== "Cancelado";
+    const matchesSavedView = preferences.savedView === "Todos"
+      || (preferences.savedView === "Urgentes" && ticket.priority === "Urgente")
+      || (preferences.savedView === "Atrasados" && isOpen && Boolean(ticket.dueDate) && new Date(ticket.dueDate as string).getTime() < nowTimestamp)
+      || (preferences.savedView === "Minha equipe" && Boolean(ticket.assigneeId))
+      || (preferences.savedView === "Sem responsável" && !ticket.assigneeId);
+    return matchesQuery && matchesPriority && matchesStatus && matchesSavedView;
+  });
+  const pageSize = 8;
+  const pageCount = Math.max(1, Math.ceil(filteredTickets.length / pageSize));
+  const activePage = Math.min(preferences.page, pageCount);
+  const pageTickets = filteredTickets.slice((activePage - 1) * pageSize, activePage * pageSize);
+  const savedViews: TicketSavedView[] = ["Todos", "Urgentes", "Atrasados", "Minha equipe", "Sem responsável"];
+  const columnLabels: Record<TicketColumn, string> = { protocol: "Chamado", department: "Setor", status: "Status", due: "Prazo", assignee: "Responsável" };
+  const updatePreferences = (patch: Partial<TicketWorkspacePreference>) => setPreferences((current) => ({ ...current, ...patch }));
+  const toggleColumn = (column: TicketColumn) => setPreferences((current) => ({ ...current, columns: current.columns.includes(column) ? current.columns.filter((item) => item !== column) : [...current.columns, column] }));
+  const toggleSelection = (id: string) => setSelectedIds((current) => current.includes(id) ? current.filter((item) => item !== id) : [...current, id]);
+
+  function applyBulkStatus() {
+    selectedIds.forEach((id) => onStatus(id, bulkStatus));
+    setSelectedIds([]);
+  }
+
+  if (!preferencesReady) return <section className="ticket-workspace-skeleton" role="status" aria-label="Carregando filtros dos chamados"><span/><span/><span/><div><i/><i/><i/><i/></div></section>;
+
   return (
-    <section className="board-wrap">
-      <div className="access-note ticket-privacy-note"><span><ShieldCheck size={20} /></span><div><strong>Fluxo setorial com responsabilidade definida</strong><p>Você está vendo somente as demandas de {department}. Prazos, aprovações, encaminhamentos, responsáveis e anotações internas permanecem registrados no chamado.</p></div></div>
-      <div className="ticket-capability-bar" aria-label="Recursos dos chamados"><span><Clock3 size={15} /><strong>SLA e alertas</strong><small>Prazos calculados</small></span><span><UsersRound size={15} /><strong>Equipe responsável</strong><small>Titular e colaboradores</small></span><span><CheckCircle2 size={15} /><strong>Aprovações</strong><small>Decisão registrada</small></span><span><ArrowRight size={15} /><strong>Encaminhamento</strong><small>Origem preservada</small></span></div>
-      <div className="board-toolbar">
-        <div className="filter-chip active">Todos <strong>{tickets.length}</strong></div>
-        <div className="filter-chip">Alta prioridade <strong>{tickets.filter((t) => t.priority === "Alta").length}</strong></div>
-        <div className="board-spacer" />
-        <button className="button secondary" onClick={() => setViewMode((current) => current === "board" ? "list" : "board")}><List size={15} /> {viewMode === "board" ? "Lista" : "Quadro"}</button>
+    <section className="board-wrap ticket-workspace-v61">
+      <div className="access-note ticket-privacy-note"><span><ShieldCheck size={20} /></span><div><strong>Fluxo setorial com responsabilidade definida</strong><p>Você está vendo somente as demandas de {department}. Filtros, página e modo de visualização são lembrados quando você retorna.</p></div></div>
+      <div className="ticket-workspace-toolbar">
+        <label className="ticket-workspace-search"><Search size={16}/><input type="search" aria-label="Buscar nos chamados" placeholder="Buscar protocolo, assunto, bairro ou responsável" value={preferences.query} onChange={(event) => updatePreferences({ query: event.target.value, page: 1 })}/></label>
+        <label><span>Prioridade</span><select value={preferences.priority} onChange={(event) => updatePreferences({ priority: event.target.value as TicketWorkspacePreference["priority"], page: 1 })}><option>Todas</option><option>Urgente</option><option>Alta</option><option>Média</option><option>Baixa</option></select></label>
+        <label><span>Status</span><select value={preferences.status} onChange={(event) => updatePreferences({ status: event.target.value as TicketWorkspacePreference["status"], page: 1 })}><option>Todos</option>{statuses.map((status) => <option key={status}>{status}</option>)}</select></label>
+        <div className="ticket-view-switch" role="group" aria-label="Modo de visualização"><button type="button" className={preferences.viewMode === "board" ? "active" : ""} aria-pressed={preferences.viewMode === "board"} onClick={() => updatePreferences({ viewMode: "board" })}><LayoutDashboard size={15}/> Quadro</button><button type="button" className={preferences.viewMode === "table" ? "active" : ""} aria-pressed={preferences.viewMode === "table"} onClick={() => updatePreferences({ viewMode: "table" })}><List size={15}/> Tabela</button></div>
+        {preferences.viewMode === "table" && <details className="ticket-column-picker"><summary><Settings size={15}/> Colunas</summary><div>{(Object.keys(columnLabels) as TicketColumn[]).map((column) => <label key={column}><input type="checkbox" checked={preferences.columns.includes(column)} onChange={() => toggleColumn(column)}/><span>{columnLabels[column]}</span></label>)}</div></details>}
         {access.register && <button className="button primary" onClick={onNew}><Plus size={16} /> Criar chamado</button>}
       </div>
-      {viewMode === "list" ? <div className="panel ticket-list-mode">{tickets.map((ticket) => <button key={ticket.id} onClick={() => setSelectedTicket(ticket)}><span className={`priority-dot ${ticket.priority.toLowerCase().replace("é", "e")}`} /><span><strong>{ticket.title}</strong><small>{ticket.protocol} · {ticket.department}</small></span><StatusPill status={ticket.status} /><span className="due"><Clock3 size={12} /> {formatDue(ticket.dueDate)}</span><ChevronRight size={14} /></button>)}{!tickets.length && <div className="empty-state">Nenhum chamado encontrado.</div>}</div> : <div className="kanban-board">
+
+      <div className="ticket-saved-views" aria-label="Visualizações salvas">{savedViews.map((view) => <button type="button" key={view} className={preferences.savedView === view ? "active" : ""} aria-pressed={preferences.savedView === view} onClick={() => updatePreferences({ savedView: view, page: 1 })}>{view}<strong>{view === "Todos" ? tickets.length : view === "Urgentes" ? tickets.filter((ticket) => ticket.priority === "Urgente").length : view === "Atrasados" ? tickets.filter((ticket) => !["Concluído", "Cancelado"].includes(ticket.status) && Boolean(ticket.dueDate) && new Date(ticket.dueDate as string).getTime() < nowTimestamp).length : view === "Minha equipe" ? tickets.filter((ticket) => ticket.assigneeId).length : tickets.filter((ticket) => !ticket.assigneeId).length}</strong></button>)}</div>
+
+      {selectedIds.length > 0 && access.edit && <div className="ticket-bulk-bar" role="status"><span><CheckCheck size={16}/><strong>{selectedIds.length} selecionados</strong></span><label>Alterar status<select value={bulkStatus} onChange={(event) => setBulkStatus(event.target.value as TicketStatus)}>{statuses.map((status) => <option key={status}>{status}</option>)}</select></label><button type="button" onClick={applyBulkStatus}>Aplicar</button><button type="button" onClick={() => setSelectedIds([])}>Limpar seleção</button></div>}
+
+      {preferences.viewMode === "table" ? <div className="panel advanced-ticket-table-wrap"><table className="advanced-ticket-table"><thead><tr>{access.edit && <th className="select-column"><input type="checkbox" aria-label="Selecionar chamados da página" checked={pageTickets.length > 0 && pageTickets.every((ticket) => selectedIds.includes(ticket.id))} onChange={(event) => setSelectedIds((current) => event.target.checked ? Array.from(new Set([...current, ...pageTickets.map((ticket) => ticket.id)])) : current.filter((id) => !pageTickets.some((ticket) => ticket.id === id)))}/></th>}{preferences.columns.includes("protocol") && <th>Chamado</th>}{preferences.columns.includes("department") && <th>Setor</th>}{preferences.columns.includes("status") && <th>Status</th>}{preferences.columns.includes("due") && <th>Prazo</th>}{preferences.columns.includes("assignee") && <th>Responsável</th>}<th aria-label="Abrir"/></tr></thead><tbody>{pageTickets.map((ticket) => <tr key={ticket.id}>{access.edit && <td className="select-column" data-label="Selecionar"><input type="checkbox" aria-label={`Selecionar ${ticket.protocol}`} checked={selectedIds.includes(ticket.id)} onChange={() => toggleSelection(ticket.id)}/></td>}{preferences.columns.includes("protocol") && <td data-label="Chamado"><button className="ticket-table-title" onClick={() => setSelectedTicket(ticket)}><span className={`priority-dot ${ticket.priority.toLowerCase().replace("é", "e")}`}/><span><strong>{ticket.title}</strong><small>{ticket.protocol} · {ticket.requester}</small></span></button></td>}{preferences.columns.includes("department") && <td data-label="Setor">{ticket.department}</td>}{preferences.columns.includes("status") && <td data-label="Status"><StatusPill status={ticket.status}/></td>}{preferences.columns.includes("due") && <td data-label="Prazo"><span className={formatDue(ticket.dueDate).startsWith("Hoje") ? "due urgent" : "due"}><Clock3 size={12}/>{formatDue(ticket.dueDate)}</span></td>}{preferences.columns.includes("assignee") && <td data-label="Responsável"><span className="assignee-cell"><i className="mini-avatar">{ticket.assigneeInitials ?? "--"}</i>{ticket.assigneeName ?? "A definir"}</span></td>}<td data-label="Abrir"><button className="table-menu" aria-label={`Abrir ${ticket.protocol}`} onClick={() => setSelectedTicket(ticket)}><ChevronRight size={16}/></button></td></tr>)}</tbody></table>{!filteredTickets.length && <div className="module-empty ticket-filter-empty"><Search size={27}/><strong>Nenhum chamado nesta visualização</strong><p>Revise os filtros ou volte à visão completa.</p><button type="button" onClick={() => setPreferences(defaultPreferences)}>Limpar filtros</button></div>}<footer className="ticket-pagination"><span>Mostrando {filteredTickets.length ? (activePage - 1) * pageSize + 1 : 0}–{Math.min(activePage * pageSize, filteredTickets.length)} de {filteredTickets.length}</span><div><button type="button" disabled={activePage === 1} onClick={() => updatePreferences({ page: activePage - 1 })} aria-label="Página anterior"><ChevronRight size={14}/></button><strong>Página {activePage} de {pageCount}</strong><button type="button" disabled={activePage === pageCount} onClick={() => updatePreferences({ page: activePage + 1 })} aria-label="Próxima página"><ChevronRight size={14}/></button></div></footer></div> : <div className="kanban-board">
         {statuses.map((status) => {
           const StatusIcon = statusMeta[status].icon;
-          const columnTickets = tickets.filter((ticket) => ticket.status === status);
-          return (
-            <section className={`kanban-column ${statusMeta[status].color}`} key={status}>
-              <header><span><StatusIcon size={14} />{statusMeta[status].short}</span><strong>{columnTickets.length}</strong></header>
-              <div className="kanban-cards">
-                {columnTickets.map((ticket) => (
-                  <article className="kanban-card" key={ticket.id}>
-                    <div className="card-meta"><span className={`priority-label ${ticket.priority.toLowerCase().replace("é", "e")}`}>{ticket.priority}</span><button aria-label={`Opções de ${ticket.protocol}`} onClick={() => setSelectedTicket(ticket)}><MoreHorizontal size={17} /></button></div>
-                    <h3>{ticket.title}</h3><p>{ticket.description}</p><small>{ticket.protocol} · {ticket.requester}{ticket.neighborhood ? ` · ${ticket.neighborhood}` : ""}</small>
-                    <div className="ticket-template-line"><span>{ticket.priority === "Urgente" ? "Atendimento imediato" : "Prazo setorial"}</span><span>{ticket.assigneeName ? "Responsável definido" : "Aguardando atribuição"}</span></div>
-                    <div className="kanban-footer"><span className="mini-avatar">{ticket.assigneeInitials ?? "--"}</span><span className={formatDue(ticket.dueDate).startsWith("Hoje") ? "due urgent" : "due"}><Clock3 size={12} /> {formatDue(ticket.dueDate)}</span></div>
-                    {access.edit ? <label className="move-label">Mover para<select aria-label={`Mover ${ticket.protocol}`} value={ticket.status} onChange={(event) => onStatus(ticket.id, event.target.value as TicketStatus)}>{statuses.map((option) => <option key={option}>{option}</option>)}</select></label> : <span className="read-only-chip"><ShieldCheck size={11} /> Somente consulta</span>}
-                    <button className="ticket-detail-button" onClick={() => setSelectedTicket(ticket)}>Abrir detalhes e checklist <ArrowRight size={12} /></button>
-                  </article>
-                ))}
-                {columnTickets.length === 0 && <div className="column-empty">Nenhum chamado nesta etapa</div>}
-              </div>
-            </section>
-          );
+          const columnTickets = filteredTickets.filter((ticket) => ticket.status === status);
+          return <section className={`kanban-column ${statusMeta[status].color}`} key={status}><header title={statusMeta[status].description}><span><StatusIcon size={14}/>{statusMeta[status].short}</span><strong>{columnTickets.length}</strong></header><div className="kanban-cards">{columnTickets.map((ticket) => <article className="kanban-card" key={ticket.id}><div className="card-meta"><span className={`priority-label ${ticket.priority.toLowerCase().replace("é", "e")}`}>{ticket.priority}</span><button aria-label={`Opções de ${ticket.protocol}`} onClick={() => setSelectedTicket(ticket)}><MoreHorizontal size={17}/></button></div><h3>{ticket.title}</h3><p>{ticket.description}</p><small>{ticket.protocol} · {ticket.requester}{ticket.neighborhood ? ` · ${ticket.neighborhood}` : ""}</small><div className="ticket-template-line"><span>{ticket.priority === "Urgente" ? "Atendimento imediato" : "Prazo setorial"}</span><span>{ticket.assigneeName ? "Responsável definido" : "Aguardando atribuição"}</span></div><div className="kanban-footer"><span className="mini-avatar">{ticket.assigneeInitials ?? "--"}</span><span className={formatDue(ticket.dueDate).startsWith("Hoje") ? "due urgent" : "due"}><Clock3 size={12}/>{formatDue(ticket.dueDate)}</span></div>{access.edit ? <label className="move-label">Mover para<select aria-label={`Mover ${ticket.protocol}`} value={ticket.status} onChange={(event) => onStatus(ticket.id, event.target.value as TicketStatus)}>{statuses.map((option) => <option key={option}>{option}</option>)}</select></label> : <span className="read-only-chip"><ShieldCheck size={11}/> Somente consulta</span>}<button className="ticket-detail-button" onClick={() => setSelectedTicket(ticket)}>Abrir detalhes e checklist <ArrowRight size={12}/></button></article>)}{columnTickets.length === 0 && <div className="column-empty">Nenhum chamado nesta etapa</div>}</div></section>;
         })}
       </div>}
-      {selectedTicket && <TicketDetailModal ticket={selectedTicket} departments={departments} onClose={() => setSelectedTicket(null)} onStatus={(status) => { onStatus(selectedTicket.id, status); setSelectedTicket((current) => current ? { ...current, status } : current); }} />}
+      <div className="status-legend-v61" aria-label="Legenda de status">{statuses.map((status) => { const Icon = statusMeta[status].icon; return <span key={status} title={statusMeta[status].description}><Icon size={12}/><strong>{statusMeta[status].short}</strong><small>{statusMeta[status].description}</small></span>; })}</div>
+      {selectedTicket && <TicketDetailModal ticket={selectedTicket} departments={departments} onClose={() => setSelectedTicket(null)} onStatus={(status) => { onStatus(selectedTicket.id, status); setSelectedTicket((current) => current ? { ...current, status } : current); }}/>} 
     </section>
   );
 }
@@ -1854,31 +1975,46 @@ function CommunicationSection({ currentUser, users, groups, messages, tickets, o
   );
 }
 
-function NotificationsSection({ notifications, onRead, onOpenPending }: { notifications: NotificationItem[]; onRead: (id: string) => void; onOpenPending: () => void }) {
-  const sorted = [...notifications].sort((a, b) => b.createdAt.localeCompare(a.createdAt));
+type NotificationCategory = "Todas" | "Urgentes" | "Pendentes" | "Informativas" | "Menções" | "Processos" | "Lembrar depois";
+
+function NotificationsSection({ notifications, userId, onRead, onOpenPending }: { notifications: NotificationItem[]; userId: string; onRead: (id: string) => void; onOpenPending: () => void }) {
+  const [preferences, setPreferences, preferencesReady] = useLocalPreference<{ category: NotificationCategory; laterIds: string[]; mutedInformational: boolean }>(`prefeitura:notifications:${userId}:v2`, { category: "Todas", laterIds: [], mutedInformational: false });
   const iconByType: Record<NotificationItem["type"], LucideIcon> = { group_invite: UserPlus, ticket: ClipboardList, message: MessagesSquare, system: BellRing };
+  const categoryOf = (item: NotificationItem): Exclude<NotificationCategory, "Todas" | "Lembrar depois"> => {
+    const content = normalizeText(`${item.title} ${item.body}`);
+    if (item.type === "ticket" && (content.includes("aprov") || content.includes("urgente") || content.includes("prazo"))) return "Urgentes";
+    if (item.type === "group_invite" || item.type === "ticket") return "Pendentes";
+    if (item.type === "message") return "Menções";
+    if (content.includes("processo") || content.includes("protocolo")) return "Processos";
+    return "Informativas";
+  };
+  const categories: NotificationCategory[] = ["Todas", "Urgentes", "Pendentes", "Informativas", "Menções", "Processos", "Lembrar depois"];
+  const categoryCount = (category: NotificationCategory) => category === "Todas" ? notifications.filter((item) => !preferences.laterIds.includes(item.id)).length : category === "Lembrar depois" ? notifications.filter((item) => preferences.laterIds.includes(item.id)).length : notifications.filter((item) => categoryOf(item) === category && !preferences.laterIds.includes(item.id)).length;
+  const sorted = [...notifications]
+    .filter((item) => preferences.category === "Lembrar depois" ? preferences.laterIds.includes(item.id) : !preferences.laterIds.includes(item.id))
+    .filter((item) => preferences.category === "Todas" || preferences.category === "Lembrar depois" || categoryOf(item) === preferences.category)
+    .filter((item) => !preferences.mutedInformational || categoryOf(item) !== "Informativas")
+    .sort((a, b) => b.createdAt.localeCompare(a.createdAt));
+  const toggleLater = (id: string) => setPreferences((current) => ({ ...current, laterIds: current.laterIds.includes(id) ? current.laterIds.filter((item) => item !== id) : [...current.laterIds, id] }));
+
+  if (!preferencesReady) return <div className="notification-skeleton" role="status" aria-label="Organizando notificações"><span/><span/><span/></div>;
+
   return (
-    <section className="notification-layout">
+    <section className="notification-layout notification-center-v61">
       <article className="panel notification-panel">
-        <header className="section-title"><div><h2>Caixa de entrada</h2><p>{notifications.filter((item) => !item.readAt).length} {notifications.filter((item) => !item.readAt).length === 1 ? "aviso não lido" : "avisos não lidos"}</p></div><span><BellRing size={18} /></span></header>
+        <header className="section-title"><div><h2>Central de notificações</h2><p>{notifications.filter((item) => !item.readAt).length} {notifications.filter((item) => !item.readAt).length === 1 ? "aviso não lido" : "avisos não lidos"}</p></div><button type="button" className={preferences.mutedInformational ? "notification-mute active" : "notification-mute"} aria-pressed={preferences.mutedInformational} onClick={() => setPreferences((current) => ({ ...current, mutedInformational: !current.mutedInformational }))}><Bell size={15}/>{preferences.mutedInformational ? "Informativos silenciados" : "Silenciar baixa prioridade"}</button></header>
+        <nav className="notification-category-tabs" aria-label="Categorias das notificações">{categories.map((category) => <button type="button" key={category} className={preferences.category === category ? "active" : ""} aria-pressed={preferences.category === category} onClick={() => setPreferences((current) => ({ ...current, category }))}><span>{category}</span><strong>{categoryCount(category)}</strong></button>)}</nav>
         <div className="notification-list">
           {sorted.map((item) => {
             const NoticeIcon = iconByType[item.type];
-            return (
-              <article className={`notification-row ${item.readAt ? "read" : "unread"}`} key={item.id}>
-                <span className={`notification-type ${item.type}`}><NoticeIcon size={18} /></span>
-                <div className="notification-copy"><div><strong>{item.title}</strong>{!item.readAt && <i>NOVA</i>}</div><p>{item.body}</p><small>{item.actorName ? `${item.actorName} · ` : ""}{formatRelative(item.createdAt)}</small></div>
-                <div className="notification-actions">
-                  {item.type === "group_invite" && <button className="button primary" onClick={() => { onRead(item.id); onOpenPending(); }}><UserPlus size={14} /> Ver convite</button>}
-                  {!item.readAt && <button className="button secondary" onClick={() => onRead(item.id)}><Check size={14} /> Marcar como lida</button>}
-                </div>
-              </article>
-            );
+            const category = categoryOf(item);
+            const savedForLater = preferences.laterIds.includes(item.id);
+            return <article className={`notification-row ${item.readAt ? "read" : "unread"} category-${normalizeText(category)}`} key={item.id}><span className={`notification-type ${item.type}`}><NoticeIcon size={18}/></span><div className="notification-copy"><div><strong>{item.title}</strong>{!item.readAt && <i>NOVA</i>}<em>{category}</em></div><p>{item.body}</p><small>{item.actorName ? `${item.actorName} · ` : ""}{formatRelative(item.createdAt)}</small></div><div className="notification-actions">{item.type === "group_invite" && <button className="button primary" onClick={() => { onRead(item.id); onOpenPending(); }}><UserPlus size={14}/> Ver convite</button>}<button className="button secondary" onClick={() => toggleLater(item.id)}><Clock3 size={14}/>{savedForLater ? "Voltar à caixa" : "Lembrar depois"}</button>{!item.readAt && <button className="button secondary" onClick={() => onRead(item.id)}><Check size={14}/> Marcar como lida</button>}</div></article>;
           })}
-          {!sorted.length && <div className="module-empty"><BellRing size={28} /><strong>Tudo em dia</strong><p>As novas mensagens, convites e atualizações aparecerão aqui.</p></div>}
+          {!sorted.length && <div className="module-empty"><BellRing size={28}/><strong>Nenhum aviso nesta categoria</strong><p>Altere a categoria ou revise os itens marcados para depois.</p><button type="button" onClick={() => setPreferences((current) => ({ ...current, category: "Todas", mutedInformational: false }))}>Ver todas as notificações</button></div>}
         </div>
       </article>
-      <aside className="panel notification-guide"><span><ShieldCheck size={21} /></span><h2>Avisos vinculados ao usuário</h2><p>Cada secretário visualiza somente as notificações destinadas ao seu próprio acesso.</p><ul><li>Convites para grupos</li><li>Chamados para aprovação</li><li>Mensagens e documentos</li></ul></aside>
+      <aside className="panel notification-guide"><span><ShieldCheck size={21}/></span><h2>Organização segura</h2><p>Os avisos continuam vinculados ao usuário e ao setor autorizado.</p><ul><li>Urgentes e pendentes no topo</li><li>Menções e processos separados</li><li>Lembretes preservados para depois</li></ul><small>{preferences.mutedInformational ? "Avisos informativos estão silenciados neste dispositivo." : "Todos os níveis de prioridade estão visíveis."}</small></aside>
     </section>
   );
 }
@@ -2142,10 +2278,11 @@ function LockKeyholeIcon() { return <ShieldCheck size={13} />; }
 function TicketModal({ users, departments, onClose, onCreate }: { users: User[]; departments: string[]; onClose: () => void; onCreate: (data: FormData) => unknown | Promise<unknown> }) {
   type TicketDraft = { department: string; neighborhood: string; address: string; title: string; description: string; priority: Priority; dueDate: string };
   const draftKey = "prefeitura:draft:new-ticket:v1";
-  const [department, setDepartment] = useState(departments[0] ?? ""); const [neighborhood, setNeighborhood] = useState(""); const [address, setAddress] = useState(""); const [title, setTitle] = useState(""); const [description, setDescription] = useState(""); const [priority, setPriority] = useState<Priority>("Média"); const [dueDate, setDueDate] = useState(""); const [draftRecovered, setDraftRecovered] = useState(false); const [aiBusy, setAiBusy] = useState(false); const [aiHint, setAiHint] = useState("");
+  const [step, setStep] = useState<1 | 2 | 3>(1); const [department, setDepartment] = useState(departments[0] ?? ""); const [neighborhood, setNeighborhood] = useState(""); const [address, setAddress] = useState(""); const [title, setTitle] = useState(""); const [description, setDescription] = useState(""); const [priority, setPriority] = useState<Priority>("Média"); const [dueDate, setDueDate] = useState(""); const [draftRecovered, setDraftRecovered] = useState(false); const [draftSaveState, setDraftSaveState] = useState<"saved" | "saving">("saved"); const [errors, setErrors] = useState<{ title?: string; department?: string; dueDate?: string }>({}); const [submitError, setSubmitError] = useState(""); const [aiBusy, setAiBusy] = useState(false); const [aiHint, setAiHint] = useState("");
   const skipNextDraftSave = useRef(false);
   const draftLoaded = useRef(false);
   const eligibleUsers = users.filter((user) => sameDepartment(user.department, department));
+  const hasUnsavedChanges = Boolean(title.trim() || description.trim() || neighborhood.trim() || address.trim() || dueDate || priority !== "Média" || !sameDepartment(department, departments[0] ?? ""));
   useEffect(() => {
     const timer = window.setTimeout(() => {
       try {
@@ -2164,26 +2301,39 @@ function TicketModal({ users, departments, onClose, onCreate }: { users: User[];
     if (!draftLoaded.current) return;
     if (skipNextDraftSave.current) { skipNextDraftSave.current = false; return; }
     const draft: TicketDraft = { department, neighborhood, address, title, description, priority, dueDate };
-    const timer = window.setTimeout(() => { try { localStorage.setItem(draftKey, JSON.stringify(draft)); } catch { /* armazenamento indisponível */ } }, 250);
+    setDraftSaveState("saving");
+    const timer = window.setTimeout(() => { try { localStorage.setItem(draftKey, JSON.stringify(draft)); } catch { /* armazenamento indisponível */ } setDraftSaveState("saved"); }, 250);
     return () => window.clearTimeout(timer);
   }, [address, department, description, dueDate, neighborhood, priority, title]);
-  async function submit(event: FormEvent<HTMLFormElement>) { event.preventDefault(); await onCreate(new FormData(event.currentTarget)); try { localStorage.removeItem(draftKey); } catch { /* ignore */ } setDraftRecovered(false); }
-  function discardDraft() { skipNextDraftSave.current = true; setTitle(""); setDescription(""); setNeighborhood(""); setAddress(""); setPriority("Média"); setDueDate(""); setDepartment(departments[0] ?? ""); setDraftRecovered(false); try { localStorage.removeItem(draftKey); } catch { /* ignore */ } }
+  function validate(targetStep: 1 | 2 | 3) {
+    const nextErrors: typeof errors = {};
+    if ((targetStep === 1 || targetStep === 3) && title.trim().length < 4) nextErrors.title = "Informe um título objetivo com pelo menos 4 caracteres.";
+    if ((targetStep === 2 || targetStep === 3) && !department.trim()) nextErrors.department = "Selecione o setor responsável.";
+    if ((targetStep === 2 || targetStep === 3) && dueDate && Number.isNaN(new Date(`${dueDate}T12:00:00`).getTime())) nextErrors.dueDate = "Informe uma data válida.";
+    setErrors(nextErrors);
+    return Object.keys(nextErrors).length === 0;
+  }
+  async function submit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault(); setSubmitError("");
+    if (step < 3) { if (validate(step)) setStep((step + 1) as 2 | 3); return; }
+    if (!validate(3)) { setStep(title.trim().length < 4 ? 1 : 2); return; }
+    const result = await onCreate(new FormData(event.currentTarget));
+    if (result === null) { setSubmitError("Não foi possível salvar o chamado. Revise sua permissão e tente novamente."); return; }
+    try { localStorage.removeItem(draftKey); } catch { /* ignore */ }
+    setDraftRecovered(false);
+  }
+  function requestClose() { if (!hasUnsavedChanges || window.confirm("Sair sem concluir? O rascunho ficará salvo automaticamente para você continuar depois.")) onClose(); }
+  function discardDraft() { skipNextDraftSave.current = true; setTitle(""); setDescription(""); setNeighborhood(""); setAddress(""); setPriority("Média"); setDueDate(""); setDepartment(departments[0] ?? ""); setDraftRecovered(false); setErrors({}); setStep(1); try { localStorage.removeItem(draftKey); } catch { /* ignore */ } }
   async function assistWithAi() { if (!title.trim() && !description.trim()) { setAiHint("Escreva ao menos um título ou uma descrição para a IA analisar."); return; } setAiBusy(true); setAiHint(""); try { const response = await fetch("/api/ai", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ operation: "ticket_assist", title, description, neighborhood, departments }) }); const payload = await response.json() as { result?: { title:string; description:string; department:string; priority:Priority; dueDays:number; slaHours:number; tags:string[]; checklist:string[]; source:string }; error?:string }; if (!response.ok || !payload.result) throw new Error(payload.error || "Não foi possível preparar o chamado com IA."); const result = payload.result; setTitle(result.title || title); setDescription(result.description || description); if (departments.some((item) => sameDepartment(item, result.department))) setDepartment(departments.find((item) => sameDepartment(item, result.department)) ?? department); setPriority(result.priority || priority); const target = new Date(); target.setDate(target.getDate()+Math.max(0,result.dueDays||0)); setDueDate(target.toISOString().slice(0,10)); setAiHint(`IA sugeriu setor, prioridade e prazo · SLA recomendado: ${result.slaHours}h${result.tags.length ? ` · ${result.tags.slice(0,3).join(", ")}` : ""}. Revise antes de criar.`); } catch(error) { setAiHint(error instanceof Error ? error.message : "Falha ao consultar a IA."); } finally { setAiBusy(false); } }
-  return <div className="modal-backdrop" role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget) onClose(); }}><section className="modal ticket-create-modal" role="dialog" aria-modal="true" aria-labelledby="ticket-modal-title"><header><div><p className="eyebrow">NOVO REGISTRO</p><h2 id="ticket-modal-title">Criar chamado</h2></div><button type="button" onClick={onClose} aria-label="Fechar"><X size={18}/></button></header><form onSubmit={submit}>
+  return <div className="modal-backdrop" role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget) requestClose(); }}><section className="modal ticket-create-modal ticket-step-modal" role="dialog" aria-modal="true" aria-labelledby="ticket-modal-title"><header><div><p className="eyebrow">NOVO REGISTRO · ETAPA {step} DE 3</p><h2 id="ticket-modal-title">Criar chamado</h2><small className={`draft-save-state ${draftSaveState}`}><RefreshCw className={draftSaveState === "saving" ? "spin" : ""} size={12}/>{draftSaveState === "saving" ? "Salvando rascunho…" : "Rascunho salvo automaticamente"}</small></div><button type="button" onClick={requestClose} aria-label="Fechar"><X size={18}/></button></header><form onSubmit={submit} noValidate>
+    <ol className="ticket-form-progress" aria-label="Progresso do formulário"><li className={step >= 1 ? "active" : ""}><span>{step > 1 ? <Check size={12}/> : "1"}</span><strong>Identificação</strong></li><li className={step >= 2 ? "active" : ""}><span>{step > 2 ? <Check size={12}/> : "2"}</span><strong>Encaminhamento</strong></li><li className={step >= 3 ? "active" : ""}><span>3</span><strong>Revisão</strong></li></ol>
     {draftRecovered && <div className="draft-recovery-note full" role="status"><RefreshCw size={15}/><span><strong>Rascunho recuperado</strong><small>O preenchimento anterior foi restaurado automaticamente.</small></span><button type="button" onClick={discardDraft}>Descartar</button></div>}
-    <label className="field full"><span>Modelo da solicitação</span><select name="template" defaultValue="Solicitação geral"><option>Solicitação geral</option><option>Manutenção de veículo</option><option>Solicitação de material</option><option>Reparo em iluminação</option><option>Suporte de informática</option><option>Produção de arte e comunicação</option><option>Agendamento de espaço</option><option>Solicitação de transporte</option><option>Compra ou contratação</option><option>Vistoria técnica</option></select><small className="field-hint">O modelo define checklist, documentos obrigatórios e prazo padrão.</small></label>
-    <label className="field full"><span>Título do chamado *</span><input name="title" required placeholder="Ex.: Reparo da iluminação da avenida" autoFocus value={title} onChange={(event)=>setTitle(event.target.value)}/></label>
-    <label className="field full"><span>Descrição</span><textarea name="description" placeholder="Inclua contexto, entregáveis, local e observações..." value={description} onChange={(event)=>setDescription(event.target.value)}/></label>
-    <div className="ticket-ai-assist full"><button type="button" disabled={aiBusy || (!title.trim() && !description.trim())} onClick={()=>void assistWithAi()}><Sparkles size={15}/>{aiBusy ? "Analisando com Groq..." : "IA: classificar e preencher"}</button>{aiHint && <small>{aiHint}</small>}</div>
-    <AddressRegistrationField neighborhood={neighborhood} address={address} onNeighborhoodChange={setNeighborhood} onAddressChange={setAddress}/>
-    <label className="field"><span>Setor responsável *</span><select name="department" required value={department} onChange={(event)=>setDepartment(event.target.value)}>{departments.map((item)=><option key={item}>{item}</option>)}</select></label>
-    <label className="field"><span>Responsável principal</span><select name="assigneeId" defaultValue="" disabled={!department}><option value="">{department ? "A definir" : "Selecione primeiro o setor"}</option>{eligibleUsers.map((user)=><option key={user.id} value={user.id}>{user.fullName}</option>)}</select></label>
-    <label className="field"><span>Prioridade</span><select name="priority" value={priority} onChange={(event)=>setPriority(event.target.value as Priority)}><option>Urgente</option><option>Alta</option><option>Média</option><option>Baixa</option></select></label>
-    <label className="field"><span>Prazo ou SLA</span><input type="date" name="dueDate" value={dueDate} onChange={(event)=>setDueDate(event.target.value)}/></label>
-    <label className="field full"><span>Colaboradores e pessoas que acompanham</span><select name="followers" defaultValue=""><option value="">Definir depois da criação</option>{eligibleUsers.map((user)=><option key={user.id} value={user.id}>{user.fullName} · {user.role}</option>)}</select></label>
+    <section className="ticket-form-step" hidden={step !== 1} aria-labelledby="ticket-step-one"><div className="ticket-step-heading"><span><FileText size={17}/></span><div><h3 id="ticket-step-one">Identifique a solicitação</h3><p>Descreva o pedido em linguagem direta para facilitar a triagem.</p></div></div><label className="field full"><span>Modelo da solicitação</span><select name="template" defaultValue="Solicitação geral"><option>Solicitação geral</option><option>Manutenção de veículo</option><option>Solicitação de material</option><option>Reparo em iluminação</option><option>Suporte de informática</option><option>Produção de arte e comunicação</option><option>Agendamento de espaço</option><option>Solicitação de transporte</option><option>Compra ou contratação</option><option>Vistoria técnica</option></select><small className="field-hint">O modelo define checklist, documentos obrigatórios e prazo padrão.</small></label><label className={`field full ${errors.title ? "field-error" : ""}`}><span>Título do chamado *</span><input name="title" aria-invalid={Boolean(errors.title)} aria-describedby={errors.title ? "ticket-title-error" : undefined} placeholder="Ex.: Reparo da iluminação da avenida" autoFocus value={title} onChange={(event)=>{setTitle(event.target.value);setErrors((current)=>({...current,title:undefined}));}}/>{errors.title ? <small id="ticket-title-error" className="inline-error"><AlertTriangle size={12}/>{errors.title}</small> : <small className="field-hint">Use serviço + local + situação.</small>}</label><label className="field full"><span>Descrição</span><textarea name="description" placeholder="Inclua contexto, entregáveis, local e observações..." value={description} onChange={(event)=>setDescription(event.target.value)}/><small className="field-hint">Evite dados pessoais que não sejam necessários ao atendimento.</small></label><div className="ticket-ai-assist full"><button type="button" disabled={aiBusy || (!title.trim() && !description.trim())} onClick={()=>void assistWithAi()}><Sparkles size={15}/>{aiBusy ? "Analisando com Groq..." : "IA: classificar e preencher"}</button>{aiHint && <small>{aiHint}</small>}</div></section>
+    <section className="ticket-form-step" hidden={step !== 2} aria-labelledby="ticket-step-two"><div className="ticket-step-heading"><span><Workflow size={17}/></span><div><h3 id="ticket-step-two">Defina o encaminhamento</h3><p>Informe local, setor, responsabilidade, prioridade e prazo.</p></div></div><AddressRegistrationField neighborhood={neighborhood} address={address} onNeighborhoodChange={setNeighborhood} onAddressChange={setAddress}/><label className={`field ${errors.department ? "field-error" : ""}`}><span>Setor responsável *</span><select name="department" aria-invalid={Boolean(errors.department)} value={department} onChange={(event)=>{setDepartment(event.target.value);setErrors((current)=>({...current,department:undefined}));}}>{departments.map((item)=><option key={item}>{item}</option>)}</select>{errors.department && <small className="inline-error"><AlertTriangle size={12}/>{errors.department}</small>}</label><label className="field"><span>Responsável principal</span><select name="assigneeId" defaultValue="" disabled={!department}><option value="">{department ? "A definir" : "Selecione primeiro o setor"}</option>{eligibleUsers.map((user)=><option key={user.id} value={user.id}>{user.fullName}</option>)}</select></label><label className="field"><span>Prioridade</span><select name="priority" value={priority} onChange={(event)=>setPriority(event.target.value as Priority)}><option>Urgente</option><option>Alta</option><option>Média</option><option>Baixa</option></select></label><label className={`field ${errors.dueDate ? "field-error" : ""}`}><span>Prazo ou SLA</span><input type="date" name="dueDate" aria-invalid={Boolean(errors.dueDate)} value={dueDate} onChange={(event)=>{setDueDate(event.target.value);setErrors((current)=>({...current,dueDate:undefined}));}}/>{errors.dueDate && <small className="inline-error"><AlertTriangle size={12}/>{errors.dueDate}</small>}</label><label className="field full"><span>Colaboradores e pessoas que acompanham</span><select name="followers" defaultValue=""><option value="">Definir depois da criação</option>{eligibleUsers.map((user)=><option key={user.id} value={user.id}>{user.fullName} · {user.role}</option>)}</select></label></section>
+    <section className="ticket-form-step ticket-review-step" hidden={step !== 3} aria-labelledby="ticket-step-three"><div className="ticket-step-heading"><span><CheckCircle2 size={17}/></span><div><h3 id="ticket-step-three">Revise antes de registrar</h3><p>Confirme os dados essenciais. O histórico começa após o registro.</p></div></div><div className="ticket-review-grid"><article><small>Solicitação</small><strong>{title || "Título não informado"}</strong><p>{description || "Sem descrição complementar."}</p><button type="button" onClick={()=>setStep(1)}>Editar identificação</button></article><article><small>Encaminhamento</small><strong>{department || "Setor não informado"}</strong><p>{priority} · {dueDate ? new Date(`${dueDate}T12:00:00`).toLocaleDateString("pt-BR") : "Sem prazo definido"}</p><button type="button" onClick={()=>setStep(2)}>Editar encaminhamento</button></article><article><small>Local</small><strong>{neighborhood || "Bairro não informado"}</strong><p>{address || "Endereço não informado."}</p></article></div></section>
     <p className="ticket-modal-privacy"><ShieldCheck size={14}/> O chamado ficará visível ao setor responsável. A IA apenas sugere classificação, prioridade e prazo; o servidor confirma antes do registro.</p>
-    <div className="modal-actions"><button type="button" className="button secondary" onClick={onClose}>Cancelar</button><button type="submit" className="button primary"><Plus size={15}/> Criar e registrar</button></div>
+    {submitError && <p className="ticket-submit-error" role="alert"><AlertTriangle size={14}/>{submitError}<button type="button" onClick={()=>setSubmitError("")}>Tentar novamente</button></p>}
+    <div className="modal-actions ticket-sticky-actions"><button type="button" className="button secondary" onClick={requestClose}>Cancelar</button><span className="modal-action-spacer"/>{step > 1 && <button type="button" className="button secondary" onClick={()=>setStep((step - 1) as 1 | 2)}>Voltar</button>}<button type="submit" className="button primary">{step < 3 ? <>Continuar <ArrowRight size={15}/></> : <><Plus size={15}/> Criar e registrar</>}</button></div>
   </form></section></div>;
 }
 
@@ -2247,7 +2397,37 @@ function GroupModal({ currentUserId, users, onClose, onCreate }: { currentUserId
   return <div className="modal-backdrop" role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget) onClose(); }}><section className="modal group-modal" role="dialog" aria-modal="true" aria-labelledby="group-modal-title"><header><div><p className="eyebrow">COMUNICAÇÃO DO SETOR</p><h2 id="group-modal-title">Criar grupo por convite</h2></div><button onClick={onClose} aria-label="Fechar"><X size={18} /></button></header><form action={submit}><label className="field full"><span>Nome do grupo *</span><input name="name" required placeholder="Ex.: Planejamento semanal" autoFocus /></label><label className="field full"><span>Objetivo</span><textarea name="description" placeholder="Qual é o objetivo desta conversa?" /></label><fieldset className="member-picker"><legend>Quem você deseja adicionar?</legend><div className="member-tools"><label><Search size={15} /><input aria-label="Buscar pessoa para o grupo" placeholder="Buscar por nome no setor..." value={query} onChange={(event) => setQuery(event.target.value)} /></label><button type="button" onClick={toggleAll}>{selected.length === candidates.length ? "Limpar seleção" : "Selecionar todos"}</button></div><div className="member-results">{filtered.map((user) => <label className={selected.includes(user.id) ? "selected" : ""} key={user.id}><input type="checkbox" checked={selected.includes(user.id)} onChange={(event) => setSelected((current) => event.target.checked ? [...current, user.id] : current.filter((id) => id !== user.id))} /><span className="mini-avatar">{user.initials}</span><span><strong>{user.fullName}</strong><small>{user.department} · {user.role}</small></span><i>{selected.includes(user.id) ? <Check size={12} /> : <Plus size={12} />}</i></label>)}</div><p className="member-count"><UsersRound size={14} /><strong>{selected.length}</strong> {selected.length === 1 ? "pessoa selecionada" : "pessoas selecionadas"}</p></fieldset><p className="invite-note"><BellRing size={14} /> Cada participante receberá uma notificação e uma pendência no próprio acesso. O grupo só ficará disponível depois que o convite for aceito.</p><div className="modal-actions"><button type="button" className="button secondary" onClick={onClose}>Cancelar</button><button className="button primary" disabled={!selected.length}><UserPlus size={15} /> Criar e enviar {selected.length || ""} {selected.length === 1 ? "convite" : "convites"}</button></div></form></section></div>;
 }
 
-function StatusPill({ status }: { status: TicketStatus }) { return <span className={`status-pill ${statusMeta[status].color}`}><i />{statusMeta[status].short}</span>; }
+function useLocalPreference<T>(key: string, initialValue: T): [T, (value: T | ((current: T) => T)) => void, boolean] {
+  const [value, setValue] = useState<T>(initialValue);
+  const [ready, setReady] = useState(false);
+  const skipSave = useRef(true);
+  const initialValueRef = useRef(initialValue);
+  initialValueRef.current = initialValue;
+
+  useEffect(() => {
+    const timer = window.setTimeout(() => {
+      skipSave.current = true;
+      try {
+        const stored = localStorage.getItem(key);
+        setValue(stored ? JSON.parse(stored) as T : initialValueRef.current);
+      } catch {
+        setValue(initialValueRef.current);
+      }
+      setReady(true);
+    }, 0);
+    return () => window.clearTimeout(timer);
+  }, [key]);
+
+  useEffect(() => {
+    if (!ready) return;
+    if (skipSave.current) { skipSave.current = false; return; }
+    try { localStorage.setItem(key, JSON.stringify(value)); } catch { /* preferências continuam válidas durante a sessão */ }
+  }, [key, ready, value]);
+
+  return [value, setValue, ready];
+}
+
+function StatusPill({ status }: { status: TicketStatus }) { const StatusIcon = statusMeta[status].icon; return <span className={`status-pill ${statusMeta[status].color}`} title={statusMeta[status].description}><StatusIcon size={12}/>{statusMeta[status].short}</span>; }
 function Activity({ avatar, color, title, detail, time }: { avatar: string; color: string; title: string; detail: string; time: string }) { return <div className="activity-item"><span className={`activity-avatar ${color}`}>{avatar}</span><div><strong>{title}</strong><p>{detail}</p><small>{time}</small></div></div>; }
 function auditCategory(item: AuditItem) {
   if (item.entityType === "chamado") return "Chamados";

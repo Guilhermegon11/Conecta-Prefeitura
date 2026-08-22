@@ -22,6 +22,12 @@ Sistema interno de gestão municipal em Next.js, React e TypeScript, com persist
 - Configurações
 - Últimas Notícias Prefeitura
 
+## Versão 6.1 — produtividade e experiência por perfil
+
+A versão 6.1 personaliza a visão inicial para Prefeito/Vice-prefeito, responsáveis de setor e funcionários. O painel executivo destaca riscos, decisões e setores críticos; gestores acompanham prazos e produtividade da equipe; servidores recebem uma visão direta do próprio trabalho, avisos e agenda.
+
+Também foram adicionados breadcrumbs, módulos favoritos, páginas recentes, filtros persistentes, visualizações salvas, tabela com cabeçalho fixo e escolha de colunas, seleção em lote, cartões responsivos no celular, formulário de chamado em três etapas com rascunho automático e validação contextual, central de notificações por prioridade, metas comparativas e um sistema de status baseado em ícone, texto, cor e explicação. O acabamento institucional utiliza a marca publicada no portal oficial do município.
+
 ## Versão 6.0 — experiência municipal avançada
 
 A interface foi consolidada em um sistema visual institucional baseado no verde `#176057`, com melhor contraste, superfícies mais claras, navegação hierárquica, estados interativos consistentes e maior legibilidade em desktop, tablet e celular.
