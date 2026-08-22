@@ -50,6 +50,13 @@
       "when": 1787030250235,
       "tag": "0006_ticket_geolocation",
       "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "6",
+      "when": 1787369467194,
+      "tag": "0007_blue_guardian",
+      "breakpoints": true
     }
   ]
 }

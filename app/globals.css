@@ -1,6 +1,22 @@
 @import "tailwindcss";
 
 @font-face {
+  font-family: "Figtree";
+  src: url("/fonts/figtree/figtree-latin-700-normal.woff2") format("woff2");
+  font-style: normal;
+  font-weight: 700;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "Plus Jakarta Sans";
+  src: url("/fonts/plus-jakarta-sans/plus-jakarta-sans-latin-500-normal.woff2") format("woff2");
+  font-style: normal;
+  font-weight: 500;
+  font-display: swap;
+}
+
+@font-face {
   font-family: "Poppins";
   src: url("/fonts/poppins/poppins-latin-100-normal.woff2") format("woff2");
   font-style: normal;
@@ -153,8 +169,9 @@
 }
 
 :root {
-  --font-interface: "Poppins", "Geist", "Segoe UI Variable", "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-  --letter-spacing-interface: .012em;
+  --font-display: "Figtree", "Geist", "Segoe UI Variable", "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  --font-interface: "Plus Jakarta Sans", "Geist", "Segoe UI Variable", "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  --letter-spacing-interface: .002em;
   --ink: #17242d;
   --muted: #6d7880;
   --line: #e4e8e6;
@@ -172,7 +189,7 @@
 
 * { box-sizing: border-box; }
 html, body { margin: 0; min-height: 100%; }
-body { background: var(--canvas); color: var(--ink); font-family: var(--font-interface); font-size: 16px; font-weight: 400; letter-spacing: var(--letter-spacing-interface); font-kerning: normal; font-feature-settings: "rlig" 1, "calt" 1; font-synthesis: none; -webkit-font-smoothing: antialiased; text-rendering: optimizeLegibility; }
+body { background: var(--canvas); color: var(--ink); font-family: var(--font-interface); font-size: 16px; font-weight: 500; letter-spacing: var(--letter-spacing-interface); font-kerning: normal; font-feature-settings: "rlig" 1, "calt" 1; font-synthesis: none; -webkit-font-smoothing: antialiased; text-rendering: optimizeLegibility; }
 button, input, select, textarea { font: inherit; }
 button { cursor: pointer; }
 svg { flex-shrink: 0; }
@@ -8134,3 +8151,168 @@ body:has(.municipal-ui-v6) {
 @media (prefers-reduced-motion: reduce) {
   .municipal-ui-v61 :where(.interface-state-banner.loading > i,.ticket-workspace-skeleton span,.ticket-workspace-skeleton i,.notification-skeleton span) { animation: none; }
 }
+
+/* Prefeitura Conecta v6.1.1 — Figtree 700 nos destaques e Plus Jakarta Sans 500 na leitura. */
+h1,
+h2,
+h3,
+h4,
+h5,
+h6,
+strong,
+b,
+th,
+legend,
+summary,
+button,
+.button,
+.eyebrow,
+.nav-label {
+  font-family: var(--font-display);
+  font-weight: 700;
+}
+
+/* Prefeitura Conecta v6.2.0 — diário auditável de frota e quilometragem. */
+.municipal-ui-v620 .fleet-mileage-shell { display:grid;gap:14px; }
+.municipal-ui-v620 .fleet-hero { display:grid;grid-template-columns:auto minmax(0,1fr) auto;align-items:center;gap:15px;padding:18px 20px;border:1px solid #286f65;border-radius:15px;color:#fff;background:linear-gradient(128deg,#104b44 0%,#176057 62%,#23776b 100%);box-shadow:0 12px 30px rgba(16,75,68,.14); }
+.municipal-ui-v620 .fleet-hero-icon { display:grid;width:52px;height:52px;place-items:center;border:1px solid rgba(255,255,255,.22);border-radius:14px;color:#dff8f2;background:rgba(255,255,255,.09); }
+.municipal-ui-v620 .fleet-hero .eyebrow { margin:0 0 4px;color:#bfe4dc; }
+.municipal-ui-v620 .fleet-hero h2 { margin:0;font-size:21px;line-height:1.2; }
+.municipal-ui-v620 .fleet-hero p:last-child { max-width:760px;margin:6px 0 0;color:#dbefeb;font-size:12px;line-height:1.55; }
+.municipal-ui-v620 .fleet-hero-actions { display:flex;align-items:center;gap:8px; }
+.municipal-ui-v620 .fleet-hero-actions .button.secondary { border-color:rgba(255,255,255,.28);color:#fff;background:rgba(255,255,255,.08); }
+.municipal-ui-v620 .fleet-hero-actions .button.primary { color:#143c37;border-color:#c9f25b;background:#c9f25b; }
+.municipal-ui-v620 .fleet-error { display:flex;align-items:center;gap:10px;padding:11px 13px;border:1px solid #e8c4bd;border-radius:11px;color:#8a4138;background:#fff6f4; }
+.municipal-ui-v620 .fleet-error>span { min-width:0;flex:1; }
+.municipal-ui-v620 .fleet-error strong,.municipal-ui-v620 .fleet-error small { display:block; }
+.municipal-ui-v620 .fleet-error small { margin-top:2px;color:#9a5e56;font-size:11px; }
+.municipal-ui-v620 .fleet-error button { padding:6px 8px;border:0;border-radius:7px;color:#8a4138;background:#f7ded9;font-size:11px; }
+.municipal-ui-v620 .fleet-summary-grid { display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px; }
+.municipal-ui-v620 .fleet-summary-grid>article { display:flex;align-items:center;gap:11px;min-height:92px;padding:13px 14px; }
+.municipal-ui-v620 .fleet-summary-grid>article>span { display:grid;width:38px;height:38px;flex:0 0 auto;place-items:center;border-radius:10px;color:#176057;background:#e7f4f0; }
+.municipal-ui-v620 .fleet-summary-grid>article.warning>span { color:#98651f;background:#fff1d7; }
+.municipal-ui-v620 .fleet-summary-grid>article.success>span { color:#24734f;background:#e5f5eb; }
+.municipal-ui-v620 .fleet-summary-grid>article.info>span { color:#356b8e;background:#eaf3f8; }
+.municipal-ui-v620 .fleet-summary-grid small,.municipal-ui-v620 .fleet-summary-grid strong,.municipal-ui-v620 .fleet-summary-grid p { display:block;margin:0; }
+.municipal-ui-v620 .fleet-summary-grid small { color:#7c8b87;font-size:8px;font-weight:700;letter-spacing:.06em; }
+.municipal-ui-v620 .fleet-summary-grid strong { margin-top:3px;color:#354c47;font-size:19px;line-height:1.1; }
+.municipal-ui-v620 .fleet-summary-grid p { margin-top:4px;color:#8a9793;font-size:9px; }
+.municipal-ui-v620 .fleet-vehicle-panel { overflow:hidden; }
+.municipal-ui-v620 .fleet-vehicle-panel>header,.municipal-ui-v620 .fleet-history-panel>header { display:flex;align-items:flex-start;justify-content:space-between;gap:12px;padding:14px 16px;border-bottom:1px solid #e7ecea; }
+.municipal-ui-v620 .fleet-vehicle-panel h3,.municipal-ui-v620 .fleet-history-panel h3 { margin:2px 0 0;color:#38504a;font-size:15px; }
+.municipal-ui-v620 .fleet-vehicle-panel header p:last-child,.municipal-ui-v620 .fleet-history-panel header p:last-child { margin:4px 0 0;color:#84928e;font-size:10px; }
+.municipal-ui-v620 .fleet-vehicle-panel>header>svg { color:#176057; }
+.municipal-ui-v620 .fleet-vehicle-panel>form { display:grid;grid-template-columns:150px minmax(180px,1fr) minmax(180px,1fr) 180px auto;align-items:end;gap:10px;padding:14px 16px;background:#fbfcfc; }
+.municipal-ui-v620 .fleet-vehicle-panel label,.municipal-ui-v620 .fleet-operation-form label,.municipal-ui-v620 .fleet-open-list label,.municipal-ui-v620 .fleet-history-filters label { display:grid;gap:5px;min-width:0; }
+.municipal-ui-v620 :where(.fleet-vehicle-panel,.fleet-operation-form,.fleet-open-list,.fleet-history-filters) label>span { color:#566a65;font-size:10px;font-weight:700; }
+.municipal-ui-v620 :where(.fleet-vehicle-panel,.fleet-operation-form,.fleet-open-list,.fleet-history-filters) :where(input,select,textarea) { width:100%;min-height:39px;padding:8px 10px;border:1px solid #d7e1de;border-radius:8px;color:#344b46;background:#fff;font:inherit;font-size:11px;outline:none; }
+.municipal-ui-v620 :where(.fleet-vehicle-panel,.fleet-operation-form,.fleet-open-list,.fleet-history-filters) :where(input,select,textarea):focus { border-color:#6ca69b;box-shadow:0 0 0 3px rgba(23,96,87,.1); }
+.municipal-ui-v620 :where(.fleet-operation-form,.fleet-open-list) textarea { min-height:70px;resize:vertical;line-height:1.5; }
+.municipal-ui-v620 .fleet-km-input { position:relative; }
+.municipal-ui-v620 .fleet-km-input input { padding-right:38px; }
+.municipal-ui-v620 .fleet-km-input b { position:absolute;top:50%;right:10px;color:#70807c;font-size:10px;transform:translateY(-50%); }
+.municipal-ui-v620 .fleet-vehicle-list { border-top:1px solid #e9eeec; }
+.municipal-ui-v620 .fleet-vehicle-list>div { display:grid;grid-template-columns:75px minmax(0,1fr) auto;align-items:center;gap:10px;padding:10px 16px;border-top:1px solid #edf1f0; }
+.municipal-ui-v620 .fleet-vehicle-list>div:first-child { border-top:0; }
+.municipal-ui-v620 .fleet-vehicle-list>div>span { display:inline-flex;align-items:center;gap:5px;color:#2c725e;font-size:9px;font-weight:700; }
+.municipal-ui-v620 .fleet-vehicle-list>div>span.inactive { color:#8a6a65; }
+.municipal-ui-v620 .fleet-vehicle-list>div>span i { width:7px;height:7px;border-radius:50%;background:#3b9b77; }
+.municipal-ui-v620 .fleet-vehicle-list>div>span.inactive i { background:#a98b86; }
+.municipal-ui-v620 .fleet-vehicle-list strong,.municipal-ui-v620 .fleet-vehicle-list small { display:block; }
+.municipal-ui-v620 .fleet-vehicle-list strong { color:#405650;font-size:11px; }
+.municipal-ui-v620 .fleet-vehicle-list small { margin-top:2px;color:#8a9692;font-size:9px; }
+.municipal-ui-v620 .fleet-vehicle-list button { padding:6px 8px;border:1px solid #d9e3e0;border-radius:7px;color:#55706a;background:#fff;font-size:9px; }
+.municipal-ui-v620 .fleet-loading { display:grid;grid-template-columns:repeat(3,1fr);gap:10px;padding:12px;border:1px solid #e1e8e6;border-radius:13px;background:#fff; }
+.municipal-ui-v620 .fleet-loading span { height:130px;border-radius:10px;background:linear-gradient(90deg,#f2f5f4,#e8eeec,#f2f5f4);background-size:200% 100%;animation:fleetLoading 1.4s infinite; }
+.municipal-ui-v620 .fleet-loading p { grid-column:1/-1;margin:0;color:#758680;font-size:10px;text-align:center; }
+@keyframes fleetLoading { to { background-position:-200% 0; } }
+.municipal-ui-v620 .fleet-workflow-grid { display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);align-items:start;gap:12px; }
+.municipal-ui-v620 :where(.fleet-start-card,.fleet-close-card) { overflow:hidden; }
+.municipal-ui-v620 :where(.fleet-start-card,.fleet-close-card)>header { display:flex;align-items:flex-start;gap:10px;padding:14px 15px;border-bottom:1px solid #e7ecea;background:#fbfcfc; }
+.municipal-ui-v620 :where(.fleet-start-card,.fleet-close-card)>header>span { display:grid;width:30px;height:30px;flex:0 0 auto;place-items:center;border-radius:9px;color:#fff;background:#176057;font-size:12px;font-weight:700; }
+.municipal-ui-v620 :where(.fleet-start-card,.fleet-close-card)>header>div { min-width:0;flex:1; }
+.municipal-ui-v620 :where(.fleet-start-card,.fleet-close-card)>header h3 { margin:2px 0 0;color:#38504a;font-size:15px; }
+.municipal-ui-v620 :where(.fleet-start-card,.fleet-close-card)>header p:last-child { margin:3px 0 0;color:#84928e;font-size:10px; }
+.municipal-ui-v620 .fleet-close-card>header>b { display:grid;min-width:24px;height:24px;place-items:center;border-radius:999px;color:#8a5a22;background:#fff0d5;font-size:10px; }
+.municipal-ui-v620 .fleet-operation-form { display:grid;gap:11px;padding:15px; }
+.municipal-ui-v620 .fleet-operation-form label>small { color:#82918d;font-size:9px; }
+.municipal-ui-v620 .fleet-form-row { display:grid;grid-template-columns:1fr 1fr;gap:10px; }
+.municipal-ui-v620 .fleet-responsible { display:flex;align-items:center;gap:9px;padding:9px 10px;border:1px solid #dbe8e4;border-radius:9px;color:#176057;background:#f3f9f7; }
+.municipal-ui-v620 .fleet-responsible small,.municipal-ui-v620 .fleet-responsible strong { display:block; }
+.municipal-ui-v620 .fleet-responsible small { color:#758a84;font-size:8px;letter-spacing:.05em; }
+.municipal-ui-v620 .fleet-responsible strong { margin-top:2px;color:#38524b;font-size:10px; }
+.municipal-ui-v620 .fleet-operation-form>.button,.municipal-ui-v620 .fleet-open-list form>.button { width:100%;justify-content:center; }
+.municipal-ui-v620 .fleet-empty { display:grid;min-height:190px;place-items:center;align-content:center;gap:7px;padding:22px;color:#81918c;text-align:center; }
+.municipal-ui-v620 .fleet-empty>svg { color:#7fa69d; }
+.municipal-ui-v620 .fleet-empty.success>svg { color:#3c936d; }
+.municipal-ui-v620 .fleet-empty strong { color:#4a5f59;font-size:12px; }
+.municipal-ui-v620 .fleet-empty p { max-width:380px;margin:0;color:#8a9793;font-size:10px;line-height:1.5; }
+.municipal-ui-v620 .fleet-empty .button { margin-top:3px; }
+.municipal-ui-v620 .fleet-readonly { display:flex;align-items:flex-start;gap:9px;margin:15px;padding:11px;border:1px solid #ead8af;border-radius:9px;color:#896827;background:#fff9eb; }
+.municipal-ui-v620 .fleet-readonly.compact { margin:4px 0 0; }
+.municipal-ui-v620 .fleet-readonly strong,.municipal-ui-v620 .fleet-readonly small { display:block; }
+.municipal-ui-v620 .fleet-readonly small { margin-top:2px;color:#8e7950;font-size:9px; }
+.municipal-ui-v620 .fleet-open-list { display:grid;gap:10px;padding:12px; }
+.municipal-ui-v620 .fleet-open-list>form { display:grid;gap:10px;padding:12px;border:1px solid #e1e7e5;border-left:3px solid #d59a3c;border-radius:10px;background:#fff; }
+.municipal-ui-v620 .fleet-open-list>form>header { display:flex;align-items:flex-start;justify-content:space-between;gap:8px; }
+.municipal-ui-v620 .fleet-open-list>form>header strong,.municipal-ui-v620 .fleet-open-list>form>header small { display:block; }
+.municipal-ui-v620 .fleet-open-list>form>header strong { color:#3e554f;font-size:11px; }
+.municipal-ui-v620 .fleet-open-list>form>header small { margin-top:3px;color:#8a9793;font-size:9px; }
+.municipal-ui-v620 .fleet-open-list>form>header>span { padding:4px 7px;border-radius:999px;color:#8b6025;background:#fff1d8;font-size:8px;font-weight:700;white-space:nowrap; }
+.municipal-ui-v620 .fleet-open-metrics { display:grid;grid-template-columns:1fr 1fr;gap:8px; }
+.municipal-ui-v620 .fleet-open-metrics>span { padding:9px;border-radius:8px;background:#f4f7f6; }
+.municipal-ui-v620 .fleet-open-metrics small,.municipal-ui-v620 .fleet-open-metrics strong { display:block; }
+.municipal-ui-v620 .fleet-open-metrics small { color:#7e8e89;font-size:8px;letter-spacing:.05em; }
+.municipal-ui-v620 .fleet-open-metrics strong { margin-top:2px;color:#405650;font-size:10px; }
+.municipal-ui-v620 .fleet-start-note { margin:0;padding:8px 9px;border-left:2px solid #9dbcb5;color:#657873;background:#f8faf9;font-size:9px;line-height:1.5; }
+.municipal-ui-v620 .fleet-history-panel { overflow:hidden; }
+.municipal-ui-v620 .fleet-history-panel>header>div { display:flex;align-items:flex-start;gap:10px; }
+.municipal-ui-v620 .fleet-history-panel>header>div>span { display:grid;width:34px;height:34px;place-items:center;border-radius:9px;color:#176057;background:#e9f4f1; }
+.municipal-ui-v620 .fleet-history-filters { display:flex;align-items:end;gap:8px;padding:10px 14px;border-bottom:1px solid #e8edeb;background:#fbfcfc; }
+.municipal-ui-v620 .fleet-history-filters label { width:170px; }
+.municipal-ui-v620 .fleet-history-filters button { margin:0 0 8px;padding:0;border:0;color:#176057;background:transparent;font-size:9px;font-weight:700; }
+.municipal-ui-v620 .fleet-table-wrap { overflow-x:auto; }
+.municipal-ui-v620 .fleet-table-wrap table { width:100%;border-collapse:collapse; }
+.municipal-ui-v620 .fleet-table-wrap th { padding:9px 11px;border-bottom:1px solid #dfe7e4;color:#6f817b;background:#f7f9f8;font-size:8px;letter-spacing:.04em;text-align:left;text-transform:uppercase;white-space:nowrap; }
+.municipal-ui-v620 .fleet-table-wrap td { padding:10px 11px;border-bottom:1px solid #edf1ef;color:#536762;font-size:10px;vertical-align:middle; }
+.municipal-ui-v620 .fleet-table-wrap tr:last-child td { border-bottom:0; }
+.municipal-ui-v620 .fleet-table-wrap td strong,.municipal-ui-v620 .fleet-table-wrap td small { display:block; }
+.municipal-ui-v620 .fleet-table-wrap td strong { color:#3f554f;font-size:10px; }
+.municipal-ui-v620 .fleet-table-wrap td small { margin-top:2px;color:#8a9793;font-size:8px; }
+.municipal-ui-v620 .fleet-status { display:inline-flex;padding:4px 7px;border-radius:999px;font-size:8px;font-weight:700; }
+.municipal-ui-v620 .fleet-status.open { color:#8c6125;background:#fff0d5; }
+.municipal-ui-v620 .fleet-status.closed { color:#287257;background:#e5f4eb; }
+
+@media (max-width:1180px) {
+  .municipal-ui-v620 .fleet-summary-grid { grid-template-columns:repeat(2,minmax(0,1fr)); }
+  .municipal-ui-v620 .fleet-vehicle-panel>form { grid-template-columns:repeat(2,minmax(0,1fr)); }
+  .municipal-ui-v620 .fleet-vehicle-panel>form>.button { width:100%; }
+}
+@media (max-width:900px) {
+  .municipal-ui-v620 .fleet-hero { grid-template-columns:auto minmax(0,1fr); }
+  .municipal-ui-v620 .fleet-hero-actions { grid-column:1/-1;justify-content:flex-end; }
+  .municipal-ui-v620 .fleet-workflow-grid { grid-template-columns:1fr; }
+}
+@media (max-width:680px) {
+  .municipal-ui-v620 .fleet-hero { grid-template-columns:1fr;padding:16px; }
+  .municipal-ui-v620 .fleet-hero-icon { width:44px;height:44px; }
+  .municipal-ui-v620 .fleet-hero-actions { grid-column:1;align-items:stretch;flex-direction:column; }
+  .municipal-ui-v620 .fleet-hero-actions .button { width:100%;justify-content:center; }
+  .municipal-ui-v620 .fleet-summary-grid { grid-template-columns:1fr; }
+  .municipal-ui-v620 .fleet-summary-grid>article { min-height:78px; }
+  .municipal-ui-v620 .fleet-vehicle-panel>form,.municipal-ui-v620 .fleet-form-row { grid-template-columns:1fr; }
+  .municipal-ui-v620 .fleet-vehicle-list>div { grid-template-columns:1fr auto; }
+  .municipal-ui-v620 .fleet-vehicle-list>div>span { grid-column:1/-1; }
+  .municipal-ui-v620 .fleet-history-panel>header { align-items:stretch;flex-direction:column; }
+  .municipal-ui-v620 .fleet-history-panel>header>.button { width:100%;justify-content:center; }
+  .municipal-ui-v620 .fleet-history-filters { align-items:stretch;flex-direction:column; }
+  .municipal-ui-v620 .fleet-history-filters label { width:100%; }
+  .municipal-ui-v620 .fleet-history-filters button { align-self:flex-start;margin:2px 0; }
+  .municipal-ui-v620 .fleet-table-wrap table,.municipal-ui-v620 .fleet-table-wrap tbody,.municipal-ui-v620 .fleet-table-wrap tr,.municipal-ui-v620 .fleet-table-wrap td { display:block;width:100%; }
+  .municipal-ui-v620 .fleet-table-wrap thead { display:none; }
+  .municipal-ui-v620 .fleet-table-wrap tbody { display:grid;gap:9px;padding:9px; }
+  .municipal-ui-v620 .fleet-table-wrap tr { overflow:hidden;border:1px solid #e1e8e6;border-radius:10px; }
+  .municipal-ui-v620 .fleet-table-wrap td { display:grid;grid-template-columns:88px minmax(0,1fr);align-items:center;gap:7px;padding:8px 10px; }
+  .municipal-ui-v620 .fleet-table-wrap td::before { color:#7b8a86;font-size:8px;font-weight:700;text-transform:uppercase;content:attr(data-label); }
+}
+@media (prefers-reduced-motion:reduce) { .municipal-ui-v620 .fleet-loading span { animation:none; } }

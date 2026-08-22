@@ -10,6 +10,7 @@ import {
   Bell,
   BellRing,
   BriefcaseBusiness,
+  Bus,
   Building2,
   CalendarDays,
   CalendarPlus,
@@ -103,6 +104,7 @@ import { ContextualAiBar, DashboardAiBrief, MunicipalAiCopilot } from "./municip
 import { PrefeituraNewsSection } from "./prefeitura-news";
 import { ExecutiveCommandCenter } from "./executive-command-center";
 import { ExecutiveSocialMonitor } from "./executive-social-monitor";
+import { FleetMileageSection } from "./fleet-mileage";
 import type { MunicipalAgentAction, MunicipalAgentExecutionResult } from "./municipal-agent-types";
 
 type TicketStatus = "Recebido" | "Em análise" | "Aguardando aprovação" | "Em execução" | "Aguardando resposta" | "Concluído" | "Cancelado";
@@ -330,6 +332,7 @@ const navIcons: Record<NavItem, LucideIcon> = {
   "Central Integrada": Layers3,
   "Processos Digitais": FileText,
   "Gestão Municipal": Landmark,
+  "Frota e Quilometragem": Bus,
   Indicadores: BarChart3,
   Notificações: BellRing,
   Pendências: ListTodo,
@@ -358,7 +361,7 @@ const PERMISSION_SETTINGS_KEY = "settings:permissions:v1";
 const EXPERIENCE_SETTINGS_KEY = "settings:experience:v1";
 const EXECUTIVE_COMMUNICATION_KEY = "settings:executive-communication:v1";
 const PUBLIC_READ_PERMISSION = { view: true, register: false, edit: false } as const;
-const PRODUCT_VERSION = "6.1.0";
+const PRODUCT_VERSION = "6.2.0";
 
 const breadcrumbParentByNav: Partial<Record<NavItem, NavItem>> = {
   "Central Executiva": "Visão geral",
@@ -372,6 +375,7 @@ const breadcrumbParentByNav: Partial<Record<NavItem, NavItem>> = {
   "Central Integrada": "Área do Setor",
   "Processos Digitais": "Gestão Municipal",
   "Gestão Municipal": "Visão geral",
+  "Frota e Quilometragem": "Gestão Municipal",
   Indicadores: "Visão geral",
   Notificações: "Visão geral",
   Pendências: "Visão geral",
@@ -1098,12 +1102,12 @@ export default function Home() {
   const primaryNavItems: NavItem[] = executiveAccess
     ? ["Visão geral", "Central Executiva", "Monitoramento Instagram", "Área do Setor", "Central Integrada", "Comunicação", "Processos Digitais", "Próximos Eventos"]
     : managerProfile
-      ? ["Visão geral", "Área do Setor", "Central Integrada", "Chamados", "Comunicação", "Processos Digitais", "Próximos Eventos"]
+      ? ["Visão geral", "Área do Setor", "Frota e Quilometragem", "Central Integrada", "Chamados", "Comunicação", "Processos Digitais", "Próximos Eventos"]
       : ["Visão geral", "Área do Setor", "Central Integrada", "Chamados", "Comunicação", "Próximos Eventos", "Anexos e Arquivos"];
   const allSecondaryItems: NavItem[] = [
     "Visão geral", "Central Executiva", "Monitoramento Instagram", "Últimas Notícias Prefeitura", "Chamados", "Atendimento ao Cidadão",
     "Pendências", "Central Integrada", "Próximos Eventos", "Comunicação", "Fluxos e Anotações",
-    "Área do Setor", "Processos Digitais", "Gestão Municipal", "Indicadores", "Anexos e Arquivos",
+    "Área do Setor", "Processos Digitais", "Gestão Municipal", "Frota e Quilometragem", "Indicadores", "Anexos e Arquivos",
     "Funcionários", "Secretarias", "Notificações", "Segurança e LGPD", "Auditoria", "Central de Ajuda", "Configurações",
   ];
   const cleanNavSections: Array<{ label: string; items: NavItem[]; compact?: boolean }> = [
@@ -1121,6 +1125,7 @@ export default function Home() {
     "Central Integrada": "Meu trabalho",
     "Processos Digitais": "Processos",
     "Gestão Municipal": "Gestão municipal",
+    "Frota e Quilometragem": "Diário da frota",
     "Anexos e Arquivos": "Arquivos",
     "Segurança e LGPD": "Segurança e LGPD",
     "Central de Ajuda": "Ajuda",
@@ -1138,7 +1143,7 @@ export default function Home() {
   }
 
   return (
-    <div className={`app-shell reference-ui-2026 municipal-ui-v6 municipal-ui-v61 ${motionEnabled ? "motion-enabled" : "motion-reduced"} ${contrastEnabled ? "contrast-enabled" : ""} ${simplifiedMode ? "simplified-mode" : ""} ${sidebarCompact ? "sidebar-compact" : ""} text-scale-${textScale}`}>
+    <div className={`app-shell reference-ui-2026 municipal-ui-v6 municipal-ui-v61 municipal-ui-v611 municipal-ui-v620 ${motionEnabled ? "motion-enabled" : "motion-reduced"} ${contrastEnabled ? "contrast-enabled" : ""} ${simplifiedMode ? "simplified-mode" : ""} ${sidebarCompact ? "sidebar-compact" : ""} text-scale-${textScale}`}>
       <aside className={`sidebar ${sidebarOpen ? "sidebar-open" : ""}`}>
         <div className="brand" title="Identidade institucional de Várzea da Palma">
           <div className="brand-mark municipal-crest-slot official-municipal-brand" data-crest-slot="brasao-oficial"><img src="/brasao-varzea-da-palma-oficial.png" alt="Brasão oficial da Prefeitura Municipal de Várzea da Palma" /></div>
@@ -1255,7 +1260,7 @@ export default function Home() {
                 currentPermission.edit && <button className="button secondary" onClick={markAllNotifications}><CheckCheck size={15} /> Marcar todas como lidas</button>
               ) : activeNav === "Pendências" ? (
                 <button className="button secondary" onClick={() => setActiveNav("Chamados")}><ClipboardList size={15} /> Ver chamados</button>
-              ) : activeNav === "Indicadores" || activeNav === "Auditoria" || activeNav === "Gestão Municipal" || activeNav === "Processos Digitais" ? (
+              ) : activeNav === "Indicadores" || activeNav === "Auditoria" || activeNav === "Gestão Municipal" || activeNav === "Frota e Quilometragem" || activeNav === "Processos Digitais" ? (
                 <button className="button secondary" onClick={exportCurrentReport}><Download size={15} /> Exportar relatório</button>
               ) : (
                 null
@@ -1285,6 +1290,7 @@ export default function Home() {
           {activeNav === "Central Integrada" && <IntegratedManagementSection key={activeDepartment} initialTab="Tarefas" department={activeDepartment} currentUser={{ id: currentUser.id, fullName: currentUser.fullName, department: currentUser.department, role: currentUser.role, initials: currentUser.initials }} tickets={privateTickets} users={scopedActiveUsers.map((user) => ({ id: user.id, fullName: user.fullName, department: user.department, role: user.role, initials: user.initials }))} offices={scopedOffices} events={currentEvents} departments={availableDepartments} notify={notify} readOnly={viewingOtherDepartment} />}
           {activeNav === "Processos Digitais" && <ProcessesSection key={`${activeDepartment}-${currentUser.id}`} department={activeDepartment} currentUser={{ id: currentUser.id, fullName: currentUser.fullName, department: currentUser.department, role: currentUser.role }} users={scopedActiveUsers.map((user) => ({ id: user.id, fullName: user.fullName, department: user.department, role: user.role }))} departments={availableDepartments} notify={notify} />}
           {activeNav === "Gestão Municipal" && <MunicipalManagementSection department={activeDepartment} notify={notify} />}
+          {activeNav === "Frota e Quilometragem" && <FleetMileageSection key={`${activeDepartment}-${currentUser.id}`} department={activeDepartment} currentUser={{ id: currentUser.id, fullName: currentUser.fullName, department: currentUser.department, role: currentUser.role }} notify={notify} readOnly={viewingOtherDepartment} />}
           {activeNav === "Indicadores" && <IndicatorsSection department={activeDepartment} notify={notify} />}
           {activeNav === "Notificações" && <><NotificationsSection notifications={currentNotifications} userId={currentUser.id} onRead={markNotification} onOpenPending={() => setActiveNav("Pendências")} />{!viewingOtherDepartment&&<SmartNotificationRules department={activeDepartment} notify={notify} />}</>}
           {activeNav === "Pendências" && <><PendingSection invitations={currentInvitations} tickets={pendingTickets} onRespond={respondInvitation} onOpenTickets={() => setActiveNav("Chamados")} />{!viewingOtherDepartment&&<ApprovalCenterPanel department={activeDepartment} notify={notify} />}</>}
@@ -1337,6 +1343,7 @@ function getHeading(active: NavItem) {
     "Central Integrada": { eyebrow: "CENTRAL OPERACIONAL", title: "Central Integrada", subtitle: "Tarefas, projetos, metas, mapa, organograma, inteligência artificial e saúde do sistema em um só lugar." },
     "Processos Digitais": { eyebrow: "ADMINISTRAÇÃO SEM PAPEL", title: "Processos Digitais", subtitle: "Organize processos, despachos, documentos, versões e assinaturas em um fluxo rastreável." },
     "Gestão Municipal": { eyebrow: "RECURSOS E OPERAÇÕES", title: "Gestão Municipal", subtitle: "Acompanhe frota, patrimônio, materiais, contratos, convênios, obras e serviços de campo." },
+    "Frota e Quilometragem": { eyebrow: "CONTROLE OPERACIONAL", title: "Frota e Quilometragem", subtitle: "Registre o hodômetro no início e no final de cada jornada, com cálculo automático e histórico auditável." },
     Indicadores: { eyebrow: "INTELIGÊNCIA DE GESTÃO", title: "Indicadores e Relatórios", subtitle: "Analise prazos, produtividade, satisfação e riscos com visão restrita ao seu setor." },
     Notificações: { eyebrow: "CENTRAL DE AVISOS", title: "Notificações", subtitle: "Acompanhe convites, mensagens e atualizações importantes do sistema." },
     Pendências: { eyebrow: "AÇÕES NECESSÁRIAS", title: "Pendências", subtitle: "Resolva convites de grupos e chamados que aguardam sua análise." },
@@ -1365,6 +1372,7 @@ function moduleIconForNav(active: NavItem): LucideIcon {
     "Central Integrada": LayoutDashboard,
     "Processos Digitais": FileText,
     "Gestão Municipal": Landmark,
+    "Frota e Quilometragem": Bus,
     Indicadores: LayoutDashboard,
     Notificações: BellRing,
     Pendências: Clock3,

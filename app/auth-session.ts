@@ -55,9 +55,15 @@ function parseCookies(request: Request) {
   }));
 }
 
+export function sessionForRequest(request: Request) {
+  if (process.env.TEST_AUTH_ENABLED === "false") {
+    return { user: "development", exp: Number.MAX_SAFE_INTEGER } satisfies SessionPayload;
+  }
+  return verifySessionToken(parseCookies(request)[SESSION_COOKIE]);
+}
+
 export function hasValidSession(request: Request) {
-  if (process.env.TEST_AUTH_ENABLED === "false") return true;
-  return Boolean(verifySessionToken(parseCookies(request)[SESSION_COOKIE]));
+  return Boolean(sessionForRequest(request));
 }
 
 export function hasPendingTwoFactor(request: Request) {

@@ -1,4 +1,4 @@
-import { index, integer, primaryKey, sqliteTable, text } from "drizzle-orm/sqlite-core";
+import { index, integer, primaryKey, real, sqliteTable, text, uniqueIndex } from "drizzle-orm/sqlite-core";
 
 export const users = sqliteTable("users", {
   id: text("id").primaryKey(), fullName: text("full_name").notNull(), email: text("email").notNull(),
@@ -134,3 +134,62 @@ export const permissionScopes = sqliteTable("permission_scopes", {
   createdBy: text("created_by").notNull().references(() => users.id),
   createdAt: text("created_at").notNull(),
 }, (table) => [index("permission_scopes_user_idx").on(table.userId, table.department)]);
+
+// Frota municipal e diário de quilometragem. Os registros são imutáveis após o
+// encerramento; qualquer alteração administrativa deve gerar uma nova entrada
+// de auditoria, preservando a cadeia de responsabilidade.
+export const fleetVehicles = sqliteTable("fleet_vehicles", {
+  id: text("id").primaryKey(),
+  plate: text("plate").notNull(),
+  name: text("name").notNull(),
+  brandModel: text("brand_model").notNull().default(""),
+  department: text("department").notNull(),
+  currentOdometer: real("current_odometer").notNull().default(0),
+  active: integer("active", { mode: "boolean" }).notNull().default(true),
+  createdBy: text("created_by").notNull(),
+  createdAt: text("created_at").notNull(),
+  updatedAt: text("updated_at").notNull(),
+}, (table) => [
+  uniqueIndex("fleet_vehicles_department_plate_uq").on(table.department, table.plate),
+  index("fleet_vehicles_department_active_idx").on(table.department, table.active),
+]);
+
+export const fleetMileageRecords = sqliteTable("fleet_mileage_records", {
+  id: text("id").primaryKey(),
+  vehicleId: text("vehicle_id").notNull().references(() => fleetVehicles.id),
+  workDate: text("work_date").notNull(),
+  department: text("department").notNull(),
+  responsibleId: text("responsible_id").notNull(),
+  responsibleName: text("responsible_name").notNull(),
+  startKm: real("start_km").notNull(),
+  startAt: text("start_at").notNull(),
+  startNotes: text("start_notes").notNull().default(""),
+  endKm: real("end_km"),
+  endAt: text("end_at"),
+  endNotes: text("end_notes").notNull().default(""),
+  distanceKm: real("distance_km"),
+  status: text("status").notNull().default("open"),
+  createdBy: text("created_by").notNull(),
+  closedBy: text("closed_by"),
+  closedByName: text("closed_by_name"),
+  createdAt: text("created_at").notNull(),
+  updatedAt: text("updated_at").notNull(),
+}, (table) => [
+  uniqueIndex("fleet_mileage_vehicle_date_uq").on(table.vehicleId, table.workDate),
+  index("fleet_mileage_department_date_idx").on(table.department, table.workDate),
+  index("fleet_mileage_vehicle_status_idx").on(table.vehicleId, table.status),
+]);
+
+export const fleetAuditLogs = sqliteTable("fleet_audit_logs", {
+  id: text("id").primaryKey(),
+  entityType: text("entity_type").notNull(),
+  entityId: text("entity_id").notNull(),
+  action: text("action").notNull(),
+  actorId: text("actor_id").notNull(),
+  actorName: text("actor_name").notNull(),
+  detailJson: text("detail_json").notNull(),
+  createdAt: text("created_at").notNull(),
+}, (table) => [
+  index("fleet_audit_entity_idx").on(table.entityType, table.entityId, table.createdAt),
+  index("fleet_audit_created_at_idx").on(table.createdAt),
+]);

@@ -11,6 +11,7 @@ Sistema interno de gestão municipal em Next.js, React e TypeScript, com persist
 - Comunicação interna e grupos
 - Processos Digitais
 - Gestão Municipal
+- Frota e Quilometragem
 - Área do Setor
 - Atendimento ao Cidadão
 - Anexos e arquivos
@@ -21,6 +22,23 @@ Sistema interno de gestão municipal em Next.js, React e TypeScript, com persist
 - Central de ajuda
 - Configurações
 - Últimas Notícias Prefeitura
+
+## Versão 6.2.0 — frota e quilometragem diária
+
+O novo módulo **Frota e Quilometragem** permite ao funcionário registrar o hodômetro no início da jornada e concluir o mesmo registro ao devolver o veículo. A distância percorrida é calculada automaticamente, jornadas duplicadas são bloqueadas e um veículo não pode iniciar outro dia enquanto houver uma saída pendente.
+
+A implementação inclui API REST autenticada, cadastro e ativação de veículos, isolamento por setor, validação de sequência do hodômetro, histórico filtrável, exportação CSV, modo de consulta executiva e trilha de auditoria. Os dados estruturados da frota usam o banco D1 já vinculado ao projeto; a migração `0007_blue_guardian.sql` acompanha o pacote.
+
+Endpoints principais:
+
+- `GET/POST/PATCH /api/fleet/vehicles`
+- `GET/POST/PATCH /api/fleet/mileage`
+
+## Versão 6.1.1 — tipografia institucional
+
+A interface passa a usar **Figtree 700** em títulos, destaques, números principais, cabeçalhos e ações, enquanto **Plus Jakarta Sans 500** assume os textos de leitura, descrições, formulários e conteúdos operacionais. As duas famílias são servidas localmente pelo próprio sistema, mantendo a identidade visual estável mesmo em redes municipais restritas ou instáveis.
+
+A hierarquia foi aplicada globalmente, incluindo painel, módulos, login, acompanhamento público, avaliação do cidadão, tabelas e modais. Os estilos monoespaçados de protocolos/códigos e a fonte serifada do editor de documentos foram preservados por terem função específica.
 
 ## Versão 6.1 — produtividade e experiência por perfil
 
@@ -37,6 +55,8 @@ Entre as melhorias de produtividade estão o menu lateral recolhível com prefer
 ## Persistência central
 
 As alterações são salvas no Supabase por rotas server-side. O navegador mantém apenas um cache de contingência para reduzir perda de preenchimento quando houver falha temporária de conexão; o armazenamento remoto é a fonte principal quando disponível.
+
+Os registros relacionais do módulo de frota são mantidos no D1, com índices por setor, veículo, data e situação. Essa separação evita colisões entre jornadas simultâneas e preserva uma auditoria própria das operações de transporte.
 
 O backend cria/usa um bucket privado `prefeitura-conecta-data` para estado persistente e anexos. As credenciais administrativas permanecem no servidor.
 

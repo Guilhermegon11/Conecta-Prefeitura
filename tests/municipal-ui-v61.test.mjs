@@ -11,8 +11,8 @@ test("ships role-aware dashboards and contextual navigation", async () => {
     read("package.json"),
   ]);
 
-  assert.match(pkg, /"version": "6\.1\.0"/);
-  assert.match(page, /municipal-ui-v6 municipal-ui-v61/);
+  assert.match(pkg, /"version": "6\.2\.0"/);
+  assert.match(page, /municipal-ui-v6 municipal-ui-v61 municipal-ui-v611/);
   assert.match(page, /dashboardProfile: "executive" \| "manager" \| "staff"/);
   assert.match(page, /Decisões e riscos do município/);
   assert.match(page, /Prioridades da equipe/);

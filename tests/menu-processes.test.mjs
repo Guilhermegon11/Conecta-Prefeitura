@@ -59,21 +59,17 @@ test("adds accessible dashboard progress and motion-aware visual feedback", asyn
   assert.match(styles, /@media \(prefers-reduced-motion: reduce\)/);
 });
 
-test("uses self-hosted Poppins across the interface", async () => {
+test("uses the self-hosted Figtree and Plus Jakarta Sans hierarchy", async () => {
   const [layout, styles] = await Promise.all([
     readSource("layout.tsx"),
     readSource("globals.css"),
   ]);
-  assert.match(styles, /\/fonts\/poppins\/poppins-latin-100-normal\.woff2/);
-  assert.match(styles, /\/fonts\/poppins\/poppins-latin-400-normal\.woff2/);
-  assert.match(styles, /\/fonts\/poppins\/poppins-latin-500-normal\.woff2/);
-  assert.match(styles, /\/fonts\/poppins\/poppins-latin-600-normal\.woff2/);
-  assert.match(styles, /\/fonts\/poppins\/poppins-latin-700-normal\.woff2/);
-  assert.match(styles, /\/fonts\/poppins\/poppins-latin-900-normal\.woff2/);
-  assert.match(styles, /\/fonts\/poppins\/poppins-latin-400-italic\.woff2/);
-  assert.match(styles, /\/fonts\/poppins\/poppins-latin-900-italic\.woff2/);
-  assert.doesNotMatch(styles, /@fontsource\/poppins/);
-  assert.match(styles, /--font-interface: "Poppins", "Geist"/);
+  assert.match(styles, /\/fonts\/figtree\/figtree-latin-700-normal\.woff2/);
+  assert.match(styles, /\/fonts\/plus-jakarta-sans\/plus-jakarta-sans-latin-500-normal\.woff2/);
+  assert.match(styles, /--font-display: "Figtree", "Geist"/);
+  assert.match(styles, /--font-interface: "Plus Jakarta Sans", "Geist"/);
+  assert.match(styles, /font-family: var\(--font-display\)/);
+  assert.match(styles, /body \{[^}]*font-family: var\(--font-interface\)[^}]*font-weight: 500/);
   assert.match(styles, /font-synthesis: none/);
   assert.match(styles, /font-feature-settings: "rlig" 1, "calt" 1/);
   assert.doesNotMatch(styles, /font-family: "R-Flex"/);
@@ -89,9 +85,9 @@ test("uses self-hosted Poppins across the interface", async () => {
   assert.doesNotMatch(layout, /next\/font\/google/);
 });
 
-test("gives Poppins comfortable tracking across the interface", async () => {
+test("gives the new typography balanced tracking across the interface", async () => {
   const styles = await readSource("globals.css");
-  assert.match(styles, /--letter-spacing-interface: \.012em/);
+  assert.match(styles, /--letter-spacing-interface: \.002em/);
   assert.match(styles, /body \{[^}]*letter-spacing: var\(--letter-spacing-interface\)[^}]*font-kerning: normal/);
   assert.match(styles, /\.organized-nav-item \{[^}]*letter-spacing: \.018em/);
 });

@@ -8,6 +8,7 @@ export type PermissionModule =
   | "Central Integrada"
   | "Processos Digitais"
   | "Gestão Municipal"
+  | "Frota e Quilometragem"
   | "Indicadores"
   | "Notificações"
   | "Pendências"
@@ -45,6 +46,7 @@ export const PERMISSION_MODULES: Array<{ module: PermissionModule; group: string
   { module: "Central Integrada", group: "Gestão", description: "Tarefas, projetos, metas, mapa, IA e saúde operacional" },
   { module: "Processos Digitais", group: "Operações", description: "Processos, despachos e documentos" },
   { module: "Gestão Municipal", group: "Operações", description: "Frota, patrimônio, estoque, contratos e obras" },
+  { module: "Frota e Quilometragem", group: "Operações", description: "Saída, devolução e hodômetro diário dos veículos" },
   { module: "Indicadores", group: "Gestão", description: "Painéis, metas e relatórios" },
   { module: "Notificações", group: "Pessoal", description: "Avisos destinados ao funcionário" },
   { module: "Pendências", group: "Pessoal", description: "Aprovações e ações necessárias" },
@@ -97,23 +99,23 @@ export function createDefaultPermissionSettings(): DepartmentPermissionSettings 
         "operacional",
         "Operacional",
         "Executa demandas, processos e registros da operação municipal.",
-        [...COMMON, "Atendimento ao Cidadão", "Processos Digitais", "Gestão Municipal", "Indicadores"],
-        ["Área do Setor", "Fluxos e Anotações", "Chamados", "Comunicação", "Processos Digitais", "Gestão Municipal", "Anexos e Arquivos", "Próximos Eventos"],
-        ["Área do Setor", "Fluxos e Anotações", "Chamados", "Processos Digitais", "Gestão Municipal", "Anexos e Arquivos", "Próximos Eventos"],
+        [...COMMON, "Atendimento ao Cidadão", "Processos Digitais", "Gestão Municipal", "Frota e Quilometragem", "Indicadores"],
+        ["Área do Setor", "Fluxos e Anotações", "Chamados", "Comunicação", "Processos Digitais", "Gestão Municipal", "Frota e Quilometragem", "Anexos e Arquivos", "Próximos Eventos"],
+        ["Área do Setor", "Fluxos e Anotações", "Chamados", "Processos Digitais", "Gestão Municipal", "Frota e Quilometragem", "Anexos e Arquivos", "Próximos Eventos"],
       ),
       campo: profile(
         "campo",
         "Equipe de campo",
         "Registra vistorias, localização, evidências e execução externa.",
-        COMMON,
-        ["Área do Setor", "Fluxos e Anotações", "Chamados", "Comunicação", "Anexos e Arquivos"],
+        [...COMMON, "Frota e Quilometragem"],
+        ["Área do Setor", "Fluxos e Anotações", "Chamados", "Comunicação", "Frota e Quilometragem", "Anexos e Arquivos"],
         ["Área do Setor", "Fluxos e Anotações", "Chamados"],
       ),
       consulta: profile(
         "consulta",
         "Somente consulta",
         "Acompanha informações autorizadas sem criar ou alterar registros.",
-        ["Visão geral", "Área do Setor", "Fluxos e Anotações", "Chamados", "Indicadores", "Notificações", "Anexos e Arquivos", "Secretarias", "Central de Ajuda"],
+        ["Visão geral", "Área do Setor", "Fluxos e Anotações", "Chamados", "Frota e Quilometragem", "Indicadores", "Notificações", "Anexos e Arquivos", "Secretarias", "Central de Ajuda"],
         [],
         [],
       ),
