@@ -30,6 +30,6 @@ test("applies Figtree 700 to emphasis and Plus Jakarta Sans 500 to reading", asy
   assert.match(styles, /h1,[\s\S]*?\.nav-label \{[\s\S]*?font-family: var\(--font-display\);[\s\S]*?font-weight: 700;/);
   assert.match(styles, /body \{[^}]*font-family: var\(--font-interface\)[^}]*font-weight: 500/);
   assert.doesNotMatch(styles, /fonts\.googleapis\.com|fonts\.gstatic\.com/);
-  assert.match(page, /const PRODUCT_VERSION = "6\.2\.0"/);
-  assert.match(pkg, /"version": "6\.2\.0"/);
+  assert.match(page, /const PRODUCT_VERSION = "7\.0\.0"/);
+  assert.match(pkg, /"version": "7\.0\.0"/);
 });

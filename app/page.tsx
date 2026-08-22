@@ -361,7 +361,7 @@ const PERMISSION_SETTINGS_KEY = "settings:permissions:v1";
 const EXPERIENCE_SETTINGS_KEY = "settings:experience:v1";
 const EXECUTIVE_COMMUNICATION_KEY = "settings:executive-communication:v1";
 const PUBLIC_READ_PERMISSION = { view: true, register: false, edit: false } as const;
-const PRODUCT_VERSION = "6.2.0";
+const PRODUCT_VERSION = "7.0.0";
 
 const breadcrumbParentByNav: Partial<Record<NavItem, NavItem>> = {
   "Central Executiva": "Visão geral",
@@ -1143,11 +1143,11 @@ export default function Home() {
   }
 
   return (
-    <div className={`app-shell reference-ui-2026 municipal-ui-v6 municipal-ui-v61 municipal-ui-v611 municipal-ui-v620 ${motionEnabled ? "motion-enabled" : "motion-reduced"} ${contrastEnabled ? "contrast-enabled" : ""} ${simplifiedMode ? "simplified-mode" : ""} ${sidebarCompact ? "sidebar-compact" : ""} text-scale-${textScale}`}>
+    <div className={`app-shell reference-ui-2026 municipal-ui-v6 municipal-ui-v61 municipal-ui-v611 municipal-ui-v620 municipal-ui-v700 ${motionEnabled ? "motion-enabled" : "motion-reduced"} ${contrastEnabled ? "contrast-enabled" : ""} ${simplifiedMode ? "simplified-mode" : ""} ${sidebarCompact ? "sidebar-compact" : ""} text-scale-${textScale}`}>
       <aside className={`sidebar ${sidebarOpen ? "sidebar-open" : ""}`}>
         <div className="brand" title="Identidade institucional de Várzea da Palma">
           <div className="brand-mark municipal-crest-slot official-municipal-brand" data-crest-slot="brasao-oficial"><img src="/brasao-varzea-da-palma-oficial.png" alt="Brasão oficial da Prefeitura Municipal de Várzea da Palma" /></div>
-          <div><strong>Prefeitura Conecta</strong><small>Gestão Integrada + IA</small></div>
+          <div><strong>Prefeitura Conecta</strong><small>Gestão municipal</small></div>
         </div>
         <nav className="main-nav clean-main-nav organized-main-nav" aria-label="Navegação principal">
           <span className="nav-label">NAVEGAÇÃO</span>
@@ -1574,6 +1574,28 @@ function Dashboard({ tickets, allTickets, municipalSummary, audit, executive, de
     <>
       <section className="reference-dashboard" aria-label="Painel principal">
         <div className="reference-dashboard-main">
+          <section className="municipal-overview-hero" aria-label="Panorama municipal do dia">
+            <div className="municipal-overview-copy">
+              <span>{userName.split(" ")[0]} · {roleLabel}</span>
+              <h2>{dashboardProfile === "executive" ? "O município em um só panorama." : dashboardProfile === "manager" ? "Sua equipe, prazos e entregas em foco." : "Seu dia organizado, do início à entrega."}</h2>
+              <p>{dashboardProfile === "executive" ? "Acompanhe riscos, decisões e o ritmo das secretarias sem perder o contexto." : dashboardProfile === "manager" ? `Acompanhe o andamento de ${department} e aja primeiro no que exige atenção.` : "Veja suas prioridades, avisos e próximos compromissos em uma leitura rápida."}</p>
+              <div className="municipal-overview-metrics">
+                <span><small>EM ANDAMENTO</small><strong>{dashboardProfile === "executive" ? municipalSummary.open : openTickets.length}</strong></span>
+                <span><small>CONCLUSÃO</small><strong>{dashboardProfile === "executive" ? municipalSummary.completionRate : completionRate}%</strong></span>
+                <span><small>ATENÇÃO</small><strong>{dashboardProfile === "executive" ? municipalSummary.overdue : overdueTickets.length}</strong></span>
+              </div>
+              <button type="button" onClick={() => onNavigate(dashboardProfile === "executive" ? "Central Executiva" : "Central Integrada")}>Abrir central de trabalho <ArrowRight size={14}/></button>
+            </div>
+            <div className="municipal-overview-symbol" aria-hidden="true">
+              <i className="municipal-orbit orbit-one" />
+              <i className="municipal-orbit orbit-two" />
+              <span><img src="/brasao-varzea-da-palma-oficial.png" alt="" /></span>
+              <b className="municipal-symbol-point point-one"><CheckCircle2 size={14}/></b>
+              <b className="municipal-symbol-point point-two"><MapPin size={14}/></b>
+              <b className="municipal-symbol-point point-three"><Gauge size={14}/></b>
+            </div>
+          </section>
+
           <section className="reference-priorities" aria-label="Prioridades do dia">
             <header className="reference-section-heading"><div><span>{roleLabel}</span><h2>{dashboardCopy.title}</h2></div><button type="button" onClick={() => onNavigate(dashboardProfile === "executive" ? "Central Executiva" : "Central Integrada")}>Ver tudo <ArrowRight size={13}/></button></header>
             <div className="reference-kpi-grid">
@@ -1620,10 +1642,18 @@ function Dashboard({ tickets, allTickets, municipalSummary, audit, executive, de
         </div>
 
         <aside className="reference-dashboard-rail">
-          <article className="reference-municipal-card">
-            <header><span><Landmark size={17}/></span><strong>Prefeitura Conecta</strong></header>
-            <div><small>{userName.split(" ")[0]} · {roleLabel}</small><h3>{dashboardProfile === "executive" ? "Visão consolidada municipal" : department}</h3><p>{dashboardProfile === "executive" ? `${municipalSummary.open} demandas ativas em uma base municipal de ${municipalSummary.total} registros, com ${municipalSummary.completionRate}% de conclusão.` : `${openTickets.length} demandas ativas em uma base de ${focusTickets.length} registros, com ${completionRate}% de conclusão.`}</p></div>
-            <button type="button" onClick={() => onNavigate(executive ? "Central Executiva" : "Indicadores")}>Ver indicadores <ArrowUpRight size={14}/></button>
+          <article className="panel reference-performance-card">
+            <header><div><span>Desempenho geral</span><h3>Execução do setor</h3></div><button type="button" aria-label="Abrir indicadores" onClick={() => onNavigate(executive ? "Central Executiva" : "Indicadores")}><MoreHorizontal size={16}/></button></header>
+            <div className="reference-performance-gauge" role="img" aria-label={`${dashboardProfile === "executive" ? municipalSummary.completionRate : completionRate}% de conclusão`}>
+              <svg viewBox="0 0 140 82" aria-hidden="true"><path className="gauge-track" pathLength="100" d="M14 70 A56 56 0 0 1 126 70"/><path className="gauge-value" pathLength="100" d="M14 70 A56 56 0 0 1 126 70" style={{ strokeDasharray: `${dashboardProfile === "executive" ? municipalSummary.completionRate : completionRate} 100` }}/></svg>
+              <span><small>CONCLUSÃO</small><strong>{dashboardProfile === "executive" ? municipalSummary.completionRate : completionRate}%</strong></span>
+            </div>
+            <div className="reference-performance-legend">
+              <span><i className="done"/><small>Concluídas</small><strong>{completedTickets}</strong></span>
+              <span><i className="active"/><small>Em andamento</small><strong>{openTickets.length}</strong></span>
+              <span><i className="attention"/><small>Em atenção</small><strong>{dashboardProfile === "executive" ? municipalSummary.overdue : overdueTickets.length}</strong></span>
+            </div>
+            <button className="reference-performance-action" type="button" onClick={() => onNavigate(executive ? "Central Executiva" : "Indicadores")}>Ver detalhes <ArrowUpRight size={13}/></button>
           </article>
 
           <article className="panel reference-calendar-card">

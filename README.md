@@ -23,6 +23,14 @@ Sistema interno de gestão municipal em Next.js, React e TypeScript, com persist
 - Configurações
 - Últimas Notícias Prefeitura
 
+## Versão 7.0.0 — novo sistema visual municipal
+
+Toda a experiência foi redesenhada com base na referência fornecida: moldura branca flutuante, fundo neutro, menu lateral claro, item ativo em verde-lima, cartões compactos, bordas sutis e uma leitura visual mais direta. A identidade foi adaptada ao contexto público municipal — sem copiar o conteúdo comercial da referência — e utiliza o verde institucional `#176057`, apoio em `#B9DF63` e detalhes âmbar para estados de atenção.
+
+O painel inicial agora inclui uma abertura institucional personalizada por perfil, indicadores operacionais em faixa contínua, gráfico de demandas, agenda, tabela recente e medidor semicircular de execução. O mesmo vocabulário visual foi aplicado aos módulos, tabelas, formulários, estados vazios, modais, notificações, copiloto de IA, login e páginas do cidadão.
+
+A interface continua utilizando **Figtree 700** em títulos e destaques e **Plus Jakarta Sans 500** nos demais conteúdos. Foram preservados todos os fluxos existentes, permissões, isolamento entre setores, recursos de acessibilidade e a API REST de frota e quilometragem. Há adaptações específicas para desktop compacto, tablet e celular.
+
 ## Versão 6.2.0 — frota e quilometragem diária
 
 O novo módulo **Frota e Quilometragem** permite ao funcionário registrar o hodômetro no início da jornada e concluir o mesmo registro ao devolver o veículo. A distância percorrida é calculada automaticamente, jornadas duplicadas são bloqueadas e um veículo não pode iniciar outro dia enquanto houver uma saída pendente.

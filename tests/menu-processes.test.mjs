@@ -4,10 +4,10 @@ import test from "node:test";
 
 const readSource = (file) => readFile(new URL(`../app/${file}`, import.meta.url), "utf8");
 
-test("keeps the established header and sidebar identity", async () => {
+test("keeps the institutional header and redesigned sidebar identity", async () => {
   const source = await readSource("page.tsx");
   assert.match(source, /className="brand"/);
-  assert.match(source, /Gestão Integrada \+ IA/);
+  assert.match(source, /Gestão municipal/);
   assert.match(source, /Buscar chamados, pessoas, processos, arquivos, eventos\.\.\./);
   assert.doesNotMatch(source, /className="top-ai-button"/);
   assert.match(source, /"VISUALIZAR COMO" : "PERFIS CADASTRADOS"/);
@@ -133,12 +133,14 @@ test("recreates the reference dashboard composition across the whole home view",
   assert.match(page, /className="reference-kpi-grid"/);
   assert.match(page, /className="reference-middle-grid"/);
   assert.match(page, /className="panel reference-calendar-card"/);
-  assert.match(page, /className="reference-municipal-card"/);
+  assert.match(page, /className="municipal-overview-hero"/);
+  assert.match(page, /className="panel reference-performance-card"/);
   assert.match(page, /className="sidebar-reference-card"/);
   assert.match(styles, /Prefeitura Conecta v5\.1 — dashboard editorial, compacto e sem roxo/);
   assert.match(styles, /\.reference-dashboard \{ display: grid; grid-template-columns: minmax\(0, 1fr\) 310px/);
-  assert.match(styles, /\.reference-municipal-card \{[^}]*background: #20212f/);
-  assert.match(styles, /\.reference-calendar-days > button\.active \{[^}]*background: #c9f25b/);
+  assert.match(styles, /Prefeitura Conecta 7\.0 — experiência visual inspirada no painel de referência/);
+  assert.match(styles, /\.municipal-ui-v700 \.reference-performance-card/);
+  assert.match(styles, /\.municipal-ui-v700 \.reference-calendar-days button\.active \{[^}]*background:var\(--pc7-forest\)/);
 });
 
 test("shows a functional seven-day demand flow and centers communication actions", async () => {

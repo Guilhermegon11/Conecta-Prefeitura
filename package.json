@@ -1,6 +1,6 @@
 {
   "name": "prefeitura-conecta",
-  "version": "6.2.0",
+  "version": "7.0.0",
   "private": true,
   "engines": {
     "node": "22.x"

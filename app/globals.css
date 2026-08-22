@@ -8316,3 +8316,943 @@ button,
   .municipal-ui-v620 .fleet-table-wrap td::before { color:#7b8a86;font-size:8px;font-weight:700;text-transform:uppercase;content:attr(data-label); }
 }
 @media (prefers-reduced-motion:reduce) { .municipal-ui-v620 .fleet-loading span { animation:none; } }
+
+/* ========================================================================== */
+/* Prefeitura Conecta 7.0 — experiência visual inspirada no painel de referência. */
+/* ========================================================================== */
+
+body:has(.municipal-ui-v700) {
+  padding: 26px;
+  background: #edf0ee;
+}
+
+.app-shell.municipal-ui-v700 {
+  --pc7-ink: #18221e;
+  --pc7-muted: #758079;
+  --pc7-line: #e5ebe7;
+  --pc7-line-strong: #d8e2dc;
+  --pc7-canvas: #f4f8f5;
+  --pc7-panel: #ffffff;
+  --pc7-forest: #176057;
+  --pc7-forest-dark: #104b44;
+  --pc7-lime: #b9df63;
+  --pc7-lime-soft: #eff7dc;
+  --pc7-mint: #eaf5f1;
+  --pc7-orange: #f2a844;
+  --pc7-orange-soft: #fff2dc;
+  --pc7-blue-soft: #eaf3f5;
+  --pc7-red-soft: #fbe9e5;
+  --pc7-shadow: 0 9px 26px rgba(28, 56, 44, .045);
+  width: min(1640px, 100%);
+  min-height: calc(100vh - 52px);
+  grid-template-columns: 238px minmax(0, 1fr);
+  overflow: hidden;
+  border: 1px solid #e1e7e3;
+  border-radius: 23px;
+  color: var(--pc7-ink);
+  background: var(--pc7-panel);
+  box-shadow: 0 24px 70px rgba(31, 47, 39, .11);
+}
+
+.municipal-ui-v700 .sidebar {
+  margin: 0;
+  overflow: hidden;
+  border: 0;
+  border-right: 1px solid var(--pc7-line);
+  border-radius: 0;
+  color: var(--pc7-ink);
+  background: #fff;
+}
+
+.municipal-ui-v700 .brand {
+  min-height: 82px;
+  gap: 10px;
+  padding: 0 15px;
+  border-bottom: 1px solid #edf1ee;
+}
+
+.municipal-ui-v700 .brand-mark {
+  width: 38px;
+  height: 38px;
+  overflow: hidden;
+  border: 1px solid #dce6e0;
+  border-radius: 12px;
+  color: var(--pc7-forest);
+  background: #f7faf8;
+  box-shadow: none;
+}
+
+.municipal-ui-v700 .brand-mark img { width: 31px; height: 31px; object-fit: contain; }
+.municipal-ui-v700 .brand strong { color: #17231f; font-size: 14px; letter-spacing: -.025em; }
+.municipal-ui-v700 .brand small { margin-top: 2px; color: #8b9690; font-size: 8px; letter-spacing: .075em; }
+
+.municipal-ui-v700 .clean-main-nav,
+.municipal-ui-v700 .organized-main-nav {
+  padding: 15px 11px 10px;
+  scrollbar-width: thin;
+  scrollbar-color: #d8e2dc transparent;
+}
+
+.municipal-ui-v700 .clean-nav-section { gap: 6px; }
+.municipal-ui-v700 .clean-nav-section + .clean-nav-section { margin-top: 8px; padding-top: 8px; border-top: 1px solid #edf1ee; }
+.municipal-ui-v700 .clean-nav-section-label { padding: 0 10px 5px; color: #a0aaa4; font-size: 7px; letter-spacing: .13em; text-transform: uppercase; }
+.municipal-ui-v700 .clean-nav-section-items { gap: 3px; }
+.municipal-ui-v700 .organized-nav-item,
+.municipal-ui-v700 .clean-nav-section-toggle {
+  min-height: 39px;
+  gap: 10px;
+  padding: 8px 10px;
+  border: 1px solid transparent;
+  border-radius: 10px;
+  color: #65716b;
+  font-size: 10px;
+  font-weight: 700;
+  background: transparent;
+}
+.municipal-ui-v700 .organized-nav-item svg,
+.municipal-ui-v700 .clean-nav-section-toggle svg { color: #728079; }
+.municipal-ui-v700 .organized-nav-item:hover,
+.municipal-ui-v700 .clean-nav-section-toggle:hover { border-color: #e8eee9; color: #2b3b35; background: #f7faf8; }
+.municipal-ui-v700 .organized-nav-item.active,
+.municipal-ui-v700 .clean-nav-child.active {
+  border-color: #dce9ba;
+  color: #26341f;
+  background: var(--pc7-lime-soft);
+  box-shadow: inset 3px 0 #7fac36;
+}
+.municipal-ui-v700 .organized-nav-item.active svg { color: #486c20; }
+.municipal-ui-v700 .organized-nav-item .nav-badge {
+  min-width: 20px;
+  padding: 3px 5px;
+  color: #fff;
+  background: var(--pc7-forest);
+  font-size: 8px;
+}
+
+.municipal-ui-v700 .sidebar-quick-access { margin: 4px 11px 0; padding: 9px 0; border-top: 1px solid #edf1ee; }
+.municipal-ui-v700 .sidebar-quick-access>div>span { color: #99a39e; font-size: 7px; }
+.municipal-ui-v700 .sidebar-quick-access button { min-height: 30px; color: #65716b; font-size: 9px; }
+.municipal-ui-v700 .sidebar-quick-access button:hover { color: var(--pc7-forest); background: #f5f9f6; }
+.municipal-ui-v700 .sidebar-reference-card {
+  margin: 8px 11px;
+  padding: 10px;
+  border: 1px solid #e1ebc7;
+  border-radius: 12px;
+  color: #445534;
+  background: linear-gradient(135deg,#f5f9e9,#f9fcf6);
+}
+.municipal-ui-v700 .sidebar-reference-card>span { color: #476c22; background: #e2efc0; }
+.municipal-ui-v700 .sidebar-reference-card strong { color: #31412a; font-size: 9px; }
+.municipal-ui-v700 .sidebar-reference-card small { color: #84907d; font-size: 8px; }
+.municipal-ui-v700 .sidebar-profile {
+  margin: 8px 11px 12px;
+  padding: 10px;
+  border: 1px solid #e6ece8;
+  border-radius: 12px;
+  background: #fafcfb;
+}
+.municipal-ui-v700 .sidebar-profile .avatar { color: #fff; border-color: #d9e5df; background: var(--pc7-forest); }
+.municipal-ui-v700 .sidebar-profile .profile-copy strong { color: #2d3d37; font-size: 9px; }
+.municipal-ui-v700 .sidebar-profile .profile-copy span { color: #8a9690; font-size: 8px; }
+.municipal-ui-v700 .sidebar-profile .icon-button { color: #7f8b85; }
+
+.municipal-ui-v700 .main-area {
+  min-height: 0;
+  overflow: auto;
+  color: var(--pc7-ink);
+  background: var(--pc7-canvas);
+}
+
+.municipal-ui-v700 .topbar {
+  position: sticky;
+  top: 0;
+  z-index: 24;
+  height: 75px;
+  gap: 10px;
+  padding: 0 20px;
+  border-bottom: 1px solid rgba(226,234,229,.92);
+  background: rgba(255,255,255,.94);
+  box-shadow: 0 3px 15px rgba(28,56,44,.025);
+  backdrop-filter: blur(18px);
+}
+.municipal-ui-v700 .desktop-sidebar-toggle,
+.municipal-ui-v700 .mobile-menu {
+  width: 38px;
+  height: 38px;
+  border: 1px solid #e4ebe7;
+  border-radius: 11px;
+  color: #607069;
+  background: #fff;
+}
+.municipal-ui-v700 .global-search-wrap { max-width: 540px; }
+.municipal-ui-v700 .search-box {
+  min-height: 40px;
+  border: 1px solid #e3eae6;
+  border-radius: 12px;
+  color: #74817b;
+  background: #f8faf9;
+  box-shadow: none;
+}
+.municipal-ui-v700 .search-box:focus-within { border-color: #a8c5ba; background: #fff; box-shadow: 0 0 0 3px rgba(23,96,87,.08); }
+.municipal-ui-v700 .search-box input { color: #2f413a; font-size: 10px; }
+.municipal-ui-v700 .search-box kbd { border-color: #dfe7e2; color: #8d9892; background: #fff; font-size: 8px; }
+.municipal-ui-v700 .top-actions { gap: 6px; }
+.municipal-ui-v700 .top-actions>.icon-button,
+.municipal-ui-v700 .simple-mode-toggle {
+  min-height: 38px;
+  border: 1px solid #e2e9e5;
+  border-radius: 11px;
+  color: #61716a;
+  background: #fff;
+}
+.municipal-ui-v700 .top-actions>.icon-button { width: 38px; height: 38px; }
+.municipal-ui-v700 .top-actions>.icon-button:hover,
+.municipal-ui-v700 .simple-mode-toggle:hover { color: var(--pc7-forest); border-color: #cbdcd5; background: #f5faf7; }
+.municipal-ui-v700 .simple-mode-toggle { font-size: 9px; }
+.municipal-ui-v700 .persistence-status { color: #718078; font-size: 8px; }
+.municipal-ui-v700 .persistence-status i { background: #70a847; box-shadow: 0 0 0 3px #e8f2df; }
+.municipal-ui-v700 .account-switch {
+  min-height: 43px;
+  border: 1px solid #e1e8e4;
+  border-radius: 12px;
+  background: #fff;
+}
+.municipal-ui-v700 .account-switch .avatar { color: #fff; background: #293e35; }
+.municipal-ui-v700 .account-switch small { color: #98a29d; font-size: 7px; }
+.municipal-ui-v700 .account-switch select { color: #33453d; font-size: 9px; }
+.municipal-ui-v700 .executive-sector-switch { border-color: #dfe8e3; border-radius: 11px; background: #f8faf9; }
+
+.municipal-ui-v700 .demo-banner {
+  width: fit-content;
+  min-height: 31px;
+  margin: 12px 20px 0;
+  padding: 4px 8px;
+  border: 1px solid #e1e8e4;
+  border-radius: 9px;
+  color: #65736d;
+  background: rgba(255,255,255,.72);
+}
+.municipal-ui-v700 .demo-banner-mark { width: 22px; height: 22px; color: #496a28; background: var(--pc7-lime-soft); }
+.municipal-ui-v700 .demo-banner strong { color: #596861; font-size: 8px; }
+.municipal-ui-v700 .demo-banner small { color: #929c97; font-size: 7px; }
+
+.municipal-ui-v700 .content-wrap { width: 100%; max-width: none; padding: 17px 20px 32px; }
+.municipal-ui-v700 .page-heading { align-items: end; min-height: 72px; margin-bottom: 12px; }
+.municipal-ui-v700 .page-heading h1 { color: #18231f; font-size: clamp(25px,2.5vw,34px); letter-spacing: -.045em; }
+.municipal-ui-v700 .page-heading .eyebrow { margin-bottom: 4px; color: #7f8b85; font-size: 8px; }
+.municipal-ui-v700 .page-heading>div>p:last-child { margin-top: 4px; color: #7a8680; font-size: 10px; }
+.municipal-ui-v700 .module-breadcrumbs { margin: 0 0 9px; color: #7d8983; }
+.municipal-ui-v700 .module-breadcrumbs button,
+.municipal-ui-v700 .module-breadcrumbs span { font-size: 8px; }
+.municipal-ui-v700 .module-page-header-v3 {
+  min-height: 92px;
+  margin-bottom: 12px;
+  padding: 14px 15px;
+  border: 1px solid var(--pc7-line);
+  border-radius: 15px;
+  background: #fff;
+  box-shadow: var(--pc7-shadow);
+}
+.municipal-ui-v700 .module-page-header-icon { width: 43px; height: 43px; border-radius: 12px; color: #4d6e2b; background: var(--pc7-lime-soft); }
+.municipal-ui-v700 .module-page-header-copy .eyebrow { margin-bottom: 3px; color: #719047; font-size: 7px; }
+.municipal-ui-v700 .module-page-header-copy h1 { color: #22312b; font-size: 20px; letter-spacing: -.03em; }
+.municipal-ui-v700 .module-page-header-copy>p:last-child { max-width: 720px; margin-top: 4px; color: #7c8983; font-size: 9px; line-height: 1.5; }
+.municipal-ui-v700 .module-page-header-context { border-left-color: #e5ebe7; }
+.municipal-ui-v700 .module-page-header-context small { color: #9aa49f; font-size: 7px; }
+.municipal-ui-v700 .module-page-header-context strong { color: #40524a; font-size: 9px; }
+.municipal-ui-v700 .module-page-header-context span { color: #718078; font-size: 8px; }
+.municipal-ui-v700 .module-page-header-context span i { background: #78a94f; }
+.municipal-ui-v700 .module-favorite-toggle { min-height: 35px; border-color: #e1e8e4; border-radius: 10px; color: #65736c; background: #fff; font-size: 8px; }
+.municipal-ui-v700 .module-favorite-toggle.active { border-color: #dbe9b4; color: #4d6d2c; background: #f3f8e7; }
+
+.municipal-ui-v700 .button {
+  min-height: 37px;
+  padding: 0 13px;
+  border-radius: 10px;
+  font-size: 9px;
+  transition: transform .16s ease,border-color .16s ease,background .16s ease,box-shadow .16s ease;
+}
+.municipal-ui-v700 .button:hover { transform: translateY(-1px); }
+.municipal-ui-v700 .button.primary { border-color: var(--pc7-forest); color: #fff; background: var(--pc7-forest); box-shadow: 0 7px 16px rgba(23,96,87,.14); }
+.municipal-ui-v700 .button.primary:hover { border-color: var(--pc7-forest-dark); color: #fff; background: var(--pc7-forest-dark); }
+.municipal-ui-v700 .button.secondary { border-color: #dfe7e2; color: #52645c; background: #fff; }
+.municipal-ui-v700 .button.secondary:hover { border-color: #cbdad3; color: #2e4e42; background: #f8fbf9; }
+
+.municipal-ui-v700 :where(.panel,.chat-shell,.settings-section-toolbar,.help-articles,.municipal-table-panel,.ticket-detail,.process-navigation-v3) {
+  border-color: var(--pc7-line);
+  border-radius: 15px;
+  background: #fff;
+  box-shadow: var(--pc7-shadow);
+}
+.municipal-ui-v700 :where(.panel-heading,.section-title,.municipal-table-panel>header,.favorite-strip>header) {
+  border-bottom-color: #edf1ee;
+  background: #fff;
+}
+.municipal-ui-v700 :where(.panel-heading,.section-title) :where(h2,h3) { color: #2d3e37; }
+.municipal-ui-v700 :where(.panel-heading,.section-title) p { color: #89948f; }
+.municipal-ui-v700 :where(input:not([type="checkbox"]):not([type="radio"]),select,textarea) {
+  border-color: #dfe7e2;
+  border-radius: 9px;
+  color: #34483f;
+  background: #fbfcfb;
+}
+.municipal-ui-v700 :where(input,select,textarea):focus { border-color: #8fb7a8; background: #fff; box-shadow: 0 0 0 3px rgba(23,96,87,.08); }
+.municipal-ui-v700 :where(input,textarea)::placeholder { color: #a6afaa; }
+.municipal-ui-v700 :where(.sector-tabs,.settings-tabs,.module-tabs,.management-tabs,.integrated-tabs,.chat-tabs) {
+  gap: 5px;
+  padding: 5px;
+  border: 1px solid #e5ebe7;
+  border-radius: 12px;
+  background: #f6f9f7;
+  box-shadow: none;
+}
+.municipal-ui-v700 :where(.sector-tabs,.settings-tabs,.module-tabs,.management-tabs,.integrated-tabs,.chat-tabs) button {
+  min-height: 36px;
+  border: 0;
+  border-radius: 9px;
+  color: #738078;
+  background: transparent;
+}
+.municipal-ui-v700 :where(.sector-tabs,.settings-tabs,.module-tabs,.management-tabs,.integrated-tabs,.chat-tabs) button:hover { color: #3e5248; background: #fff; }
+.municipal-ui-v700 :where(.sector-tabs,.settings-tabs,.module-tabs,.management-tabs,.integrated-tabs,.chat-tabs) button.active {
+  color: #345327;
+  background: var(--pc7-lime-soft);
+  box-shadow: 0 3px 9px rgba(54,78,40,.06);
+}
+
+/* Painel principal */
+.municipal-ui-v700 .reference-dashboard {
+  grid-template-columns: minmax(0,1fr) 306px;
+  gap: 12px;
+  align-items: start;
+}
+.municipal-ui-v700 .reference-dashboard-main,
+.municipal-ui-v700 .reference-dashboard-rail { gap: 12px; }
+.municipal-ui-v700 .municipal-overview-hero {
+  position: relative;
+  display: grid;
+  grid-template-columns: minmax(0,1.25fr) minmax(220px,.75fr);
+  min-height: 230px;
+  overflow: hidden;
+  border: 1px solid #1d6c61;
+  border-radius: 17px;
+  color: #fff;
+  background:
+    radial-gradient(circle at 82% 30%,rgba(185,223,99,.2),transparent 27%),
+    radial-gradient(circle at 60% 125%,rgba(255,255,255,.09),transparent 34%),
+    linear-gradient(122deg,#0f4c44 0%,#176057 62%,#247a6d 100%);
+  box-shadow: 0 12px 30px rgba(23,96,87,.14);
+}
+.municipal-ui-v700 .municipal-overview-copy { position: relative; z-index: 2; display:flex;align-items:flex-start;flex-direction:column;padding:23px 24px; }
+.municipal-ui-v700 .municipal-overview-copy>span { color:#cae4de;font-size:8px;font-weight:700;letter-spacing:.1em;text-transform:uppercase; }
+.municipal-ui-v700 .municipal-overview-copy h2 { max-width:570px;margin:7px 0 0;color:#fff;font-size:clamp(22px,2.2vw,31px);line-height:1.12;letter-spacing:-.045em; }
+.municipal-ui-v700 .municipal-overview-copy>p { max-width:580px;margin:8px 0 0;color:#d8ece7;font-size:10px;line-height:1.55; }
+.municipal-ui-v700 .municipal-overview-metrics { display:flex;gap:18px;margin-top:15px; }
+.municipal-ui-v700 .municipal-overview-metrics>span { min-width:82px;padding-right:18px;border-right:1px solid rgba(255,255,255,.17); }
+.municipal-ui-v700 .municipal-overview-metrics>span:last-child { padding-right:0;border-right:0; }
+.municipal-ui-v700 .municipal-overview-metrics small,.municipal-ui-v700 .municipal-overview-metrics strong { display:block; }
+.municipal-ui-v700 .municipal-overview-metrics small { color:#a9d1c8;font-size:7px;letter-spacing:.08em; }
+.municipal-ui-v700 .municipal-overview-metrics strong { margin-top:2px;color:#fff;font-size:18px; }
+.municipal-ui-v700 .municipal-overview-copy>button { display:inline-flex;align-items:center;gap:7px;min-height:34px;margin-top:16px;padding:0 12px;border:1px solid #fff;border-radius:9px;color:#174c43;background:#fff;font-size:8px;font-weight:700; }
+.municipal-ui-v700 .municipal-overview-copy>button:hover { background:#f2f8f5;transform:translateY(-1px); }
+.municipal-ui-v700 .municipal-overview-symbol { position:relative;min-height:230px;overflow:hidden; }
+.municipal-ui-v700 .municipal-overview-symbol::before { position:absolute;right:-28px;bottom:-64px;width:260px;height:260px;border-radius:50%;background:rgba(185,223,99,.24);content:""; }
+.municipal-ui-v700 .municipal-overview-symbol>span { position:absolute;z-index:3;top:50%;left:50%;display:grid;width:104px;height:104px;place-items:center;border:1px solid rgba(255,255,255,.35);border-radius:50%;background:rgba(255,255,255,.93);box-shadow:0 18px 35px rgba(5,40,32,.22);transform:translate(-50%,-50%); }
+.municipal-ui-v700 .municipal-overview-symbol>span img { width:82px;height:82px;object-fit:contain; }
+.municipal-ui-v700 .municipal-orbit { position:absolute;top:50%;left:50%;border:1px solid rgba(255,255,255,.22);border-radius:50%;transform:translate(-50%,-50%); }
+.municipal-ui-v700 .municipal-orbit.orbit-one { width:166px;height:166px; }
+.municipal-ui-v700 .municipal-orbit.orbit-two { width:222px;height:222px; }
+.municipal-ui-v700 .municipal-symbol-point { position:absolute;z-index:4;display:grid;width:31px;height:31px;place-items:center;border:2px solid rgba(255,255,255,.8);border-radius:50%;color:#184f45;background:var(--pc7-lime);box-shadow:0 7px 16px rgba(7,40,34,.18); }
+.municipal-ui-v700 .municipal-symbol-point.point-one { top:30px;left:48px; }
+.municipal-ui-v700 .municipal-symbol-point.point-two { right:30px;top:80px;color:#8a5418;background:#ffbd5b; }
+.municipal-ui-v700 .municipal-symbol-point.point-three { right:75px;bottom:25px;color:#275d4f;background:#fff; }
+
+.municipal-ui-v700 .reference-priorities {
+  overflow:hidden;
+  border:1px solid var(--pc7-line);
+  border-radius:15px;
+  background:#fff;
+  box-shadow:var(--pc7-shadow);
+}
+.municipal-ui-v700 .reference-section-heading { min-height:54px;padding:12px 14px;border-bottom:1px solid #edf1ee; }
+.municipal-ui-v700 .reference-section-heading span { color:#87938d;font-size:7px; }
+.municipal-ui-v700 .reference-section-heading h2 { margin-top:2px;color:#2e3e37;font-size:13px; }
+.municipal-ui-v700 .reference-section-heading button { color:#507042;font-size:8px; }
+.municipal-ui-v700 .reference-kpi-grid { grid-template-columns:repeat(4,minmax(0,1fr));gap:0;border:0;border-radius:0;background:#fff;box-shadow:none; }
+.municipal-ui-v700 .reference-kpi-grid>button {
+  min-height:103px;
+  padding:13px;
+  border:0;
+  border-right:1px solid #edf1ee;
+  border-radius:0;
+  background:#fff;
+  box-shadow:none;
+}
+.municipal-ui-v700 .reference-kpi-grid>button:last-child { border-right:0; }
+.municipal-ui-v700 .reference-kpi-grid>button:hover { z-index:1;background:#f9fbfa;box-shadow:inset 0 -3px var(--pc7-lime);transform:none; }
+.municipal-ui-v700 .reference-kpi-grid>button>span { width:31px;height:31px;border-radius:9px; }
+.municipal-ui-v700 .reference-kpi-grid>button>span.peach { color:#985624;background:var(--pc7-orange-soft); }
+.municipal-ui-v700 .reference-kpi-grid>button>span.teal { color:#176057;background:var(--pc7-mint); }
+.municipal-ui-v700 .reference-kpi-grid>button>span.blue { color:#477180;background:var(--pc7-blue-soft); }
+.municipal-ui-v700 .reference-kpi-grid>button>span.sand { color:#6f7b31;background:var(--pc7-lime-soft); }
+.municipal-ui-v700 .reference-kpi-grid strong { color:#21322b;font-size:18px; }
+.municipal-ui-v700 .reference-kpi-grid small { color:#66756e;font-size:8px; }
+.municipal-ui-v700 .reference-kpi-grid em { color:#96a09b;font-size:7px; }
+
+.municipal-ui-v700 .reference-middle-grid { grid-template-columns:minmax(0,1.6fr) minmax(210px,.72fr);gap:12px; }
+.municipal-ui-v700 .reference-activity-card,
+.municipal-ui-v700 .reference-schedule-card,
+.municipal-ui-v700 .reference-ticket-panel,
+.municipal-ui-v700 .reference-calendar-card,
+.municipal-ui-v700 .reference-assignments-card { border-radius:15px; }
+.municipal-ui-v700 :where(.reference-activity-card,.reference-schedule-card,.reference-assignments-card)>header { min-height:54px;padding:12px 14px;border-bottom:1px solid #edf1ee; }
+.municipal-ui-v700 :where(.reference-activity-card,.reference-schedule-card,.reference-assignments-card)>header span { color:#89958f;font-size:7px; }
+.municipal-ui-v700 :where(.reference-activity-card,.reference-schedule-card,.reference-assignments-card)>header h3 { margin-top:2px;color:#2d3f37;font-size:12px; }
+.municipal-ui-v700 :where(.reference-activity-card,.reference-schedule-card,.reference-assignments-card)>header button { color:#557064;border-color:#e2e9e5;background:#fff; }
+.municipal-ui-v700 .reference-chart-summary { padding:12px 14px 0; }
+.municipal-ui-v700 .reference-chart-summary>strong { color:#24372f;font-size:20px; }
+.municipal-ui-v700 .reference-chart-summary>span { color:#4e7b54;background:#eaf5eb; }
+.municipal-ui-v700 .reference-bar-chart { height:145px;padding:9px 14px 13px; }
+.municipal-ui-v700 .reference-bar-chart button span { background:#f1f4f2; }
+.municipal-ui-v700 .reference-bar-chart button i { background:#b7d58e; }
+.municipal-ui-v700 .reference-bar-chart button i.highlight { background:linear-gradient(180deg,#8fbe52,#176057); }
+.municipal-ui-v700 .reference-bar-chart button small { color:#87938d;font-size:7px; }
+.municipal-ui-v700 .reference-schedule-list>button { min-height:54px;padding:9px 12px;border-top-color:#edf1ee; }
+.municipal-ui-v700 .reference-schedule-list strong { color:#3b4e46;font-size:9px; }
+.municipal-ui-v700 .reference-schedule-list small { color:#8c9892;font-size:7px; }
+.municipal-ui-v700 .reference-schedule-list>button>span { border-radius:9px; }
+.municipal-ui-v700 .reference-ticket-panel .panel-heading { min-height:55px;padding:12px 14px; }
+.municipal-ui-v700 .reference-ticket-panel .panel-heading h2 { font-size:12px; }
+.municipal-ui-v700 .reference-ticket-panel .panel-heading p { font-size:8px; }
+.municipal-ui-v700 .ticket-table th { color:#8b9690;background:#f8faf9;font-size:7px; }
+.municipal-ui-v700 .ticket-table td { color:#596a62;border-bottom-color:#edf1ee;font-size:9px; }
+.municipal-ui-v700 .ticket-table tbody tr:hover { background:#fafcfb; }
+
+.municipal-ui-v700 .reference-performance-card { overflow:hidden; }
+.municipal-ui-v700 .reference-performance-card>header { display:flex;align-items:flex-start;justify-content:space-between;gap:10px;min-height:54px;padding:12px 13px;border-bottom:1px solid #edf1ee; }
+.municipal-ui-v700 .reference-performance-card>header span { color:#8a9690;font-size:7px; }
+.municipal-ui-v700 .reference-performance-card>header h3 { margin:2px 0 0;color:#2d4037;font-size:12px; }
+.municipal-ui-v700 .reference-performance-card>header button { display:grid;width:27px;height:27px;place-items:center;border:0;border-radius:8px;color:#7d8983;background:#f5f8f6; }
+.municipal-ui-v700 .reference-performance-gauge { position:relative;display:grid;height:138px;place-items:center;padding:12px 16px 0; }
+.municipal-ui-v700 .reference-performance-gauge svg { width:100%;max-width:210px;overflow:visible; }
+.municipal-ui-v700 .reference-performance-gauge path { fill:none;stroke-linecap:round;stroke-width:17; }
+.municipal-ui-v700 .reference-performance-gauge .gauge-track { stroke:#e8eee9; }
+.municipal-ui-v700 .reference-performance-gauge .gauge-value { stroke:var(--pc7-lime); }
+.municipal-ui-v700 .reference-performance-gauge>span { position:absolute;left:50%;bottom:18px;text-align:center;transform:translateX(-50%); }
+.municipal-ui-v700 .reference-performance-gauge small,.municipal-ui-v700 .reference-performance-gauge strong { display:block; }
+.municipal-ui-v700 .reference-performance-gauge small { color:#8c9791;font-size:7px;letter-spacing:.07em; }
+.municipal-ui-v700 .reference-performance-gauge strong { margin-top:2px;color:#20322a;font-size:22px; }
+.municipal-ui-v700 .reference-performance-legend { display:grid;gap:7px;padding:3px 13px 12px; }
+.municipal-ui-v700 .reference-performance-legend>span { display:grid;grid-template-columns:auto 1fr auto;align-items:center;gap:7px; }
+.municipal-ui-v700 .reference-performance-legend i { width:7px;height:7px;border-radius:50%; }
+.municipal-ui-v700 .reference-performance-legend i.done { background:var(--pc7-lime); }
+.municipal-ui-v700 .reference-performance-legend i.active { background:var(--pc7-forest); }
+.municipal-ui-v700 .reference-performance-legend i.attention { background:var(--pc7-orange); }
+.municipal-ui-v700 .reference-performance-legend small { color:#77847e;font-size:8px; }
+.municipal-ui-v700 .reference-performance-legend strong { color:#34483f;font-size:9px; }
+.municipal-ui-v700 .reference-performance-action { display:flex;width:calc(100% - 26px);min-height:34px;align-items:center;justify-content:center;gap:6px;margin:0 13px 13px;border:1px solid #dfe7e2;border-radius:9px;color:#4c6359;background:#fff;font-size:8px;font-weight:700; }
+.municipal-ui-v700 .reference-performance-action:hover { border-color:#bdd2c8;color:var(--pc7-forest);background:#f8fbf9; }
+.municipal-ui-v700 .reference-calendar-card>header { border-bottom-color:#edf1ee; }
+.municipal-ui-v700 .reference-calendar-card>header strong { color:#40534a;font-size:9px;text-transform:capitalize; }
+.municipal-ui-v700 .reference-calendar-week span { color:#98a29d;font-size:7px; }
+.municipal-ui-v700 .reference-calendar-days button { color:#5f6f67;font-size:8px; }
+.municipal-ui-v700 .reference-calendar-days button.active { color:#fff;background:var(--pc7-forest); }
+.municipal-ui-v700 .reference-calendar-days button.has-event::after { background:var(--pc7-orange); }
+.municipal-ui-v700 .reference-assignments-card>div>button { border-top-color:#edf1ee; }
+.municipal-ui-v700 .reference-assignments-card strong { color:#3f5149;font-size:8px; }
+.municipal-ui-v700 .reference-assignments-card small,.municipal-ui-v700 .reference-assignments-card em { font-size:7px; }
+.municipal-ui-v700 .reference-dashboard-ai { margin-top:12px; }
+.municipal-ui-v700 .dashboard-ai-brief { border-color:#dfe9d1;background:linear-gradient(110deg,#f7faef,#f5faf8);box-shadow:none; }
+.municipal-ui-v700 .reference-dashboard-footer { gap:10px;margin-top:12px; }
+.municipal-ui-v700 .task-choice-guide,.municipal-ui-v700 .dashboard-details-toggle { border-color:var(--pc7-line);border-radius:14px;background:#fff;box-shadow:var(--pc7-shadow); }
+
+/* Módulos e superfícies operacionais */
+.municipal-ui-v700 .module-layout-v3 { grid-template-columns:minmax(0,1fr) 238px;gap:12px; }
+.municipal-ui-v700 .module-main-v3 { gap:12px; }
+.municipal-ui-v700 .module-experience-rail { gap:10px; }
+.municipal-ui-v700 .module-experience-rail>* { border-color:var(--pc7-line);border-radius:14px;background:#fff;box-shadow:var(--pc7-shadow); }
+.municipal-ui-v700 .module-rail-identity { color:#fff;border-color:#236d62;background:linear-gradient(145deg,#104b44,#176057); }
+.municipal-ui-v700 .module-rail-identity>span { color:#294d25;background:var(--pc7-lime); }
+.municipal-ui-v700 .module-rail-identity small { color:#bddbd4; }
+.municipal-ui-v700 .module-rail-identity strong { color:#fff; }
+.municipal-ui-v700 .contextual-ai-bar { min-height:56px;border:1px solid #dfe9cf;border-radius:14px;background:linear-gradient(105deg,#f7faee,#f5faf8);box-shadow:none; }
+.municipal-ui-v700 .contextual-ai-orb { color:#fff;background:linear-gradient(145deg,#176057,#4a8c61);box-shadow:none; }
+.municipal-ui-v700 .contextual-ai-copy small { color:#6b8645; }
+.municipal-ui-v700 .contextual-ai-copy strong { color:#344b3f; }
+.municipal-ui-v700 .contextual-ai-actions button { border-color:#dfe7dc;color:#5b6d63;background:#fff; }
+.municipal-ui-v700 .contextual-ai-actions button.primary { border-color:var(--pc7-forest);color:#fff;background:var(--pc7-forest);box-shadow:none; }
+.municipal-ui-v700 :where(.module-toolbar,.ticket-workspace-toolbar,.process-filter-row,.settings-section-toolbar,.notification-toolbar) {
+  gap:8px;
+  padding:10px 11px;
+  border:1px solid var(--pc7-line);
+  border-radius:13px;
+  background:#fff;
+  box-shadow:none;
+}
+.municipal-ui-v700 :where(.module-search,.ticket-workspace-search,.process-search,.news-search) { border-color:#e2e9e5;border-radius:9px;background:#f8faf9; }
+.municipal-ui-v700 :where(.module-search,.ticket-workspace-search,.process-search,.news-search):focus-within { border-color:#a8c5b8;background:#fff;box-shadow:0 0 0 3px rgba(23,96,87,.07); }
+.municipal-ui-v700 :where(.module-empty,.activity-empty,.social-monitor-empty,.process-empty) { min-height:190px;border-color:#e3eae6;border-radius:13px;color:#829089;background:#fafcfb; }
+.municipal-ui-v700 :where(.module-empty,.activity-empty,.social-monitor-empty,.process-empty)>svg { color:#7c9b6d; }
+.municipal-ui-v700 :where(.module-empty,.activity-empty,.social-monitor-empty,.process-empty) strong { color:#44584e; }
+.municipal-ui-v700 .module-sync-banner { width:fit-content;border:1px solid #dfe7e2;border-radius:999px;color:#718078;background:#fff; }
+.municipal-ui-v700 .module-sync-banner.salvo { color:#497052;background:#f0f8f1; }
+
+.municipal-ui-v700 :where(.management-grid,.municipal-card-grid,.process-card-grid,.settings-card-grid,.feature-grid,.compliance-grid)>article,
+.municipal-ui-v700 :where(.kanban-card,.event-card,.document-card,.employee-card,.office-card) {
+  border-color:#e5ebe7;
+  border-radius:13px;
+  background:#fff;
+  box-shadow:none;
+}
+.municipal-ui-v700 :where(.management-grid,.municipal-card-grid,.process-card-grid)>article:hover,
+.municipal-ui-v700 :where(.kanban-card,.event-card,.document-card,.employee-card,.office-card):hover { border-color:#cbdad3;box-shadow:0 10px 24px rgba(27,60,47,.06);transform:translateY(-1px); }
+.municipal-ui-v700 .management-summary-grid>article { border-color:var(--pc7-line);border-radius:14px;box-shadow:var(--pc7-shadow); }
+.municipal-ui-v700 .management-summary-icon { color:#176057;background:var(--pc7-mint); }
+.municipal-ui-v700 .management-summary-icon.warning { color:#9b6423;background:var(--pc7-orange-soft); }
+.municipal-ui-v700 .management-summary-icon.success { color:#517532;background:var(--pc7-lime-soft); }
+.municipal-ui-v700 .management-title-icon { color:#4a6d28;background:var(--pc7-lime-soft); }
+.municipal-ui-v700 .status-tag,.municipal-ui-v700 .status-pill { border-radius:999px; }
+
+.municipal-ui-v700 :where(table,.ticket-table,.advanced-ticket-table,.permission-table) { color:#506159; }
+.municipal-ui-v700 :where(table,.ticket-table,.advanced-ticket-table) th { color:#85918b;border-bottom-color:#dfe7e2;background:#f7faf8; }
+.municipal-ui-v700 :where(table,.ticket-table,.advanced-ticket-table) td { border-bottom-color:#edf1ee; }
+.municipal-ui-v700 :where(table,.ticket-table,.advanced-ticket-table) tbody tr:hover { background:#fafcfb; }
+.municipal-ui-v700 .advanced-ticket-table-wrap { border-color:var(--pc7-line);border-radius:14px;box-shadow:var(--pc7-shadow); }
+.municipal-ui-v700 .ticket-view-switch { border-color:#e1e8e4;background:#f7faf8; }
+.municipal-ui-v700 .ticket-view-switch button.active { color:#345428;background:var(--pc7-lime-soft); }
+.municipal-ui-v700 .ticket-bulk-bar { border-color:#dbe8c0;color:#536644;background:#f3f8e8; }
+.municipal-ui-v700 .ticket-pagination { border-top-color:#edf1ee;background:#fafcfb; }
+
+.municipal-ui-v700 .process-navigation-v3 { padding:10px;background:#fff; }
+.municipal-ui-v700 .process-navigation-kpis>button { border-color:#e5ebe7;border-radius:11px;background:#fafcfb; }
+.municipal-ui-v700 .process-navigation-kpis>button.active { border-color:#d7e7b1;background:var(--pc7-lime-soft);box-shadow:inset 3px 0 #7ca83c; }
+.municipal-ui-v700 .process-tabs-v2 button.active { color:#35582a;background:var(--pc7-lime-soft); }
+.municipal-ui-v700 .process-list-v2,.municipal-ui-v700 .process-detail-v2 { border-color:var(--pc7-line);border-radius:14px;background:#fff;box-shadow:var(--pc7-shadow); }
+.municipal-ui-v700 .process-list-v2>button.active { border-color:#d7e6b5;background:#f4f8e9;box-shadow:inset 3px 0 #7fa83e; }
+.municipal-ui-v700 .process-progress-block i,.municipal-ui-v700 .indicator-target-track i { background:linear-gradient(90deg,#88b947,#176057); }
+
+.municipal-ui-v700 .chat-shell { overflow:hidden; }
+.municipal-ui-v700 .chat-sidebar { border-right-color:#e6ece8;background:#fbfcfb; }
+.municipal-ui-v700 .chat-list button.active { color:#334a3f;background:var(--pc7-lime-soft);box-shadow:inset 3px 0 #7ea63e; }
+.municipal-ui-v700 .chat-message.mine>div { color:#fff;background:var(--pc7-forest); }
+.municipal-ui-v700 .chat-composer { border-top-color:#e6ece8;background:#fbfcfb; }
+.municipal-ui-v700 .chat-composer button { color:#fff;background:var(--pc7-forest); }
+
+.municipal-ui-v700 :where(.security-hero,.sector-hero,.news-hero,.exec-central-hero,.fleet-hero) {
+  border-color:#246e63;
+  border-radius:16px;
+  background:
+    radial-gradient(circle at 86% 15%,rgba(185,223,99,.16),transparent 28%),
+    linear-gradient(125deg,#104b44,#176057 66%,#24776b);
+  box-shadow:0 12px 28px rgba(23,96,87,.12);
+}
+.municipal-ui-v700 :where(.security-hero,.sector-hero,.news-hero,.exec-central-hero,.fleet-hero) :where(h1,h2,h3,strong) { color:#fff; }
+.municipal-ui-v700 :where(.security-hero,.sector-hero,.news-hero,.exec-central-hero,.fleet-hero) :where(p,small) { color:#cce3dd; }
+.municipal-ui-v700 .sector-kpi-strip article,.municipal-ui-v700 .municipal-kpis article { border-color:var(--pc7-line);border-radius:13px;box-shadow:var(--pc7-shadow); }
+.municipal-ui-v700 .sector-kpi-strip article>span { color:#4a6f29;background:var(--pc7-lime-soft); }
+.municipal-ui-v700 .indicator-target-panel article { border-color:#e5ebe7;background:#fafcfb; }
+
+/* Frota no mesmo sistema visual */
+.municipal-ui-v700 .fleet-mileage-shell { gap:12px; }
+.municipal-ui-v700 .fleet-hero { min-height:146px;padding:18px 20px; }
+.municipal-ui-v700 .fleet-hero-icon { border-color:rgba(255,255,255,.22);background:rgba(255,255,255,.09); }
+.municipal-ui-v700 .fleet-summary-grid { gap:9px; }
+.municipal-ui-v700 .fleet-summary-grid>article { min-height:86px;border-color:var(--pc7-line);border-radius:13px;box-shadow:var(--pc7-shadow); }
+.municipal-ui-v700 .fleet-summary-grid>article>span { color:#4c712b;background:var(--pc7-lime-soft); }
+.municipal-ui-v700 .fleet-workflow-grid { gap:12px; }
+.municipal-ui-v700 :where(.fleet-start-card,.fleet-close-card)>header { background:#fbfcfb; }
+.municipal-ui-v700 :where(.fleet-start-card,.fleet-close-card)>header>span { color:#28481f;background:var(--pc7-lime); }
+.municipal-ui-v700 .fleet-open-list>form { border-color:#e5ebe7;border-left-color:var(--pc7-orange); }
+.municipal-ui-v700 .fleet-responsible { border-color:#dfe9cf;color:#496b2b;background:#f5f9ea; }
+.municipal-ui-v700 .fleet-table-wrap th { background:#f7faf8; }
+.municipal-ui-v700 .fleet-status.open { color:#8d5b1f;background:var(--pc7-orange-soft); }
+.municipal-ui-v700 .fleet-status.closed { color:#416a2f;background:var(--pc7-lime-soft); }
+
+/* Modais, alertas e ações flutuantes */
+.municipal-ui-v700 :where(.modal-backdrop,.integrated-modal-backdrop,.onboarding-backdrop) { background:rgba(19,31,25,.55);backdrop-filter:blur(7px); }
+.municipal-ui-v700 :where(.modal,.integrated-modal,.onboarding-card) { border-color:#dfe7e2;border-radius:17px;background:#fff;box-shadow:0 24px 70px rgba(20,43,33,.22); }
+.municipal-ui-v700 :where(.modal,.integrated-modal)>header { border-bottom-color:#e8edea;background:#fafcfb; }
+.municipal-ui-v700 :where(.modal,.integrated-modal)>header h2 { color:#293a33; }
+.municipal-ui-v700 :where(.modal,.integrated-modal)>header>button { border-color:#e1e8e4;color:#68766f;background:#fff; }
+.municipal-ui-v700 .modal-actions { border-top-color:#e8edea;background:#fafcfb; }
+.municipal-ui-v700 .quick-action-trigger { color:#27401d;background:var(--pc7-lime);box-shadow:0 12px 28px rgba(58,84,35,.2),0 0 0 4px #fff; }
+.municipal-ui-v700 .quick-action-trigger:hover { color:#203918;background:#a9d552; }
+.municipal-ui-v700 .quick-action-menu { border-color:#dfe7e2;border-radius:14px;box-shadow:0 20px 48px rgba(24,47,37,.16); }
+.municipal-ui-v700 .toast,.municipal-ui-v700 .undo-toast { border-color:#dce6e0;border-radius:12px;background:#fff;box-shadow:0 16px 38px rgba(24,47,37,.14); }
+.municipal-ui-v700 .toast>span { color:#29491e;background:var(--pc7-lime); }
+.municipal-ui-v700 .executive-sector-readonly { border-color:#e5d7ae;border-radius:12px;color:#775d2d;background:#fff9ea; }
+.municipal-ui-v700 .interface-state-banner { border-radius:11px; }
+.municipal-ui-v700 .municipal-product-footer { margin-top:18px;padding-top:15px;border-top-color:#dfe7e2;color:#78867f; }
+.municipal-ui-v700 .municipal-footer-crest { border-color:#dfe7e2;background:#fff; }
+.municipal-ui-v700 .municipal-product-footer strong { color:#45584f; }
+.municipal-ui-v700 .municipal-product-footer button { color:#5b7569; }
+
+/* Centros integrados, configurações, comunicação e IA */
+.municipal-ui-v700 :where(.integrated-shell,.settings-shell,.help-center,.mayor-feedback-shell,.command-center) { gap:12px; }
+.municipal-ui-v700 :where(.integrated-command-hero,.command-hero,.settings-hero,.help-hero,.ai-hero) {
+  overflow:hidden;
+  border:1px solid #246e63;
+  border-radius:16px;
+  background:
+    radial-gradient(circle at 86% 12%,rgba(185,223,99,.18),transparent 28%),
+    linear-gradient(125deg,#104b44,#176057 65%,#24776b);
+  box-shadow:0 12px 28px rgba(23,96,87,.12);
+}
+.municipal-ui-v700 :where(.integrated-command-hero,.command-hero,.settings-hero,.help-hero,.ai-hero) :where(h1,h2,h3,strong) { color:#fff; }
+.municipal-ui-v700 :where(.integrated-command-hero,.command-hero,.settings-hero,.help-hero,.ai-hero) :where(p,small) { color:#cbe2dc; }
+.municipal-ui-v700 .integrated-command-score { border-color:rgba(255,255,255,.18);background:rgba(255,255,255,.09);box-shadow:none; }
+.municipal-ui-v700 .integrated-command-score strong { color:#fff; }
+.municipal-ui-v700 .integrated-command-score i { background:var(--pc7-lime); }
+.municipal-ui-v700 .integrated-kpis>article,
+.municipal-ui-v700 .integrated-dashboard-grid>article,
+.municipal-ui-v700 .project-grid>article,
+.municipal-ui-v700 .health-grid>article,
+.municipal-ui-v700 .org-grid>article,
+.municipal-ui-v700 .settings-experience-grid>article,
+.municipal-ui-v700 .security-grid>article,
+.municipal-ui-v700 .news-grid>article {
+  border-color:var(--pc7-line);
+  border-radius:14px;
+  background:#fff;
+  box-shadow:var(--pc7-shadow);
+}
+.municipal-ui-v700 .integrated-kpis>article>span,
+.municipal-ui-v700 .command-score>span,
+.municipal-ui-v700 .employee-summary-icon { color:#4b7029;background:var(--pc7-lime-soft); }
+.municipal-ui-v700 .integrated-kanban-column { border-color:#e3eae6;border-radius:14px;background:#f8faf9; }
+.municipal-ui-v700 .integrated-kanban-column>header { border-bottom-color:#e7ece9; }
+.municipal-ui-v700 .integrated-kanban-column .kanban-card { box-shadow:0 6px 15px rgba(28,56,44,.04); }
+.municipal-ui-v700 .favorite-strip { overflow:hidden;border:1px solid var(--pc7-line);border-radius:14px;background:#fff;box-shadow:var(--pc7-shadow); }
+.municipal-ui-v700 .favorite-strip>div>button { border-color:#e6ece8;color:#5e6f67;background:#fafcfb; }
+.municipal-ui-v700 .favorite-strip>div>button:hover { border-color:#d6e3bc;color:#405d26;background:var(--pc7-lime-soft); }
+
+.municipal-ui-v700 .notification-layout { gap:12px; }
+.municipal-ui-v700 .notification-guide,
+.municipal-ui-v700 .notification-panel,
+.municipal-ui-v700 .notification-center-v61 { border-color:var(--pc7-line);border-radius:15px;background:#fff;box-shadow:var(--pc7-shadow); }
+.municipal-ui-v700 .notification-category-tabs { border-color:#e4ebe7;background:#f7faf8; }
+.municipal-ui-v700 .notification-category-tabs button.active { color:#355729;background:var(--pc7-lime-soft); }
+.municipal-ui-v700 .notification-list>button { border-bottom-color:#edf1ee;background:#fff; }
+.municipal-ui-v700 .notification-list>button:hover { background:#fafcfb; }
+.municipal-ui-v700 .notification-list>button.unread { background:#f7faee;box-shadow:inset 3px 0 #8db749; }
+.municipal-ui-v700 .notification-button>span { background:var(--pc7-orange); }
+
+.municipal-ui-v700 .municipal-ai-overlay { background:rgba(20,34,27,.5);backdrop-filter:blur(7px); }
+.municipal-ui-v700 .municipal-ai-panel,
+.municipal-ui-v700 .municipal-ai-agent-panel,
+.municipal-ui-v700 .municipal-ai-history {
+  border-color:#dfe7e2;
+  border-radius:18px;
+  background:#fff;
+  box-shadow:0 24px 70px rgba(20,43,33,.2);
+}
+.municipal-ui-v700 .municipal-ai-brand>span { color:#2c481e;background:var(--pc7-lime);box-shadow:none; }
+.municipal-ui-v700 .municipal-ai-chat { border-color:#e4ebe7;background:#f7faf8; }
+.municipal-ui-v700 .municipal-ai-bubble.user { color:#fff;background:var(--pc7-forest); }
+.municipal-ui-v700 .municipal-ai-bubble.assistant { color:#43564d;border-color:#e2e9e5;background:#fff; }
+.municipal-ui-v700 .municipal-ai-presets button { color:#53665c;border-color:#e0e8e3;background:#fff; }
+.municipal-ui-v700 .municipal-ai-presets button:hover { color:#395628;border-color:#d7e6b6;background:var(--pc7-lime-soft); }
+.municipal-ui-v700 .municipal-ai-composer { border-color:#dfe7e2;border-radius:12px;background:#fff; }
+.municipal-ui-v700 .municipal-ai-composer button,
+.municipal-ui-v700 .ai-compose-button { color:#fff;background:var(--pc7-forest);box-shadow:none; }
+.municipal-ui-v700 .municipal-ai-command-center { border-color:#dce7cf;border-radius:15px;background:linear-gradient(110deg,#f8faef,#f5faf8);box-shadow:none; }
+.municipal-ui-v700 .municipal-ai-command-title>span { color:#2c491f;background:var(--pc7-lime); }
+
+.municipal-ui-v700 :where(.news-card,.citizen-sector-list,.document-row,.employee-row,.office-card,.event-card) { border-color:#e5ebe7;background:#fff; }
+.municipal-ui-v700 .news-featured { border-color:#dce8c7;border-radius:15px;background:linear-gradient(120deg,#f6faeb,#f8fbf9);box-shadow:none; }
+.municipal-ui-v700 .news-category-mark { color:#486d26;background:var(--pc7-lime-soft); }
+.municipal-ui-v700 .news-official-note { color:#526a5f;border-color:#dfe8e3;background:#f7faf8; }
+.municipal-ui-v700 .document-table,
+.municipal-ui-v700 .employee-table,
+.municipal-ui-v700 .citizen-table { overflow:hidden;border-color:var(--pc7-line);border-radius:14px;background:#fff;box-shadow:var(--pc7-shadow); }
+
+/* Portal público, acesso e acompanhamento — mesma linguagem institucional */
+body:has(.login-shell),
+body:has(.evaluation-shell),
+body:has(.tracking-shell) { background:#edf0ee; }
+
+.login-shell {
+  min-height:100vh;
+  padding:26px;
+  background:
+    radial-gradient(circle at 9% 12%,rgba(185,223,99,.12),transparent 27%),
+    #edf0ee;
+}
+.login-frame {
+  width:min(1080px,100%);
+  min-height:min(700px,calc(100vh - 52px));
+  overflow:hidden;
+  border:1px solid #e1e7e3;
+  border-radius:23px;
+  background:#fff;
+  box-shadow:0 24px 70px rgba(31,47,39,.11);
+}
+.login-showcase {
+  padding:34px;
+  color:#fff;
+  background:
+    radial-gradient(circle at 82% 18%,rgba(185,223,99,.18),transparent 27%),
+    radial-gradient(circle at 40% 112%,rgba(255,255,255,.08),transparent 33%),
+    linear-gradient(145deg,#104b44,#176057 68%,#24776b);
+}
+.login-showcase>header>span,
+.login-showcase-copy>span,
+.login-showcase-stats article>span { color:#29451f;background:#b9df63; }
+.login-showcase>header small { color:#b8d5ce; }
+.login-showcase-copy>span { letter-spacing:.08em; }
+.login-showcase-copy h2 { max-width:390px;color:#fff;font-size:34px; }
+.login-showcase-copy p { color:#cae2dc; }
+.login-showcase-stats article { border-color:rgba(255,255,255,.13);background:rgba(255,255,255,.07); }
+.login-showcase-stats small { color:#b9d3cc; }
+.login-showcase-chart { border:1px solid rgba(255,255,255,.12);background:rgba(8,48,41,.35); }
+.login-showcase-chart>header b,
+.login-showcase>footer { color:#b9df63; }
+.login-showcase-chart i { background:rgba(255,255,255,.22); }
+.login-showcase-chart i.active { background:#b9df63;box-shadow:0 0 0 4px rgba(185,223,99,.09); }
+.login-panel { padding:48px 56px;background:#fff; }
+.login-brand>span,
+.login-loading-icon { color:#fff;background:#176057; }
+.login-brand strong,.login-copy h1 { color:#20312a; }
+.login-brand small { color:#8c9892; }
+.login-copy .eyebrow { color:#678b3d; }
+.login-copy>p:last-child { color:#78857f; }
+.login-form label>span { color:#4a5d54; }
+.login-form label>div { border-color:#e0e8e3;background:#f8faf9; }
+.login-form label>div:focus-within { border-color:#8fb7a8;background:#fff;box-shadow:0 0 0 3px rgba(23,96,87,.08); }
+.login-submit { color:#fff;border-color:#176057;background:#176057; }
+.login-submit:hover { border-color:#104b44;background:#104b44; }
+.login-back { color:#68776f; }
+.login-back:hover { color:#176057; }
+.login-loading-line::after { background:#b9df63; }
+
+.evaluation-shell,.tracking-shell { min-height:100vh;padding:26px;color:#22312b;background:#edf0ee; }
+.evaluation-topbar {
+  width:min(1380px,100%);
+  min-height:74px;
+  margin:0 auto;
+  padding:13px 16px;
+  border:1px solid #e1e7e3;
+  border-radius:18px;
+  background:#fff;
+  box-shadow:0 8px 24px rgba(28,56,44,.045);
+}
+.evaluation-brand>span { color:#fff;background:#176057;box-shadow:none; }
+.evaluation-brand strong { color:#26372f; }
+.evaluation-brand small { color:#89958f; }
+.evaluation-track-link,.evaluation-admin-link,.public-nav-links a { color:#53665d;border-color:#e1e8e4;background:#f8faf9; }
+.evaluation-track-link:hover,.evaluation-admin-link:hover,.public-nav-links a:hover { color:#3a5728;border-color:#d7e5b7;background:#eff7dc; }
+.evaluation-hero {
+  width:min(1380px,100%);
+  min-height:610px;
+  margin:14px auto 0;
+  grid-template-columns:minmax(310px,.78fr) minmax(500px,1.22fr);
+  gap:0;
+  overflow:hidden;
+  border:1px solid #e1e7e3;
+  border-radius:20px;
+  background:#fff;
+  box-shadow:0 20px 55px rgba(31,47,39,.08);
+}
+.evaluation-copy {
+  min-height:100%;
+  align-content:center;
+  padding:48px;
+  color:#fff;
+  background:
+    radial-gradient(circle at 82% 18%,rgba(185,223,99,.18),transparent 28%),
+    linear-gradient(145deg,#104b44,#176057 70%,#24776b);
+}
+.evaluation-copy .eyebrow,.tracking-copy .eyebrow { color:#b9df63; }
+.evaluation-copy h1 { color:#fff;font-size:clamp(36px,4.6vw,62px); }
+.evaluation-copy>p:not(.eyebrow) { color:#c8e0da; }
+.evaluation-trust { color:#e0ece8; }
+.evaluation-form-card { align-self:center;margin:38px;border-color:#e3eae6;border-radius:17px;background:#fff;box-shadow:0 12px 32px rgba(28,56,44,.07); }
+.citizen-kind-grid button { border-color:#e1e8e4;border-radius:11px;background:#fafcfb; }
+.citizen-kind-grid button:hover { border-color:#d8e7b7;background:#f4f8e9; }
+.citizen-kind-grid button.active { color:#365428;border-color:#cfe19e;background:#eff7dc;box-shadow:inset 0 0 0 1px #dbe9b8; }
+.citizen-check input { accent-color:#176057; }
+.citizen-send,.citizen-track-cta { color:#fff;background:#176057;box-shadow:none; }
+.citizen-send:hover,.citizen-track-cta:hover { background:#104b44; }
+.citizen-privacy { border-color:#dfe8e3;color:#65776e;background:#f7faf8; }
+.citizen-success { border-color:#d9e8c0;border-radius:13px;color:#466333;background:#f4f9e9; }
+
+.tracking-hero {
+  width:min(1380px,100%);
+  min-height:360px;
+  margin:14px auto;
+  grid-template-columns:minmax(0,1.1fr) minmax(340px,.65fr);
+  gap:0;
+  overflow:hidden;
+  border:1px solid #e1e7e3;
+  border-radius:20px;
+  background:#fff;
+  box-shadow:0 16px 42px rgba(31,47,39,.07);
+}
+.tracking-copy {
+  min-height:100%;
+  padding:44px;
+  border-radius:0;
+  background:
+    radial-gradient(circle at 84% 12%,rgba(185,223,99,.18),transparent 28%),
+    linear-gradient(135deg,#104b44,#176057 70%,#24776b);
+}
+.tracking-copy h1 { color:#fff; }
+.tracking-copy>p:not(.eyebrow) { color:#c9e0da; }
+.tracking-copy>div { color:#b9df63; }
+.tracking-search-card { align-self:center;margin:28px;border-color:#e3eae6;border-radius:16px;background:#fff;box-shadow:none; }
+.tracking-card-icon { color:#2f4c21;background:#b9df63; }
+.tracking-result { width:min(1380px,100%);gap:12px; }
+.tracking-summary,.tracking-timeline,.resolution-evaluation,.resolution-thanks { border-color:#e1e8e4;border-radius:15px;background:#fff;box-shadow:0 8px 24px rgba(28,56,44,.045); }
+.tracking-summary>header,.tracking-timeline>header,.resolution-evaluation>header { border-bottom-color:#edf1ee; }
+.tracking-status,.tracking-status.status-concluido { color:#486a2d;background:#eff7dc; }
+.tracking-status.status-novo { color:#467083;background:#eaf3f5; }
+.tracking-status.status-em-analise,.tracking-status.status-encaminhado { color:#946226;background:#fff2dc; }
+.tracking-facts>span { background:#f7faf8; }
+.tracking-timeline li>span,.nps-scale button.active { color:#2f4c21;border-color:#b9df63;background:#b9df63; }
+.citizen-official-response,.tracking-waiting { border-color:#dfe8e3;background:#f7faf8; }
+
+/* Acessibilidade, foco e movimento */
+.municipal-ui-v700 :where(button,a,input,select,textarea):focus-visible,
+.login-shell :where(button,a,input):focus-visible,
+.evaluation-shell :where(button,a,input,select,textarea):focus-visible,
+.tracking-shell :where(button,a,input,select,textarea):focus-visible {
+  outline:3px solid rgba(115,157,55,.3);
+  outline-offset:2px;
+}
+.municipal-ui-v700.contrast-enabled { --pc7-line:#bdc9c1;--pc7-muted:#4f5f57; }
+.municipal-ui-v700.contrast-enabled .main-area { background:#edf3ef; }
+
+/* Adaptação progressiva: desktop compacto, tablet e celular */
+@media (min-width:821px) {
+  .municipal-ui-v700.sidebar-compact { grid-template-columns:82px minmax(0,1fr); }
+  .municipal-ui-v700.sidebar-compact .brand { justify-content:center;padding:0; }
+  .municipal-ui-v700.sidebar-compact .brand>div:last-child,
+  .municipal-ui-v700.sidebar-compact .clean-nav-section-label,
+  .municipal-ui-v700.sidebar-compact .organized-nav-item>span:not(.nav-badge),
+  .municipal-ui-v700.sidebar-compact .clean-nav-section-toggle>span,
+  .municipal-ui-v700.sidebar-compact .sidebar-quick-access,
+  .municipal-ui-v700.sidebar-compact .sidebar-reference-card>div,
+  .municipal-ui-v700.sidebar-compact .sidebar-reference-card>svg,
+  .municipal-ui-v700.sidebar-compact .sidebar-profile .profile-copy,
+  .municipal-ui-v700.sidebar-compact .sidebar-profile .icon-button { display:none; }
+  .municipal-ui-v700.sidebar-compact .organized-nav-item,
+  .municipal-ui-v700.sidebar-compact .clean-nav-section-toggle { justify-content:center;padding:8px; }
+  .municipal-ui-v700.sidebar-compact .organized-nav-item.active { box-shadow:inset 0 -3px #7fac36; }
+  .municipal-ui-v700.sidebar-compact .nav-badge { position:absolute;top:4px;right:4px; }
+  .municipal-ui-v700.sidebar-compact .sidebar-reference-card,
+  .municipal-ui-v700.sidebar-compact .sidebar-profile { justify-content:center; }
+}
+
+@media (max-width:1320px) {
+  body:has(.municipal-ui-v700) { padding:14px; }
+  .app-shell.municipal-ui-v700 { min-height:calc(100vh - 28px);grid-template-columns:218px minmax(0,1fr);border-radius:19px; }
+  .municipal-ui-v700 .reference-dashboard { grid-template-columns:minmax(0,1fr) 278px; }
+  .municipal-ui-v700 .module-layout-v3 { grid-template-columns:minmax(0,1fr) 220px; }
+  .municipal-ui-v700 .content-wrap { padding-right:16px;padding-left:16px; }
+}
+
+@media (max-width:1080px) {
+  .municipal-ui-v700 .reference-dashboard { grid-template-columns:1fr; }
+  .municipal-ui-v700 .reference-dashboard-rail { grid-template-columns:repeat(3,minmax(0,1fr)); }
+  .municipal-ui-v700 .reference-performance-gauge { height:122px; }
+  .municipal-ui-v700 .module-layout-v3 { grid-template-columns:1fr; }
+  .municipal-ui-v700 .module-experience-rail { grid-template-columns:repeat(3,minmax(0,1fr)); }
+  .municipal-ui-v700 .module-rail-identity { min-height:100%; }
+  .evaluation-hero { grid-template-columns:minmax(280px,.78fr) minmax(430px,1.22fr); }
+}
+
+@media (max-width:820px) {
+  body:has(.municipal-ui-v700) { padding:0;background:#f4f8f5; }
+  .app-shell.municipal-ui-v700 { min-height:100vh;display:block;overflow:visible;border:0;border-radius:0;box-shadow:none; }
+  .municipal-ui-v700 .sidebar { position:fixed;z-index:80;top:0;bottom:0;left:0;width:min(280px,86vw);border-right:1px solid var(--pc7-line);box-shadow:18px 0 50px rgba(25,49,39,.16);transform:translateX(-102%);transition:transform .2s ease; }
+  .municipal-ui-v700 .sidebar.sidebar-open { transform:translateX(0); }
+  .municipal-ui-v700 .topbar { height:67px;padding:0 13px; }
+  .municipal-ui-v700 .desktop-sidebar-toggle { display:none; }
+  .municipal-ui-v700 .mobile-menu { display:grid; }
+  .municipal-ui-v700 .global-search-wrap { max-width:none; }
+  .municipal-ui-v700 .demo-banner { margin:10px 13px 0; }
+  .municipal-ui-v700 .content-wrap { padding:14px 13px 28px; }
+  .municipal-ui-v700 .page-heading { min-height:62px; }
+  .municipal-ui-v700 .reference-dashboard-rail { grid-template-columns:repeat(2,minmax(0,1fr)); }
+  .municipal-ui-v700 .reference-assignments-card { grid-column:1/-1; }
+  .municipal-ui-v700 .module-experience-rail { grid-template-columns:repeat(2,minmax(0,1fr)); }
+  .municipal-ui-v700 .module-rail-identity { grid-column:1/-1; }
+  .municipal-ui-v700 .module-page-header-v3 { align-items:flex-start;flex-wrap:wrap; }
+  .municipal-ui-v700 .module-page-header-context { width:100%;padding:9px 0 0;border-top:1px solid #edf1ee;border-left:0; }
+  .login-shell,.evaluation-shell,.tracking-shell { padding:14px; }
+  .login-frame { min-height:calc(100vh - 28px);grid-template-columns:1fr; }
+  .login-showcase { display:none; }
+  .evaluation-hero { min-height:0;grid-template-columns:1fr; }
+  .evaluation-copy { min-height:320px;padding:36px; }
+  .evaluation-form-card { margin:22px; }
+  .tracking-hero,.tracking-result { grid-template-columns:1fr; }
+  .tracking-copy { min-height:300px; }
+}
+
+@media (max-width:680px) {
+  .municipal-ui-v700 .topbar { gap:7px; }
+  .municipal-ui-v700 .search-box kbd,
+  .municipal-ui-v700 .persistence-status,
+  .municipal-ui-v700 .account-switch { display:none; }
+  .municipal-ui-v700 .page-heading { align-items:flex-start;flex-direction:column; }
+  .municipal-ui-v700 .page-heading h1 { font-size:27px; }
+  .municipal-ui-v700 .municipal-overview-hero { grid-template-columns:1fr; }
+  .municipal-ui-v700 .municipal-overview-symbol { min-height:145px; }
+  .municipal-ui-v700 .municipal-overview-symbol::before { right:50%;bottom:-105px;transform:translateX(50%); }
+  .municipal-ui-v700 .municipal-overview-symbol>span { width:82px;height:82px; }
+  .municipal-ui-v700 .municipal-overview-symbol>span img { width:64px;height:64px; }
+  .municipal-ui-v700 .municipal-orbit.orbit-one { width:128px;height:128px; }
+  .municipal-ui-v700 .municipal-orbit.orbit-two { width:180px;height:180px; }
+  .municipal-ui-v700 .municipal-symbol-point.point-one { top:10px;left:24%; }
+  .municipal-ui-v700 .municipal-symbol-point.point-two { top:45px;right:20%; }
+  .municipal-ui-v700 .municipal-symbol-point.point-three { right:36%;bottom:5px; }
+  .municipal-ui-v700 .municipal-overview-metrics { width:100%;gap:8px; }
+  .municipal-ui-v700 .municipal-overview-metrics>span { min-width:0;flex:1;padding-right:8px; }
+  .municipal-ui-v700 .reference-kpi-grid { grid-template-columns:repeat(2,minmax(0,1fr)); }
+  .municipal-ui-v700 .reference-kpi-grid>button:nth-child(2) { border-right:0; }
+  .municipal-ui-v700 .reference-kpi-grid>button:nth-child(-n+2) { border-bottom:1px solid #edf1ee; }
+  .municipal-ui-v700 .reference-middle-grid { grid-template-columns:1fr; }
+  .municipal-ui-v700 .reference-dashboard-rail,
+  .municipal-ui-v700 .module-experience-rail { grid-template-columns:1fr; }
+  .municipal-ui-v700 .reference-assignments-card,
+  .municipal-ui-v700 .module-rail-identity { grid-column:auto; }
+  .municipal-ui-v700 .contextual-ai-bar { align-items:flex-start;flex-wrap:wrap; }
+  .municipal-ui-v700 .contextual-ai-actions { width:100%;justify-content:flex-start; }
+  .municipal-ui-v700 .module-page-header-v3 { grid-template-columns:auto minmax(0,1fr); }
+  .municipal-ui-v700 .module-page-header-actions { width:100%;grid-column:1/-1;justify-content:stretch; }
+  .municipal-ui-v700 .module-page-header-actions .button { flex:1;justify-content:center; }
+  .municipal-ui-v700 .management-summary-grid,
+  .municipal-ui-v700 .integrated-kpis { grid-template-columns:repeat(2,minmax(0,1fr)); }
+  .municipal-ui-v700 .fleet-summary-grid { grid-template-columns:1fr; }
+  .evaluation-topbar { align-items:flex-start;flex-direction:column; }
+  .evaluation-top-actions,.public-nav-links { width:100%;flex-wrap:wrap; }
+  .evaluation-copy { min-height:280px;padding:28px 22px; }
+  .evaluation-copy h1 { font-size:36px;letter-spacing:-1.2px; }
+  .evaluation-form-card { margin:0;padding:20px;border:0;border-radius:0;box-shadow:none; }
+  .tracking-copy { min-height:275px;padding:30px 22px; }
+  .tracking-search-card { margin:0;padding:20px;border:0;border-radius:0; }
+  .tracking-facts { grid-template-columns:1fr; }
+}
+
+@media (max-width:420px) {
+  .municipal-ui-v700 .municipal-overview-copy { padding:20px 17px; }
+  .municipal-ui-v700 .municipal-overview-copy h2 { font-size:24px; }
+  .municipal-ui-v700 .municipal-overview-metrics strong { font-size:16px; }
+  .municipal-ui-v700 .reference-kpi-grid { grid-template-columns:1fr; }
+  .municipal-ui-v700 .reference-kpi-grid>button { border-right:0;border-bottom:1px solid #edf1ee; }
+  .municipal-ui-v700 .reference-kpi-grid>button:last-child { border-bottom:0; }
+  .municipal-ui-v700 .management-summary-grid,
+  .municipal-ui-v700 .integrated-kpis { grid-template-columns:1fr; }
+  .login-shell,.evaluation-shell,.tracking-shell { padding:0; }
+  .login-frame,.evaluation-topbar,.evaluation-hero,.tracking-hero { border-radius:0; }
+  .login-panel { padding:32px 22px; }
+  .evaluation-topbar { border-width:0 0 1px; }
+  .evaluation-hero,.tracking-hero { margin:0;border-width:0 0 1px; }
+}
+
+@media (prefers-reduced-motion:reduce) {
+  .municipal-ui-v700 *,
+  .login-shell *,
+  .evaluation-shell *,
+  .tracking-shell * { scroll-behavior:auto!important;animation-duration:.01ms!important;animation-iteration-count:1!important;transition-duration:.01ms!important; }
+}
