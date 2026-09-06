@@ -91,7 +91,7 @@ export default function AvaliarPage() {
   }
 
 
-  return <main className="evaluation-shell public-ui-v800 public-ui-kleon">
+  return <main className="evaluation-shell public-ui-v800 public-ui-dashboard">
     <header className="evaluation-topbar">
       <div className="evaluation-brand"><span><Landmark size={21} /></span><div><strong>Prefeitura Conecta</strong><small>Canal do Cidadão</small></div></div>
       <div className="evaluation-top-actions"><Link href="/acompanhar" className="evaluation-track-link">Acompanhar protocolo</Link><Link href="/" className="evaluation-admin-link">Acesso administrativo</Link></div>

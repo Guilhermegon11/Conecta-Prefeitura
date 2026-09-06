@@ -89,7 +89,7 @@ export function OnboardingTour({ userName, role, department, onNavigate }: { use
   return <div className="onboarding-backdrop"><section className="onboarding-card"><button className="onboarding-close" onClick={finish} aria-label="Fechar"><X size={17}/></button><span className="onboarding-icon">{step===0?<Landmark size={24}/>:step===1?<Workflow size={24}/>:step===2?<ClipboardList size={24}/>:<Check size={24}/>}</span><small>PASSO {step+1} DE {steps.length}</small><h2>{current.title}</h2><p>{current.text}</p><div className="onboarding-progress">{steps.map((_,index)=><i key={index} className={index<=step?"active":""}/>)}</div><footer><button className="button secondary" onClick={()=>{onNavigate(current.action); if(step===steps.length-1)finish();}}>Abrir área</button><button className="button primary" onClick={()=>step===steps.length-1?finish():setStep(step+1)}>{step===steps.length-1?"Concluir":"Próximo"}</button></footer></section></div>;
 }
 
-export function QuickActionDock({ onNavigate, onNewTicket, onNewEvent, onUpload }: { onNavigate: (nav: string) => void; onNewTicket: () => void; onNewEvent: () => void; onUpload: () => void }) {
+export function QuickActionDock({ onNavigate, onNewTicket, onNewEvent, onUpload, onNewTask, onNewProcess }: { onNewTask: () => void; onNewProcess: () => void; onNavigate: (nav: string) => void; onNewTicket: () => void; onNewEvent: () => void; onUpload: () => void }) {
   const [open,setOpen]=useState(false);
   function go(nav:string){onNavigate(nav);setOpen(false)}
   return <div className={`quick-action-dock ${open?"open":""}`}>
@@ -97,8 +97,8 @@ export function QuickActionDock({ onNavigate, onNewTicket, onNewEvent, onUpload 
       <div className="quick-action-heading"><strong>O que deseja fazer?</strong><small>Escolha a ação pelo objetivo</small></div>
       <button type="button" className="quick-action-ai" onClick={()=>{openMunicipalAi();setOpen(false)}}><Sparkles size={15}/><span>IA Conecta</span></button>
       <button type="button" onClick={()=>{onNewTicket();setOpen(false)}}><ClipboardList size={15}/><span><strong>Abrir chamado</strong><small>Solicitar algo a outro setor</small></span></button>
-      <button type="button" onClick={()=>go("Central Integrada")}><Workflow size={15}/><span><strong>Criar tarefa</strong><small>Registrar trabalho interno</small></span></button>
-      <button type="button" onClick={()=>go("Processos Digitais")}><FileText size={15}/><span><strong>Novo processo</strong><small>Procedimento formal e documental</small></span></button>
+      <button type="button" onClick={()=>{onNewTask();setOpen(false)}}><Workflow size={15}/><span><strong>Criar tarefa</strong><small>Registrar trabalho interno</small></span></button>
+      <button type="button" onClick={()=>{onNewProcess();setOpen(false)}}><FileText size={15}/><span><strong>Novo processo</strong><small>Procedimento formal e documental</small></span></button>
       <button type="button" onClick={()=>go("Comunicação")}><MessageSquare size={15}/><span><strong>Enviar mensagem</strong><small>Conversar com pessoas e grupos</small></span></button>
       <button type="button" onClick={()=>{onUpload();setOpen(false)}}><Files size={15}/><span><strong>Adicionar arquivo</strong><small>Guardar documento no setor</small></span></button>
       <button type="button" onClick={()=>{onNewEvent();setOpen(false)}}><CalendarPlus size={15}/><span><strong>Novo evento</strong><small>Adicionar compromisso à agenda</small></span></button>

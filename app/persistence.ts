@@ -5,6 +5,7 @@ import { flushOfflineQueue, queuePersistentWrite } from "./offline-sync";
 import { useCurrentPermission } from "./permission-context";
 
 export type PersistenceStatus = "carregando" | "salvando" | "salvo" | "offline";
+class RejectedPersistentWrite extends Error {}
 type PersistentStateOptions = { readOnly?: boolean };
 
 const saveChains = new Map<string, Promise<{ ok: true; updatedAt?: string; queued?: boolean }>>();
@@ -63,12 +64,15 @@ export function savePersistentValue<T>(key: string, value: T): Promise<{ ok: tru
       });
       if (!response.ok) {
         const errorBody = (await response.json().catch(() => null)) as { error?: string } | null;
+        if (response.status < 500) throw new RejectedPersistentWrite(errorBody?.error ?? "Alteração recusada pelo servidor.");
         throw new Error(errorBody?.error ?? "Falha ao salvar dados.");
       }
+      window.dispatchEvent(new CustomEvent("prefeitura:records-saved", { detail: { key } }));
       // Um PUT bem-sucedido é uma boa oportunidade para escoar alterações antigas.
       void flushOfflineQueue().catch(() => undefined);
       return await response.json() as { ok: true; updatedAt?: string };
     } catch (error) {
+      if (error instanceof RejectedPersistentWrite) throw error;
       await queuePersistentWrite(key, value);
       // A gravação está preservada no dispositivo; sinalizamos queued sem perder o estado.
       return { ok: true as const, queued: true };

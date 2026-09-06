@@ -2,6 +2,12 @@
 
 Sistema interno de gestão municipal em Next.js, React e TypeScript, com persistência central no Supabase quando publicado na Vercel.
 
+## Atualização de setembro de 2026 — referências e rotinas
+
+O dashboard mantém o verde institucional `#176057` e a fonte Poppins. A composição foi aproximada das referências Finstack, Quantix e MaterialMe: cabeçalhos discretos nos indicadores, números destacados, cartões claros com bordas leves, menu verde escuro e coluna de agenda. As referências foram usadas para aparência; não foram incorporados módulos financeiros dos modelos.
+
+As novas rotinas ficam em **Meu trabalho → Meu dia**. Leia [ATUALIZACAO-DASHBOARD-E-ROTINAS.md](./ATUALIZACAO-DASHBOARD-E-ROTINAS.md) para localizar cada recurso, configurar serviços, aprovações, recursos e calendários, e conferir os limites de validação desta entrega.
+
 ## Módulos principais
 
 - Visão Geral e Meu Dia

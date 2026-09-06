@@ -51,6 +51,8 @@ import { persistenceKey, usePersistentState } from "./persistence";
 
 type Notify = (message: string) => void;
 type CitizenTab = "Protocolos" | "Ouvidoria e e-SIC" | "Carta de serviços" | "Direto ao Prefeito" | "Satisfação";
+import { RelatedRecords, RecordActions } from "./operations-ui";
+
 type ProcessTab = "Processos" | "Despachos e pareceres" | "Documentos e versões" | "Assinaturas";
 type ManagementTab = "Frota" | "Patrimônio" | "Almoxarifado" | "Contratos" | "Obras e campo";
 
@@ -550,7 +552,7 @@ export function CitizenServiceSection({ department, notify, isMayor = false, dep
   );
 }
 
-export function ProcessesSection({ department, currentUser, users, departments, notify }: { department: string; currentUser: ProcessUser; users: ProcessUser[]; departments: string[]; notify: Notify }) {
+export function ProcessesSection({ department, currentUser, users, departments, notify, createRequest, focusId, onCreateHandled, onFocusHandled }: { onFocusHandled?: () => void; onCreateHandled?: () => void; createRequest?: number; focusId?: string; department: string; currentUser: ProcessUser; users: ProcessUser[]; departments: string[]; notify: Notify }) {
   const access = useCurrentPermission();
   const documentInput = useRef<HTMLInputElement>(null);
   const [tab, setTab] = useState<ProcessTab>("Processos");
@@ -561,6 +563,9 @@ export function ProcessesSection({ department, currentUser, users, departments, 
   const [priorityFilter, setPriorityFilter] = useState("Todas");
   const [queueFilter, setQueueFilter] = useState<"Todos" | "Minha fila" | "Atrasados" | "Assinatura">("Todos");
   const [processModal, setProcessModal] = useState<{ mode: "create" | "edit"; item?: ProcessItem } | null>(null);
+  const handledCreate = useRef<number | undefined>(undefined);
+  useEffect(() => { if (createRequest && createRequest !== handledCreate.current && access.register) { handledCreate.current = createRequest; setProcessModal({ mode: "create" }); onCreateHandled?.(); } }, [createRequest, access.register]);
+  useEffect(() => { if (focusId && processesReady && processes.some(p => p.id === focusId && p.currentDepartment === department)) { setSelectedId(focusId); setTab("Processos"); setQuery(""); setStatusFilter("Todos"); setPriorityFilter("Todas"); setQueueFilter("Todos"); onFocusHandled?.(); } }, [focusId, processesReady, department]);
   const [moveModal, setMoveModal] = useState(false);
   const [signatureModal, setSignatureModal] = useState(false);
   const [versioningDocumentId, setVersioningDocumentId] = useState<string | null>(null);
@@ -572,7 +577,7 @@ export function ProcessesSection({ department, currentUser, users, departments, 
     if (!processesReady || !processes.length) return;
     const current = processes.find((item) => item.id === selectedId && item.currentDepartment === department);
     if (current) return;
-    const firstRelated = processes.find((item) => item.currentDepartment === department);
+    const firstRelated = processes.find((item) => item.id === focusId && item.currentDepartment === department) ?? processes.find((item) => item.currentDepartment === department);
     if (firstRelated) setSelectedId(firstRelated.id);
   }, [department, processes, processesReady, selectedId]);
 
@@ -608,6 +613,7 @@ export function ProcessesSection({ department, currentUser, users, departments, 
   }
 
   function saveProcess(event: FormEvent<HTMLFormElement>) {
+    if (!processesReady) { event.preventDefault(); notify("Aguarde o carregamento dos processos."); return; }
     event.preventDefault();
     const form = new FormData(event.currentTarget);
     const base = processModal?.item;
@@ -849,7 +855,7 @@ export function ProcessesSection({ department, currentUser, users, departments, 
         <header className="process-detail-header"><div><div className="process-protocol-line"><span>{selected.protocol}</span><i className={`priority-${selected.priority.toLowerCase()}`}>{selected.priority}</i>{selectedOverdue && <i className="process-overdue">Prazo vencido</i>}</div><h2>{selected.subject}</h2><p>{selected.description || "Sem descrição complementar."}</p></div><StatusTag>{selected.status}</StatusTag></header>
         <ol className="process-stepper-v3" aria-label={`Fluxo ${selected.workflowName}`}>{selected.workflowSteps.map((step, index) => <li className={index < selected.currentStep ? "done" : index === selected.currentStep ? "current" : ""} key={step}><span>{index < selected.currentStep ? <Check size={11}/> : index + 1}</span><small>{step}</small></li>)}</ol>
         <div className="process-detail-body-v3">
-          <div className="process-detail-main-v3">
+          <div className="process-detail-main-v3"><RecordActions record={{kind:"process",id:selected.id}}/><RelatedRecords record={{kind:"process",id:selected.id}}/>
             <div className="process-progress-block process-progress-simple"><div><span>Etapa atual: <strong>{selected.workflowSteps[selected.currentStep] ?? selected.status}</strong></span><b>{progress}%</b></div><i><span style={{ width: `${progress}%` }} /></i><small>{selected.workflowName}</small></div>
             <div className="process-detail-grid process-detail-grid-simple"><div><span>Setor atual</span><strong>{selected.currentDepartment}</strong></div><div><span>Responsável</span><strong>{selected.owner}</strong></div><div><span>Prazo</span><strong>{selected.dueDate ? new Date(`${selected.dueDate}T12:00:00`).toLocaleDateString("pt-BR") : "Sem prazo"}</strong></div><div><span>Acesso</span><strong><ShieldCheck size={12} /> {selected.access}</strong></div></div>
             <div className="process-primary-actions">{access.edit && <button className="button secondary" onClick={() => setProcessModal({ mode: "edit", item: selected })}><Pencil size={14} /> Editar</button>}<button className="button secondary" onClick={() => setTab("Documentos e versões")}><FileText size={14} /> Documentos</button>{access.edit && <button className="button primary" onClick={() => setMoveModal(true)}>Movimentar <ChevronRight size={14} /></button>}<details className="process-more-actions"><summary aria-label="Mais ações"><MoreHorizontal size={18} /> Mais</summary><div><button onClick={() => access.register ? setTab("Despachos e pareceres") : notify("Seu perfil pode consultar despachos, mas não registrar novos documentos.")}><FileCheck2 size={15} /> Novo despacho</button><button onClick={() => access.register ? openDocumentUpload() : notify("Seu perfil não possui permissão para juntar documentos.")}><Plus size={15} /> Juntar documento</button><button onClick={() => access.register ? setSignatureModal(true) : notify("Seu perfil não possui permissão para solicitar assinatura.")}><FileSignature size={15} /> Solicitar assinatura</button><button onClick={() => access.register ? duplicateProcess() : notify("Seu perfil não possui permissão para duplicar processos.")}><Copy size={15} /> Duplicar</button>{access.edit && <button onClick={toggleConclusion}>{selected.status === "Concluído" ? "Reabrir processo" : "Concluir processo"}</button>}</div></details></div>

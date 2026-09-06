@@ -1,3 +1,4 @@
+import { readOperations } from "./operations-server";
 import { DATA_BUCKET, downloadPrivateObject, ensureDataBucket, supabaseAdminConfig, supabaseAdminHeaders, uploadPrivateObject } from "./supabase-admin";
 
 type Listed = { name?: string; id?: string };
@@ -29,6 +30,12 @@ export async function createCriticalBackup(reason: "manual" | "scheduled" = "man
       await uploadPrivateObject(`backups/${stamp}/${source}`, bytes, response.headers.get("content-type") || "application/json", false);
       copied.push(source);
     }
+  }
+  const operations = await readOperations();
+  if (operations.revision > 0) {
+    const path = "operations/state.json";
+    await uploadPrivateObject(`backups/${stamp}/${path}`, JSON.stringify(operations), "application/json", false);
+    copied.push(path);
   }
   const manifest = { createdAt: new Date().toISOString(), reason, count: copied.length, files: copied };
   await uploadPrivateObject(`backups/${stamp}/manifest.json`, JSON.stringify(manifest), "application/json", false);

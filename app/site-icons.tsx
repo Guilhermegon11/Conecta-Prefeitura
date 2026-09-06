@@ -1,4 +1,103 @@
-import { forwardRef, useId, type ComponentType, type SVGProps } from "react";
+import { forwardRef, type ComponentType, type SVGProps } from "react";
+
+import {
+  Accessibility as AccessibilityGlyph,
+  Activity as ActivityGlyph,
+  AlertTriangle as AlertTriangleGlyph,
+  Archive as ArchiveGlyph,
+  BarChart3 as BarChart3Glyph,
+  Bell as BellGlyph,
+  BellRing as BellRingGlyph,
+  BookOpen as BookOpenGlyph,
+  BookOpenCheck as BookOpenCheckGlyph,
+  Bot as BotGlyph,
+  BriefcaseBusiness as BriefcaseBusinessGlyph,
+  Building2 as Building2Glyph,
+  CalendarClock as CalendarClockGlyph,
+  CalendarDays as CalendarDaysGlyph,
+  CalendarPlus as CalendarPlusGlyph,
+  CheckCircle2 as CheckCircle2Glyph,
+  CircleAlert as CircleAlertGlyph,
+  CircleDollarSign as CircleDollarSignGlyph,
+  ClipboardCheck as ClipboardCheckGlyph,
+  ClipboardList as ClipboardListGlyph,
+  Clock3 as Clock3Glyph,
+  Cloud as CloudGlyph,
+  Crown as CrownGlyph,
+  Database as DatabaseGlyph,
+  FileBadge as FileBadgeGlyph,
+  FileCheck2 as FileCheck2Glyph,
+  FileClock as FileClockGlyph,
+  FilePlus2 as FilePlus2Glyph,
+  FileSearch as FileSearchGlyph,
+  FileSignature as FileSignatureGlyph,
+  FileText as FileTextGlyph,
+  Files as FilesGlyph,
+  Filter as FilterGlyph,
+  Gauge as GaugeGlyph,
+  HardHat as HardHatGlyph,
+  HeartHandshake as HeartHandshakeGlyph,
+  HelpCircle as HelpCircleGlyph,
+  History as HistoryGlyph,
+  Home as HomeGlyph,
+  Inbox as InboxGlyph,
+  KeyRound as KeyRoundGlyph,
+  Landmark as LandmarkGlyph,
+  Layers3 as Layers3Glyph,
+  LayoutDashboard as LayoutDashboardGlyph,
+  List as ListGlyph,
+  ListChecks as ListChecksGlyph,
+  ListTodo as ListTodoGlyph,
+  LoaderCircle as LoaderCircleGlyph,
+  LocateFixed as LocateFixedGlyph,
+  LockKeyhole as LockKeyholeGlyph,
+  Mail as MailGlyph,
+  Map as MapGlyph,
+  MapPin as MapPinGlyph,
+  MessageSquare as MessageSquareGlyph,
+  MessageSquarePlus as MessageSquarePlusGlyph,
+  MessageSquareText as MessageSquareTextGlyph,
+  MessagesSquare as MessagesSquareGlyph,
+  Network as NetworkGlyph,
+  Newspaper as NewspaperGlyph,
+  NotebookPen as NotebookPenGlyph,
+  PanelsTopLeft as PanelsTopLeftGlyph,
+  Paperclip as PaperclipGlyph,
+  Pencil as PencilGlyph,
+  PencilLine as PencilLineGlyph,
+  Phone as PhoneGlyph,
+  QrCode as QrCodeGlyph,
+  RefreshCcw as RefreshCcwGlyph,
+  RefreshCw as RefreshCwGlyph,
+  Rss as RssGlyph,
+  Save as SaveGlyph,
+  Search as SearchGlyph,
+  Send as SendGlyph,
+  ServerCog as ServerCogGlyph,
+  Settings as SettingsGlyph,
+  Settings2 as Settings2Glyph,
+  ShieldCheck as ShieldCheckGlyph,
+  SlidersHorizontal as SlidersHorizontalGlyph,
+  Smartphone as SmartphoneGlyph,
+  Sparkles as SparklesGlyph,
+  Star as StarGlyph,
+  Target as TargetGlyph,
+  TimerReset as TimerResetGlyph,
+  Trash2 as Trash2Glyph,
+  TrendingUp as TrendingUpGlyph,
+  Type as TypeGlyph,
+  Upload as UploadGlyph,
+  UserCheck as UserCheckGlyph,
+  UserCog as UserCogGlyph,
+  UserPlus as UserPlusGlyph,
+  UserRound as UserRoundGlyph,
+  UserRoundCheck as UserRoundCheckGlyph,
+  UsersRound as UsersRoundGlyph,
+  Warehouse as WarehouseGlyph,
+  Workflow as WorkflowGlyph,
+  Wrench as WrenchGlyph,
+  Zap as ZapGlyph,
+} from "lucide-react";
 
 export {
   ArrowRight,
@@ -8,6 +107,7 @@ export {
   Check,
   CheckCheck,
   ChevronRight,
+  ChevronDown,
   CircleDot,
   CloudOff,
   Contrast,
@@ -41,64 +141,116 @@ export type SiteIconProps = Omit<SVGProps<SVGSVGElement>, "ref"> & {
 
 export type LucideIcon = ComponentType<SiteIconProps>;
 
-function createBusinessIcon(asset: string, displayName: string) {
+const outlineGlyphs = {
+  Accessibility: AccessibilityGlyph,
+  Activity: ActivityGlyph,
+  AlertTriangle: AlertTriangleGlyph,
+  Archive: ArchiveGlyph,
+  BarChart3: BarChart3Glyph,
+  Bell: BellGlyph,
+  BellRing: BellRingGlyph,
+  BookOpen: BookOpenGlyph,
+  BookOpenCheck: BookOpenCheckGlyph,
+  Bot: BotGlyph,
+  BriefcaseBusiness: BriefcaseBusinessGlyph,
+  Building2: Building2Glyph,
+  CalendarClock: CalendarClockGlyph,
+  CalendarDays: CalendarDaysGlyph,
+  CalendarPlus: CalendarPlusGlyph,
+  CheckCircle2: CheckCircle2Glyph,
+  CircleAlert: CircleAlertGlyph,
+  CircleDollarSign: CircleDollarSignGlyph,
+  ClipboardCheck: ClipboardCheckGlyph,
+  ClipboardList: ClipboardListGlyph,
+  Clock3: Clock3Glyph,
+  Cloud: CloudGlyph,
+  Crown: CrownGlyph,
+  Database: DatabaseGlyph,
+  FileBadge: FileBadgeGlyph,
+  FileCheck2: FileCheck2Glyph,
+  FileClock: FileClockGlyph,
+  FilePlus2: FilePlus2Glyph,
+  FileSearch: FileSearchGlyph,
+  FileSignature: FileSignatureGlyph,
+  FileText: FileTextGlyph,
+  Files: FilesGlyph,
+  Filter: FilterGlyph,
+  Gauge: GaugeGlyph,
+  HardHat: HardHatGlyph,
+  HeartHandshake: HeartHandshakeGlyph,
+  HelpCircle: HelpCircleGlyph,
+  History: HistoryGlyph,
+  Home: HomeGlyph,
+  Inbox: InboxGlyph,
+  KeyRound: KeyRoundGlyph,
+  Landmark: LandmarkGlyph,
+  Layers3: Layers3Glyph,
+  LayoutDashboard: LayoutDashboardGlyph,
+  List: ListGlyph,
+  ListChecks: ListChecksGlyph,
+  ListTodo: ListTodoGlyph,
+  LoaderCircle: LoaderCircleGlyph,
+  LocateFixed: LocateFixedGlyph,
+  LockKeyhole: LockKeyholeGlyph,
+  Mail: MailGlyph,
+  Map: MapGlyph,
+  MapPin: MapPinGlyph,
+  MessageSquare: MessageSquareGlyph,
+  MessageSquarePlus: MessageSquarePlusGlyph,
+  MessageSquareText: MessageSquareTextGlyph,
+  MessagesSquare: MessagesSquareGlyph,
+  Network: NetworkGlyph,
+  Newspaper: NewspaperGlyph,
+  NotebookPen: NotebookPenGlyph,
+  PanelsTopLeft: PanelsTopLeftGlyph,
+  Paperclip: PaperclipGlyph,
+  Pencil: PencilGlyph,
+  PencilLine: PencilLineGlyph,
+  Phone: PhoneGlyph,
+  QrCode: QrCodeGlyph,
+  RefreshCcw: RefreshCcwGlyph,
+  RefreshCw: RefreshCwGlyph,
+  Rss: RssGlyph,
+  Save: SaveGlyph,
+  Search: SearchGlyph,
+  Send: SendGlyph,
+  ServerCog: ServerCogGlyph,
+  Settings: SettingsGlyph,
+  Settings2: Settings2Glyph,
+  ShieldCheck: ShieldCheckGlyph,
+  SlidersHorizontal: SlidersHorizontalGlyph,
+  Smartphone: SmartphoneGlyph,
+  Sparkles: SparklesGlyph,
+  Star: StarGlyph,
+  Target: TargetGlyph,
+  TimerReset: TimerResetGlyph,
+  Trash2: Trash2Glyph,
+  TrendingUp: TrendingUpGlyph,
+  Type: TypeGlyph,
+  Upload: UploadGlyph,
+  UserCheck: UserCheckGlyph,
+  UserCog: UserCogGlyph,
+  UserPlus: UserPlusGlyph,
+  UserRound: UserRoundGlyph,
+  UserRoundCheck: UserRoundCheckGlyph,
+  UsersRound: UsersRoundGlyph,
+  Warehouse: WarehouseGlyph,
+  Workflow: WorkflowGlyph,
+  Wrench: WrenchGlyph,
+  Zap: ZapGlyph,
+};
+
+function createBusinessIcon(asset: string, displayName: keyof typeof outlineGlyphs) {
+  const Glyph = outlineGlyphs[displayName];
   const BusinessGlyph = forwardRef<SVGSVGElement, SiteIconProps>(function BusinessGlyph(
-    {
-      size = 24,
-      color = "currentColor",
-      fill,
-      stroke,
-      strokeWidth: _strokeWidth,
-      absoluteStrokeWidth: _absoluteStrokeWidth,
-      children: _children,
-      style,
-      ...props
-    },
-    ref,
+    { size = 24, strokeWidth = 1.8, ...props }, ref,
   ) {
-    const maskId = `pc-business-icon-${useId().replace(/:/g, "")}`;
     const accessible = Boolean(props["aria-label"]);
-    const resolvedColor = color === "currentColor" && stroke && stroke !== "none" ? stroke : color;
-    const glyphFill = fill && fill !== "none" ? fill : "currentColor";
-
-    return (
-      <svg
-        {...props}
-        ref={ref}
-        width={size}
-        height={size}
-        viewBox="0 0 24 24"
-        color={resolvedColor}
-        fill="none"
-        role={props.role ?? (accessible ? "img" : undefined)}
-        aria-hidden={props["aria-hidden"] ?? (accessible ? undefined : true)}
-        focusable="false"
-        data-business-icon={asset}
-        style={style}
-      >
-        <mask
-          id={maskId}
-          x="0"
-          y="0"
-          width="24"
-          height="24"
-          maskUnits="userSpaceOnUse"
-          style={{ maskType: "alpha" }}
-        >
-          <image
-            href={`/icons/business/${asset}.svg`}
-            x="0"
-            y="0"
-            width="24"
-            height="24"
-            preserveAspectRatio="xMidYMid meet"
-          />
-        </mask>
-        <rect width="24" height="24" fill={glyphFill} mask={`url(#${maskId})`} />
-      </svg>
-    );
+    return <Glyph {...props} ref={ref} size={size} strokeWidth={strokeWidth}
+      role={props.role ?? (accessible ? "img" : undefined)}
+      aria-hidden={props["aria-hidden"] ?? (accessible ? undefined : true)}
+      focusable="false" data-business-icon={asset} data-icon-family="lucide" />;
   });
-
   BusinessGlyph.displayName = displayName;
   return BusinessGlyph;
 }

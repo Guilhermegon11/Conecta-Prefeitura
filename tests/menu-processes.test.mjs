@@ -94,7 +94,7 @@ test("gives the new typography balanced tracking across the interface", async ()
   assert.match(styles, /\.organized-nav-item \{[^}]*letter-spacing: \.018em/);
 });
 
-test("uses the supplied digital-business icon system throughout the app", async () => {
+test("uses consistent inline outline icons throughout the app", async () => {
   const [page, icons, styles] = await Promise.all([
     readSource("page.tsx"),
     readSource("site-icons.tsx"),
@@ -103,7 +103,8 @@ test("uses the supplied digital-business icon system throughout the app", async 
   assert.match(page, /from "\.\/site-icons"/);
   assert.doesNotMatch(page, /from "lucide-react"/);
   assert.match(icons, /data-business-icon=\{asset\}/);
-  assert.match(icons, /\/icons\/business\/\$\{asset\}\.svg/);
+  assert.match(icons, /data-icon-family="lucide"/);
+  assert.doesNotMatch(icons, /<mask|<image/);
   assert.match(icons, /createBusinessIcon\("analytics-board", "LayoutDashboard"\)/);
   assert.match(icons, /createBusinessIcon\("task-management", "ListTodo"\)/);
   assert.match(icons, /createBusinessIcon\("ai-assistant", "Bot"\)/);
@@ -132,11 +133,11 @@ test("recreates the reference dashboard composition across the whole home view",
   ]);
   assert.match(page, /app-shell reference-ui-2026/);
   assert.match(page, /className="reference-dashboard"/);
-  assert.match(page, /className="reference-kpi-grid"/);
-  assert.match(page, /className="reference-middle-grid kleon-chart-layout"/);
+  assert.match(page, /className="reference-kpi-grid(?: [^"]+)?"/);
+  assert.match(page, /className="reference-middle-grid dashboard-chart-layout"/);
   assert.match(page, /className="panel reference-calendar-card"/);
-  assert.match(page, /className="kleon-workspace-line"/);
-  assert.match(page, /className="panel reference-performance-card kleon-performance-card"/);
+  assert.match(page, /className="dashboard-workspace-line"/);
+  assert.match(page, /className="panel reference-performance-card dashboard-performance-card"/);
   assert.match(page, /className="sidebar-reference-card"/);
   assert.match(styles, /Prefeitura Conecta v5\.1 — dashboard editorial, compacto e sem roxo/);
   assert.match(styles, /\.reference-dashboard \{ display: grid; grid-template-columns: minmax\(0, 1fr\) 310px/);

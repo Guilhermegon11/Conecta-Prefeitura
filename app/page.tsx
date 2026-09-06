@@ -18,6 +18,7 @@ import {
   CheckCheck,
   CheckCircle2,
   ChevronRight,
+  ChevronDown,
   Clock3,
   ClipboardList,
   Crown,
@@ -66,6 +67,10 @@ import {
   XCircle,
 } from "./site-icons";
 import type { LucideIcon } from "./site-icons";
+import { OperationsContext, useOperationsClient, useOperations } from "./operations-context";
+import { OperationalTicketDetail, SavedTicketFilters, RelatedRecords } from "./operations-ui";
+import { OperationsHub } from "./operations-hub";
+import type { RecordRef } from "./operations-model";
 import {
   CitizenServiceSection,
   HelpCenterSection,
@@ -398,7 +403,10 @@ export default function Home() {
   const [currentUserId, setCurrentUserId] = useState("u-prefeito");
   const [viewedDepartment, setViewedDepartment] = useState("Gabinete do Prefeito");
   const [search, setSearch] = useState("");
-  const [ticketData, setTicketData] = useState(INITIAL_TICKETS);
+  const [rawTicketData, setTicketData] = useState(INITIAL_TICKETS);
+  const [focusedRecord, setFocusedRecord] = useState<RecordRef | null>(null);
+  const [createIntent, setCreateIntent] = useState<{ kind: "task" | "process"; nonce: number } | null>(null);
+  const deepLinkHandled = useRef(false);
   const [users, setUsers] = useState(USERS);
   const [groups, setGroups] = useState(INITIAL_GROUPS);
   const [messages, setMessages] = useState(INITIAL_MESSAGES);
@@ -440,6 +448,11 @@ export default function Home() {
     ...events.flatMap((event) => event.targetDepartments ?? [event.department]),
   ])).sort((first, second) => first.localeCompare(second, "pt-BR")), [events, users]);
   const activeDepartment = executiveAccess ? viewedDepartment : currentUser.department;
+  const operations = useOperationsClient(currentUser.id, activeDepartment, authState === "authenticated" && appReady, notify, openRecord);
+  const ticketData = useMemo(() => rawTicketData.map(ticket => {
+    const work = operations.state.tickets[ticket.id];
+    return work ? { ...ticket, department: work.department, status: (work.status ?? ticket.status) as TicketStatus, dueDate: work.pause ? null : work.dueDate ?? ticket.dueDate, assigneeId: work.assigneeId ?? ticket.assigneeId, assigneeName: users.find(user => user.id === work.assigneeId)?.fullName ?? ticket.assigneeName, updatedAt: work.history.at(-1)?.at ?? ticket.updatedAt } : ticket;
+  }).filter(ticket => !operations.ready || !sameDepartment(ticket.department, activeDepartment) || operations.records.some(r => r.kind === "ticket" && r.id === ticket.id)), [rawTicketData, operations.state.tickets, operations.records, operations.ready, activeDepartment, users]);
   const privateTickets = ticketData.filter((ticket) => sameDepartment(ticket.department, activeDepartment));
   const municipalOpenTickets = ticketData.filter((ticket) => ticket.status !== "Concluído" && ticket.status !== "Cancelado");
   const municipalOverdueTickets = municipalOpenTickets.filter((ticket) => ticket.dueDate && new Date(ticket.dueDate).getTime() < clockNow.getTime());
@@ -655,10 +668,10 @@ export default function Home() {
   useEffect(() => {
     if (authState !== "authenticated" || !appReady) return;
     setPersistenceStatus("salvando");
-    void savePersistentValue(APP_STATE_KEY, { ticketData, users, groups, messages, documents, events, audit, notifications, invitations })
+    void savePersistentValue(APP_STATE_KEY, { ticketData: rawTicketData, users, groups, messages, documents, events, audit, notifications, invitations })
       .then((result) => setPersistenceStatus(result.queued ? "offline" : "salvo"))
       .catch(() => setPersistenceStatus("offline"));
-  }, [audit, appReady, authState, documents, events, groups, invitations, messages, notifications, ticketData, users]);
+  }, [audit, appReady, authState, documents, events, groups, invitations, messages, notifications, rawTicketData, users]);
 
   useEffect(() => {
     if (authState !== "authenticated" || !mayorAccess) { setCitizenFeedbackUnread(0); return; }
@@ -735,6 +748,7 @@ export default function Home() {
   }
 
   function resetScopedUi() {
+    setFocusedRecord(null); setCreateIntent(null);
     setTicketModal(false);
     setGroupModal(false);
     setEventModal(null);
@@ -814,7 +828,7 @@ export default function Home() {
       const recipient=matches[0]; const now=new Date().toISOString(); const message:Message={id:makeId(),conversationType:"direct",conversationId:directConversationId(currentUser.id,recipient.id),senderId:currentUser.id,senderName:currentUser.fullName,senderInitials:currentUser.initials,body:payload.description,ticketId:payload.ticketProtocol ? privateTickets.find((item)=>item.protocol.toLowerCase()===payload.ticketProtocol.toLowerCase())?.id ?? null : null,createdAt:now}; sendMessage(message,recipient.id); return {ok:true,message:`Mensagem enviada para ${recipient.fullName} (${recipient.department}).`,entityId:message.id};
     }
     if (action.type === "update_ticket_status") {
-      const ticket = privateTickets.find((item)=>item.protocol.toLowerCase()===payload.ticketProtocol.toLowerCase()); if (!ticket) return { ok:false, message:`Não encontrei o chamado ${payload.ticketProtocol} no setor atual.` }; const validStatus = statuses.find((status)=>status.toLowerCase()===payload.status.toLowerCase()); if (!validStatus) return { ok:false, message:"O novo status informado não é válido." }; if (!ticketPermission.edit || !sameDepartment(ticket.department, activeDepartment)) return { ok:false, message:"Seu perfil não possui autorização para alterar esse chamado no setor visualizado." }; updateStatus(ticket.id, validStatus); return { ok:true, message:`Chamado ${ticket.protocol} atualizado para “${validStatus}”.`, entityId:ticket.id, protocol:ticket.protocol };
+      const ticket = privateTickets.find((item)=>item.protocol.toLowerCase()===payload.ticketProtocol.toLowerCase()); if (!ticket) return { ok:false, message:`Não encontrei o chamado ${payload.ticketProtocol} no setor atual.` }; const validStatus = statuses.find((status)=>status.toLowerCase()===payload.status.toLowerCase()); if (!validStatus) return { ok:false, message:"O novo status informado não é válido." }; if (!ticketPermission.edit || !sameDepartment(ticket.department, activeDepartment)) return { ok:false, message:"Seu perfil não possui autorização para alterar esse chamado no setor visualizado." }; const changed = await updateStatus(ticket.id, validStatus); if (!changed) return { ok:false, message:"Não foi possível confirmar a alteração." }; return { ok:true, message:`Chamado ${ticket.protocol} atualizado para “${validStatus}”.`, entityId:ticket.id, protocol:ticket.protocol };
     }
     if (action.type === "create_event") {
       if (!payload.title.trim() || !payload.startsAt.trim()) return { ok:false, message:"A IA ainda precisa do título e da data/hora de início para publicar o evento." };
@@ -833,13 +847,35 @@ export default function Home() {
     return { ok:false, message:"Essa ação ainda não possui executor automático no sistema." };
   }
 
-  function updateStatus(id: string, status: TicketStatus) {
+  async function updateStatus(id: string, status: TicketStatus) {
     const ticket = ticketData.find((item) => item.id === id);
-    if (!ticketPermission.edit || !ticket || !sameDepartment(ticket.department, activeDepartment)) { notify("Seu perfil não possui autorização para alterar este chamado."); return; }
-    setTicketData((current) => current.map((item) => item.id === id ? { ...item, status, updatedAt: new Date().toISOString() } : item));
-    addAudit("status_atualizado", "chamado", id, `${ticket?.protocol ?? "Chamado"} movido para ${status}`);
-    notify(`Chamado movido para “${status}”.`);
+    if (!ticketPermission.edit || !ticket || !sameDepartment(ticket.department, activeDepartment)) { notify("Seu perfil não possui autorização para alterar este chamado."); return false; }
+    return operations.act("ticket.status", { ticketId: id, status });
   }
+
+  function openRecord(record: RecordRef) {
+    const allowed = record.kind === "ticket" ? privateTickets.some(r => r.id === record.id)
+      : record.kind === "document" ? privateDocuments.some(r => r.id === record.id)
+      : record.kind === "event" ? currentEvents.some(r => r.id === record.id)
+      : record.kind === "request" ? operations.state.requests.some(r => r.id === record.id)
+      : operations.records.some(r => r.id === record.id && r.kind === record.kind);
+    if (!allowed) { notify("Registro não encontrado ou indisponível para este perfil e setor."); return; }
+    const target = { ticket: "Chamados", task: "Central Integrada", process: "Processos Digitais", document: "Anexos e Arquivos", event: "Próximos Eventos", request: "Central Integrada" }[record.kind] as NavItem;
+    if (!canViewMenuItem(target)) { notify("Seu perfil não tem acesso a este módulo."); return; }
+    setCreateIntent(null); setFocusedRecord(record); setActiveNav(target); setSearchOpen(false);
+  }
+  function startCreate(kind: "task" | "process") {
+    const target = kind === "task" ? "Central Integrada" : "Processos Digitais";
+    if (executiveReadOnlyScope || !canViewMenuItem(target) || !permissionFor(target, isSectorManager(currentUser), currentUser.id, departmentPermissionSettings).register) { notify("Seu perfil não pode criar registros neste setor."); return; }
+    setFocusedRecord(null); setCreateIntent({ kind, nonce: Date.now() }); setActiveNav(target);
+  }
+  useEffect(() => {
+    if (!appReady || !operations.ready || deepLinkHandled.current) return;
+    const params = new URLSearchParams(window.location.search), kind = params.get("record"), id = params.get("id"), sector = params.get("sector");
+    if (sector && executiveAccess && allDepartments.includes(sector) && sector !== activeDepartment) { setViewedDepartment(sector); return; }
+    deepLinkHandled.current = true;
+    if (id && kind && ["ticket","task","process","document","event","request"].includes(kind)) openRecord({kind:kind as RecordRef["kind"],id});
+  }, [appReady, operations.ready, activeDepartment]);
 
   function addAudit(action: string, entityType: string, entityId: string, detail: string) {
     setAudit((current) => [{ id: makeId(), action, entityType, entityId, detail, department: activeDepartment, createdAt: new Date().toISOString(), actorName: currentUser.fullName, actorInitials: currentUser.initials }, ...current]);
@@ -1143,7 +1179,8 @@ export default function Home() {
   }
 
   return (
-    <div className={`app-shell reference-ui-2026 municipal-ui-v6 municipal-ui-v61 municipal-ui-v611 municipal-ui-v620 municipal-ui-v700 municipal-ui-v701 municipal-ui-v800 municipal-ui-kleon ${motionEnabled ? "motion-enabled" : "motion-reduced"} ${contrastEnabled ? "contrast-enabled" : ""} ${simplifiedMode ? "simplified-mode" : ""} ${sidebarCompact ? "sidebar-compact" : ""} text-scale-${textScale}`}>
+    <OperationsContext.Provider value={operations}>
+    <div className={`app-shell reference-ui-2026 municipal-ui-v6 municipal-ui-v61 municipal-ui-v611 municipal-ui-v620 municipal-ui-v700 municipal-ui-v701 municipal-ui-v800 municipal-ui-dashboard ${motionEnabled ? "motion-enabled" : "motion-reduced"} ${contrastEnabled ? "contrast-enabled" : ""} ${simplifiedMode ? "simplified-mode" : ""} ${sidebarCompact ? "sidebar-compact" : ""} text-scale-${textScale}`}>
       <aside className={`sidebar ${sidebarOpen ? "sidebar-open" : ""}`}>
         <div className="brand" title="Identidade institucional de Várzea da Palma">
           <div className="brand-mark municipal-crest-slot official-municipal-brand" data-crest-slot="brasao-oficial"><img src="/brasao-varzea-da-palma-oficial.png" alt="Brasão oficial da Prefeitura Municipal de Várzea da Palma" /></div>
@@ -1217,18 +1254,18 @@ export default function Home() {
           <div className="global-search-wrap">
             <label className="search-box">
               <Search size={18} aria-hidden="true" />
-              <input type="search" aria-label="Buscar no sistema" placeholder="Buscar no sistema..." value={search} onFocus={() => setSearchOpen(true)} onChange={(event) => { setSearch(event.target.value); setSearchOpen(true); }} />
+              <input type="search" aria-label="Buscar no sistema" placeholder="Buscar..." value={search} onFocus={() => setSearchOpen(true)} onChange={(event) => { setSearch(event.target.value); setSearchOpen(true); }} />
               <kbd>⌘ K</kbd>
             </label>
-            {searchOpen && search.trim() && <GlobalSearchPanel query={search} tickets={privateTickets} users={scopedActiveUsers} documents={privateDocuments} events={currentEvents} offices={scopedOffices} onOpen={(nav) => setActiveNav(nav as NavItem)} onClose={() => setSearchOpen(false)} />}
+            {searchOpen && search.trim() && <GlobalSearchPanel query={search} tickets={privateTickets} users={scopedActiveUsers} documents={privateDocuments} events={currentEvents} offices={scopedOffices} onOpen={(nav, record) => record ? openRecord(record) : setActiveNav(nav as NavItem)} records={operations.records.filter(r => r.kind === "task" || r.kind === "process")} onClose={() => setSearchOpen(false)} />}
           </div>
-          {executiveAccess && activeNav !== "Central Executiva" && activeNav !== "Monitoramento Instagram" && <label className="executive-sector-switch"><span className="executive-switch-icon"><Crown size={17} /></span><span><small>PAINEL SETORIAL</small><select aria-label="Selecionar setor para a visão executiva" value={activeDepartment} onChange={(event) => switchDepartment(event.target.value)}>{allDepartments.map((department) => <option key={department}>{department}</option>)}</select></span></label>}
+
           <div className="top-actions">
             <span className={`persistence-status ${persistenceStatus}`} title="Persistência central do sistema"><i />{persistenceStatus === "carregando" ? "Conectando" : persistenceStatus === "salvando" ? "Salvando" : persistenceStatus === "offline" ? "Aguardando conexão" : "Salvo"}</span>
             <button className={`simple-mode-toggle ${simplifiedMode ? "active" : ""}`} type="button" aria-pressed={simplifiedMode} title={simplifiedMode ? "Voltar para interface completa" : "Ativar modo simplificado"} onClick={() => setSimplifiedMode((current) => !current)}><LayoutDashboard size={15}/><span>{simplifiedMode ? "Modo simples" : "Simplificar"}</span></button>
             <button className="icon-button notification-button" aria-label={`Notificações${unreadCount + (mayorAccess ? citizenFeedbackUnread : 0) ? `: ${unreadCount + (mayorAccess ? citizenFeedbackUnread : 0)} novas` : ""}`} onClick={() => setActiveNav(mayorAccess && citizenFeedbackUnread > 0 ? "Atendimento ao Cidadão" : "Notificações")}><Bell size={18} />{unreadCount + (mayorAccess ? citizenFeedbackUnread : 0) > 0 && <span />}</button>
             <button className="icon-button logout-button" aria-label="Sair do sistema" title="Sair" onClick={() => void logout()}><LogOut size={18} /></button>
-            <label className="account-switch"><div className="avatar">{currentUser.initials}</div><span><small>{executiveAccess ? "VISUALIZAR COMO" : "PERFIS CADASTRADOS"}</small><select aria-label="Visualizar como usuário" value={currentUserId} onChange={(event) => switchUser(event.target.value)}>{activeUsers.map((user) => <option key={user.id} value={user.id}>{user.fullName} — {user.department}</option>)}</select></span></label>
+            <label className="account-switch"><div className="avatar">{currentUser.initials}</div><span><small>{executiveAccess ? "VISUALIZAR COMO" : "PERFIS CADASTRADOS"}</small><span className="wrapped-select"><span className="wrapped-select-value" aria-hidden="true">{currentUser.fullName}<ChevronDown size={13}/></span><select aria-label="Visualizar como usuário" value={currentUserId} onChange={(event) => switchUser(event.target.value)}>{activeUsers.map((user) => <option key={user.id} value={user.id}>{user.fullName} — {user.department}</option>)}</select></span></span></label>
           </div>
         </header>
 
@@ -1270,17 +1307,21 @@ export default function Home() {
             </div>
           </section>
 
+          {executiveAccess && activeNav !== "Central Executiva" && activeNav !== "Monitoramento Instagram" && <label className="executive-sector-switch dashboard-sector-selector"><span className="executive-switch-icon"><Crown size={17} /></span><span><small>PAINEL SETORIAL</small><span className="wrapped-select"><span className="wrapped-select-value" aria-hidden="true">{activeDepartment}<ChevronDown size={14}/></span><select aria-label="Selecionar setor para a visão executiva" value={activeDepartment} onChange={(event) => switchDepartment(event.target.value)}>{allDepartments.map((department) => <option key={department}>{department}</option>)}</select></span></span></label>}
+
           {viewingOtherDepartment && activeNav !== "Central Executiva" && activeNav !== "Monitoramento Instagram" && <div className="executive-sector-readonly" role="status"><ShieldCheck size={19}/><span><strong>Modo de consulta executiva · {activeDepartment}</strong><small>Prefeito e Vice-Prefeito podem visualizar e abrir as informações deste setor, mas não podem criar, editar, mover, comentar, excluir ou executar ações por IA.</small></span></div>}
 
-          {activeNav === "Visão geral" && <Dashboard tickets={filteredTickets} allTickets={privateTickets} municipalSummary={executiveMunicipalSummary} audit={privateAudit} executive={executiveAccess} department={activeDepartment} userId={currentUser.id} userName={currentUser.fullName} userRole={currentUser.role} events={currentEvents} unreadCount={unreadCount} now={clockNow} onNavigate={setActiveNav} />}
+          {activeNav === "Visão geral" && <Dashboard tickets={filteredTickets} allTickets={privateTickets} municipalSummary={operations.municipalSummary ?? executiveMunicipalSummary} audit={privateAudit} executive={executiveAccess} department={activeDepartment} userId={currentUser.id} userName={currentUser.fullName} userRole={currentUser.role} events={currentEvents} unreadCount={unreadCount} now={clockNow} onNavigate={setActiveNav} />}
           {activeNav !== "Visão geral" && <div className={`module-layout-v3 module-layout-v8 ${activeNav === "Comunicação" ? "module-layout-chat" : ""} ${activeNav === "Monitoramento Instagram" ? "module-layout-social-monitor" : ""}`} data-active-module={activeNav}>
+            <details className="module-context-disclosure"><summary><Layers3 size={17}/><span>Resumo do módulo e atalhos</span><ChevronRight size={16}/></summary>
             <ModuleExperienceRail activeNav={activeNav} department={activeDepartment} tickets={filteredTickets} documents={privateDocuments} events={currentEvents} unreadCount={unreadCount} pendingCount={currentInvitations.length + pendingTickets.length} onNavigate={setActiveNav}/>
+            </details>
             <div className="module-main-v3">
           {!executiveReadOnlyScope && activeNav !== "Central Executiva" && <ContextualAiBar activeModule={activeNav} department={activeDepartment} tickets={privateTickets} events={currentEvents} />}
           {activeNav === "Central Executiva" && executiveAccess && <ExecutiveCommandCenter tickets={ticketData} departments={allDepartments} currentUser={{ fullName: currentUser.fullName, role: currentUser.role }} onOpenDepartment={openExecutiveDepartment} notify={notify} />}
           {activeNav === "Monitoramento Instagram" && executiveAccess && <ExecutiveSocialMonitor profileId={currentUser.id} profileName={currentUser.fullName} />}
           {activeNav === "Últimas Notícias Prefeitura" && <PrefeituraNewsSection />}
-          {activeNav === "Área do Setor" && <><SectorWorkspaceSection key={activeDepartment} department={activeDepartment} userName={currentUser.fullName} userRole={currentUser.role} departments={availableDepartments} notify={notify} />{!viewingOtherDepartment&&<FormBuilderPanel department={activeDepartment} notify={notify} />}</>}
+          {activeNav === "Área do Setor" && <><SectorWorkspaceSection key={activeDepartment} department={activeDepartment} userName={currentUser.fullName} userRole={currentUser.role} departments={availableDepartments} notify={notify} />{!viewingOtherDepartment&&<OperationsHub initialTab="Serviços" />}</>}
           {activeNav === "Fluxos e Anotações" && <SectorNotesSection key={activeDepartment} department={activeDepartment} userName={currentUser.fullName} team={sectorUsers.map((user) => ({ id: user.id, name: user.fullName, role: user.role }))} notify={notify} />}
           {activeNav === "Chamados" && <TicketsSection tickets={filteredTickets} department={activeDepartment} departments={availableDepartments} userId={currentUser.id} now={clockNow} onStatus={updateStatus} onNew={() => setTicketModal(true)} />}
           {activeNav === "Comunicação" && (communicationLocked
@@ -1289,13 +1330,13 @@ export default function Home() {
               ? <ExecutiveCommunicationViewer department={activeDepartment} users={scopedActiveUsers} groups={accessibleGroups} messages={communicationMessages} />
               : <CommunicationSection key={`${currentUser.id}-${activeDepartment}`} currentUser={currentUser} users={communicationDirectoryUsers} groups={accessibleGroups} messages={communicationMessages} tickets={privateTickets} onSend={sendMessage} onSendAttachment={sendChatAttachment} onNewGroup={() => setGroupModal(true)} onTicketStatus={updateStatus} />)}
           {activeNav === "Atendimento ao Cidadão" && <CitizenServiceSection department={activeDepartment} notify={notify} isMayor={executiveAccess} departments={availableDepartments} />}
-          {activeNav === "Central Integrada" && <IntegratedManagementSection key={activeDepartment} initialTab="Tarefas" department={activeDepartment} currentUser={{ id: currentUser.id, fullName: currentUser.fullName, department: currentUser.department, role: currentUser.role, initials: currentUser.initials }} tickets={privateTickets} users={scopedActiveUsers.map((user) => ({ id: user.id, fullName: user.fullName, department: user.department, role: user.role, initials: user.initials }))} offices={scopedOffices} events={currentEvents} departments={availableDepartments} notify={notify} readOnly={viewingOtherDepartment} />}
-          {activeNav === "Processos Digitais" && <ProcessesSection key={`${activeDepartment}-${currentUser.id}`} department={activeDepartment} currentUser={{ id: currentUser.id, fullName: currentUser.fullName, department: currentUser.department, role: currentUser.role }} users={scopedActiveUsers.map((user) => ({ id: user.id, fullName: user.fullName, department: user.department, role: user.role }))} departments={availableDepartments} notify={notify} />}
+          {activeNav === "Central Integrada" && <IntegratedManagementSection key={activeDepartment} initialTab="Meu dia" onFocusHandled={() => setFocusedRecord(null)} onCreateHandled={() => setCreateIntent(null)} createRequest={createIntent?.kind === "task" ? createIntent.nonce : undefined} focusRecord={focusedRecord} department={activeDepartment} currentUser={{ id: currentUser.id, fullName: currentUser.fullName, department: currentUser.department, role: currentUser.role, initials: currentUser.initials }} tickets={privateTickets} users={scopedActiveUsers.map((user) => ({ id: user.id, fullName: user.fullName, department: user.department, role: user.role, initials: user.initials }))} offices={scopedOffices} events={currentEvents} departments={availableDepartments} notify={notify} readOnly={viewingOtherDepartment} />}
+          {activeNav === "Processos Digitais" && <ProcessesSection key={`${activeDepartment}-${currentUser.id}`} onFocusHandled={() => setFocusedRecord(null)} onCreateHandled={() => setCreateIntent(null)} createRequest={createIntent?.kind === "process" ? createIntent.nonce : undefined} focusId={focusedRecord?.kind === "process" ? focusedRecord.id : undefined} department={activeDepartment} currentUser={{ id: currentUser.id, fullName: currentUser.fullName, department: currentUser.department, role: currentUser.role }} users={scopedActiveUsers.map((user) => ({ id: user.id, fullName: user.fullName, department: user.department, role: user.role }))} departments={availableDepartments} notify={notify} />}
           {activeNav === "Gestão Municipal" && <MunicipalManagementSection department={activeDepartment} notify={notify} />}
           {activeNav === "Frota e Quilometragem" && <FleetMileageSection key={`${activeDepartment}-${currentUser.id}`} department={activeDepartment} currentUser={{ id: currentUser.id, fullName: currentUser.fullName, department: currentUser.department, role: currentUser.role }} notify={notify} readOnly={viewingOtherDepartment} />}
           {activeNav === "Indicadores" && <IndicatorsSection department={activeDepartment} notify={notify} />}
           {activeNav === "Notificações" && <><NotificationsSection notifications={currentNotifications} userId={currentUser.id} onRead={markNotification} onOpenPending={() => setActiveNav("Pendências")} />{!viewingOtherDepartment&&<SmartNotificationRules department={activeDepartment} notify={notify} />}</>}
-          {activeNav === "Pendências" && <><PendingSection invitations={currentInvitations} tickets={pendingTickets} onRespond={respondInvitation} onOpenTickets={() => setActiveNav("Chamados")} />{!viewingOtherDepartment&&<ApprovalCenterPanel department={activeDepartment} notify={notify} />}</>}
+          {activeNav === "Pendências" && <><PendingSection invitations={currentInvitations} tickets={pendingTickets} onRespond={respondInvitation} onOpenTickets={() => setActiveNav("Chamados")} />{!viewingOtherDepartment&&<OperationsHub initialTab="Aprovações" />}</>}
           {activeNav === "Anexos e Arquivos" && <><DocumentsSection documents={privateDocuments} department={activeDepartment} currentUserId={currentUser.id} onUpload={() => fileInput.current?.click()} /><DocumentGovernancePanel department={activeDepartment} notify={notify} /></>}
           {activeNav === "Próximos Eventos" && <EventsSection events={currentEvents} department={activeDepartment} onNew={() => setEventModal("new")} onEdit={setEventModal} onDelete={setEventToDelete} />}
           {activeNav === "Funcionários" && canManageEmployees && <EmployeesSection users={sectorUsers} department={activeDepartment} onInvite={() => setEmployeeModal(true)} onResend={resendEmployeeInvite} />}
@@ -1315,6 +1356,8 @@ export default function Home() {
 
       <input ref={fileInput} className="hidden-input" type="file" accept=".pdf,.doc,.docx,.xls,.xlsx,.csv,.txt,.png,.jpg,.jpeg,.zip" onChange={(event) => { const file = event.target.files?.[0]; if (file) void uploadFile(file); event.target.value = ""; }} />
       {ticketModal && <TicketModal users={scopedActiveUsers} departments={availableDepartments} onClose={() => setTicketModal(false)} onCreate={createTicket} />}
+      {focusedRecord?.kind === "ticket" && privateTickets.some(t => t.id === focusedRecord.id) && <TicketDetailModal ticket={privateTickets.find(t => t.id === focusedRecord.id)!} onClose={() => setFocusedRecord(null)} onStatus={(status) => void updateStatus(focusedRecord.id, status)} />}
+      {focusedRecord && (focusedRecord.kind === "document" || focusedRecord.kind === "event") && <div className="modal-backdrop"><section className="modal op-modal" role="dialog" aria-modal="true" aria-label="Detalhes do registro"><header><h2>{focusedRecord.kind === "document" ? privateDocuments.find(d => d.id === focusedRecord.id)?.name : currentEvents.find(e => e.id === focusedRecord.id)?.title}</h2><button type="button" onClick={() => setFocusedRecord(null)} aria-label="Fechar registro"><X size={20}/></button></header><div className="op-modal-body">{focusedRecord.kind === "document" ? <a className="button primary" href={`/api/files?id=${encodeURIComponent(focusedRecord.id)}&userId=${encodeURIComponent(currentUser.id)}`}>Baixar documento</a> : <><p>{currentEvents.find(e => e.id === focusedRecord.id)?.description}</p><p>{currentEvents.find(e => e.id === focusedRecord.id)?.location}</p><p>{new Date(currentEvents.find(e => e.id === focusedRecord.id)?.startsAt || "").toLocaleString("pt-BR")}</p></>}<RelatedRecords record={focusedRecord}/></div></section></div>}
       {groupModal && <GroupModal currentUserId={currentUserId} users={scopedActiveUsers} onClose={() => setGroupModal(false)} onCreate={createGroup} />}
       {eventModal && <EventModal department={activeDepartment} departments={availableDepartments} event={eventModal === "new" ? undefined : eventModal} onClose={() => setEventModal(null)} onSave={(form) => saveEvent(form, eventModal === "new" ? undefined : eventModal)} />}
       {eventToDelete && <EventDeleteModal event={eventToDelete} onClose={() => setEventToDelete(null)} onConfirm={() => deleteEvent(eventToDelete)} />}
@@ -1322,11 +1365,12 @@ export default function Home() {
       {interactionModal && <div className="modal-backdrop" role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget) setInteractionModal(null); }}><section className="modal interaction-action-modal" role="dialog" aria-modal="true" aria-labelledby="interaction-action-title"><header><div><p className="eyebrow">FUNÇÃO DO SISTEMA</p><h2 id="interaction-action-title">{interactionModal.title}</h2></div><button type="button" aria-label="Fechar" onClick={() => setInteractionModal(null)}><X size={18} /></button></header><div className="interaction-action-body"><span className="interaction-action-icon"><ArrowUpRight size={22} /></span><div><strong>Recurso aberto</strong><p>{interactionModal.message}</p><small>Use esta janela para revisar a função e seguir para as orientações do módulo.</small></div></div><footer><button className="button secondary" onClick={() => setInteractionModal(null)}>Fechar</button><button className="button primary" onClick={() => { setInteractionModal(null); setActiveNav("Central de Ajuda"); }}>Ver orientações</button></footer></section></div>}
       {!executiveReadOnlyScope && <MunicipalAiCopilot activeModule={activeNav} department={activeDepartment} user={{ id: currentUser.id, fullName: currentUser.fullName, role: currentUser.role }} tickets={privateTickets} events={currentEvents} departments={availableDepartments} unreadNotifications={unreadCount + (mayorAccess ? citizenFeedbackUnread : 0)} onExecuteAction={executeMunicipalAgentAction} />}
       <OnboardingTour userName={currentUser.fullName} role={currentUser.role} department={activeDepartment} onNavigate={(nav) => setActiveNav(nav as NavItem)} />
-      {!executiveReadOnlyScope && <QuickActionDock onNavigate={(nav) => setActiveNav(nav as NavItem)} onNewTicket={() => { setTicketModal(true); setActiveNav("Chamados"); }} onNewEvent={() => { setEventModal("new"); setActiveNav("Próximos Eventos"); }} onUpload={() => { setActiveNav("Anexos e Arquivos"); window.setTimeout(() => fileInput.current?.click(), 0); }} />}
+      {!executiveReadOnlyScope && <QuickActionDock onNewTask={() => startCreate("task")} onNewProcess={() => startCreate("process")} onNavigate={(nav) => setActiveNav(nav as NavItem)} onNewTicket={() => { setTicketModal(true); setActiveNav("Chamados"); }} onNewEvent={() => { setEventModal("new"); setActiveNav("Próximos Eventos"); }} onUpload={() => { setActiveNav("Anexos e Arquivos"); window.setTimeout(() => fileInput.current?.click(), 0); }} />}
       <MobileBottomNavigation active={activeNav} onNavigate={(nav) => { setActiveNav(nav as NavItem); setSidebarOpen(false); }} onMenu={() => setSidebarOpen(true)} />
       {recentlyDeletedEvent && <div className="undo-toast" role="status"><span><strong>Evento excluído</strong><small>{recentlyDeletedEvent.title}</small></span><button type="button" onClick={restoreDeletedEvent}>Desfazer</button></div>}
       {toast && <div className="toast" role="status"><span><Check size={14} strokeWidth={2.5} /></span>{toast}</div>}
     </div>
+    </OperationsContext.Provider>
   );
 }
 
@@ -1575,14 +1619,16 @@ function Dashboard({ tickets, allTickets, municipalSummary, audit, executive, de
 
   return (
     <>
-      <div className="kleon-workspace-line"><span><Landmark size={16}/>{roleLabel}<i/> {dashboardProfile === "executive" ? "Várzea da Palma" : department}</span><button type="button" onClick={() => onNavigate(dashboardProfile === "executive" ? "Central Executiva" : "Central Integrada")}>Central de trabalho <ArrowUpRight size={15}/></button></div>
+      <div className="dashboard-workspace-line"><span><Landmark size={16}/>{roleLabel}<i/> {dashboardProfile === "executive" ? "Várzea da Palma" : department}</span><button type="button" onClick={() => onNavigate(dashboardProfile === "executive" ? "Central Executiva" : "Central Integrada")}>Central de trabalho <ArrowUpRight size={15}/></button></div>
           <section className="reference-priorities" aria-label="Prioridades do dia">
             <header className="reference-section-heading"><div><span>{roleLabel}</span><h2>{dashboardCopy.title}</h2></div><button type="button" onClick={() => onNavigate(dashboardProfile === "executive" ? "Central Executiva" : "Central Integrada")}>Ver tudo <ArrowRight size={13}/></button></header>
-            <div className="reference-kpi-grid">
-              <button type="button" className={(dashboardProfile === "executive" ? municipalSummary.overdue : overdueTickets.length) ? "urgent" : ""} onClick={() => onNavigate(dashboardProfile === "executive" ? "Central Executiva" : "Chamados")} title="Demandas abertas com prazo vencido"><span className="peach"><AlertTriangle size={16}/></span><div><strong>{dashboardProfile === "executive" ? municipalSummary.overdue : overdueTickets.length}</strong><small>{dashboardCopy.first}</small><em>{(dashboardProfile === "executive" ? municipalSummary.overdue : overdueTickets.length) ? "Exigem atenção" : "Nenhum atraso"}</em></div></button>
-              <button type="button" onClick={() => onNavigate(dashboardProfile === "executive" ? "Central Executiva" : "Central Integrada")} title={dashboardProfile === "executive" ? "Setores que possuem ao menos uma demanda vencida" : "Demandas abertas sob responsabilidade do perfil"}><span className="teal"><ListTodo size={16}/></span><div><strong>{dashboardProfile === "executive" ? municipalSummary.riskSectors : openTickets.length}</strong><small>{dashboardCopy.second}</small><em>{dashboardProfile === "executive" ? "Visão intersetorial" : "Trabalho ativo"}</em></div></button>
-              <button type="button" onClick={() => onNavigate(dashboardProfile === "staff" ? "Notificações" : "Pendências")} title={dashboardProfile === "staff" ? "Notificações ainda não lidas" : "Itens aguardando aprovação ou resposta"}><span className="blue">{dashboardProfile === "staff" ? <BellRing size={16}/> : <Clock3 size={16}/>}</span><div><strong>{dashboardProfile === "staff" ? unreadCount : dashboardProfile === "executive" ? municipalSummary.awaitingDecision : awaitingDecision}</strong><small>{dashboardCopy.third}</small><em>{dashboardProfile === "staff" ? "Atualizações recentes" : "Aguardam decisão"}</em></div></button>
-              <button type="button" onClick={() => onNavigate(dashboardProfile === "staff" ? "Próximos Eventos" : "Indicadores")} title={dashboardProfile === "staff" ? "Próximo evento da agenda" : "Percentual calculado sobre os registros do período"}><span className="sand">{dashboardProfile === "staff" ? <CalendarDays size={16}/> : <Gauge size={16}/>}</span><div><strong>{dashboardProfile === "staff" ? (nextEvent ? formatDate(nextEvent.startsAt) : "—") : `${dashboardProfile === "executive" ? municipalSummary.completionRate : onTimeRate}%`}</strong><small>{dashboardCopy.fourth}</small><em>{dashboardProfile === "staff" ? (nextEvent?.title ?? "Agenda livre") : "Meta: 85%"}</em></div></button>
+            <div className="reference-kpi-grid finstack-kpis">
+              {[
+                { label: dashboardCopy.first, value: dashboardProfile === "executive" ? municipalSummary.overdue : overdueTickets.length, hint: (dashboardProfile === "executive" ? municipalSummary.overdue : overdueTickets.length) ? "Exigem atenção" : "Nenhum atraso", icon: AlertTriangle, nav: dashboardProfile === "executive" ? "Central Executiva" : "Chamados", tone: "attention" },
+                { label: dashboardCopy.second, value: dashboardProfile === "executive" ? municipalSummary.riskSectors : openTickets.length, hint: dashboardProfile === "executive" ? "Visão intersetorial" : "Trabalho ativo", icon: ListTodo, nav: dashboardProfile === "executive" ? "Central Executiva" : "Central Integrada", tone: "featured" },
+                { label: dashboardCopy.third, value: dashboardProfile === "staff" ? unreadCount : dashboardProfile === "executive" ? municipalSummary.awaitingDecision : awaitingDecision, hint: dashboardProfile === "staff" ? "Atualizações recentes" : "Aguardam decisão", icon: Clock3, nav: dashboardProfile === "staff" ? "Notificações" : "Pendências", tone: "neutral" },
+                { label: dashboardCopy.fourth, value: dashboardProfile === "staff" ? (nextEvent ? formatDate(nextEvent.startsAt) : "—") : `${dashboardProfile === "executive" ? municipalSummary.completionRate : onTimeRate}%`, hint: dashboardProfile === "staff" ? (nextEvent?.title ?? "Agenda livre") : "Meta: 85%", icon: Gauge, nav: dashboardProfile === "staff" ? "Próximos Eventos" : "Indicadores", tone: "neutral" },
+              ].map(({ label, value, hint, icon: Icon, nav, tone }) => <button type="button" key={label} className={`finstack-kpi ${tone}`} onClick={() => onNavigate(nav as NavItem)}><div className="finstack-kpi-heading"><span>{label}</span><Icon size={18}/></div><strong className="finstack-kpi-value">{value}</strong><div className="finstack-kpi-footer"><span className="finstack-kpi-dot"/><span>{hint}</span><ArrowUpRight size={14}/></div></button>)}
             </div>
           </section>
       <section className="reference-dashboard" aria-label="Painel principal">
@@ -1597,15 +1643,15 @@ function Dashboard({ tickets, allTickets, municipalSummary, audit, executive, de
             <button type="button" className={unassignedTickets ? "attention" : ""} onClick={() => onNavigate("Chamados")}><span><small>Sem responsável</small><strong>{unassignedTickets}</strong></span><em>{unassignedTickets ? "Distribuir" : "Fila distribuída"}</em></button>
           </section>}
 
-          <div className="reference-middle-grid kleon-chart-layout">
+          <div className="reference-middle-grid dashboard-chart-layout">
             <article className="panel reference-activity-card">
-              <header><div><span>Desempenho</span><h3>Fluxo de demandas</h3><small>{chartRangeLabel}</small></div><button type="button" aria-expanded={showDetails} title={`Ver detalhes · ${chartRangeLabel}`} onClick={() => setShowDetails((current) => !current)}>{showDetails ? "Ocultar detalhes" : "Ver detalhes"} <ChevronRight size={13}/></button></header>
+              <header><div><span>Desempenho do setor</span><h3>Fluxo de demandas</h3><small>{chartRangeLabel}</small></div><button type="button" aria-expanded={showDetails} title={`Ver detalhes · ${chartRangeLabel}`} onClick={() => setShowDetails((current) => !current)}>{showDetails ? "Ocultar detalhes" : "Ver detalhes"} <ChevronRight size={13}/></button></header>
               <div className="reference-chart-summary"><div><strong>{currentWeekTotal}</strong><small>chamados na semana</small></div><span className={weeklyDelta < 0 ? "negative" : ""} title={`Semana anterior: ${previousWeekTotal} demandas`}><ArrowUpRight size={14}/> {previousWeekTotal ? `${weeklyDelta >= 0 ? "+" : ""}${weeklyDelta}% vs. semana anterior` : "Sem base na semana anterior"}</span><em aria-live="polite">{activeChartItem.value} {activeChartItem.value === 1 ? "demanda" : "demandas"} · {activeChartItem.label}</em></div>
-              <div className="kleon-chart-legend"><span><i className="active"/>Em andamento</span><span><i className="completed"/>Concluídas</span><span><i className="canceled"/>Canceladas</span><small>Status atual por dia de abertura</small></div>
-              <div className="reference-bar-chart kleon-demand-chart" aria-label={`Demandas criadas por dia da semana · ${chartRangeLabel}`}>
-                {chartItems.map((item, index) => <button type="button" className={index === activeChartDay ? "active" : ""} aria-pressed={index === activeChartDay} aria-label={`${item.label}, ${item.date.toLocaleDateString("pt-BR")}: ${item.value} demandas; ${item.active} em andamento, ${item.completed} concluídas e ${item.canceled} canceladas`} title={`${item.value} demandas em ${item.label}`} key={item.label} onClick={() => setSelectedChartDay(index)}><span className="kleon-bar-group"><b>{item.value}</b><i className="series-active" style={{ height: `${(item.active / chartMax) * 100}%` }}/><i className="series-completed" style={{ height: `${(item.completed / chartMax) * 100}%` }}/><i className="series-canceled" style={{ height: `${(item.canceled / chartMax) * 100}%` }}/></span><small>{item.label}</small></button>)}
+              <div className="dashboard-chart-legend"><span><i className="active"/>Em andamento</span><span><i className="completed"/>Concluídas</span><span><i className="canceled"/>Canceladas</span><small>Status atual por dia de abertura</small></div>
+              <div className="reference-bar-chart dashboard-demand-chart" aria-label={`Demandas criadas por dia da semana · ${chartRangeLabel}`}>
+                {chartItems.map((item, index) => <button type="button" className={index === activeChartDay ? "active" : ""} aria-pressed={index === activeChartDay} aria-label={`${item.label}, ${item.date.toLocaleDateString("pt-BR")}: ${item.value} demandas; ${item.active} em andamento, ${item.completed} concluídas e ${item.canceled} canceladas`} title={`${item.value} demandas em ${item.label}`} key={item.label} onClick={() => setSelectedChartDay(index)}><span className="dashboard-bar-group"><b>{item.value}</b><i className="series-active" style={{ height: `${(item.active / chartMax) * 100}%` }}/><i className="series-completed" style={{ height: `${(item.completed / chartMax) * 100}%` }}/><i className="series-canceled" style={{ height: `${(item.canceled / chartMax) * 100}%` }}/></span><small>{item.label}</small></button>)}
               </div>
-              {!currentWeekTotal && <p className="kleon-chart-empty">Nenhum chamado registrado nesta semana.</p>}
+              {!currentWeekTotal && <p className="dashboard-chart-empty">Nenhum chamado registrado nesta semana.</p>}
             </article>
 
 
@@ -1619,22 +1665,22 @@ function Dashboard({ tickets, allTickets, municipalSummary, audit, executive, de
 
         <aside className="reference-dashboard-rail">
             <article className="panel reference-schedule-card">
-              <header><div><span>Próximos compromissos</span><h3>Agenda operacional</h3></div><button type="button" onClick={() => onNavigate("Próximos Eventos")}><ArrowRight size={14}/></button></header>
+              <header><div><span>Próximos compromissos</span><h3>Agenda operacional</h3></div><button type="button" aria-label="Abrir agenda" onClick={() => onNavigate("Próximos Eventos")}><ArrowRight size={14}/></button></header>
               <div className="reference-schedule-list">
                 {schedule.map((event, index) => <button type="button" key={event.id} onClick={() => onNavigate("Próximos Eventos")}><span className={["peach","blue","lime","sand"][index % 4]}><CalendarDays size={14}/></span><div><strong>{event.title}</strong><small>{formatDate(event.startsAt)}</small></div><ChevronRight size={13}/></button>)}
-                {!schedule.length && <div className="kleon-agenda-empty"><CalendarDays size={24}/><strong>Agenda livre</strong><p>Nenhum compromisso futuro.</p></div>}
+                {!schedule.length && <div className="dashboard-agenda-empty"><CalendarDays size={24}/><strong>Agenda livre</strong><p>Nenhum compromisso futuro.</p></div>}
               </div>
             </article>
-          <article className="panel reference-performance-card kleon-performance-card">
-            <header><div><span>Desempenho geral</span><h3>{executive ? "Execução municipal" : "Execução do setor"}</h3></div><button type="button" aria-label="Abrir indicadores" onClick={() => onNavigate(executive ? "Central Executiva" : "Indicadores")}><MoreHorizontal size={16}/></button></header>
-            <div className="reference-performance-gauge" role="img" aria-label={focusTickets.length ? `${dashboardProfile === "executive" ? municipalSummary.completionRate : completionRate}% de conclusão` : "Sem chamados para calcular a conclusão"}>
-              <svg viewBox="0 0 140 82" aria-hidden="true"><path className="gauge-track" pathLength="100" d="M14 70 A56 56 0 0 1 126 70"/><path className="gauge-value" pathLength="100" d="M14 70 A56 56 0 0 1 126 70" style={{ strokeDasharray: `${focusTickets.length ? dashboardProfile === "executive" ? municipalSummary.completionRate : completionRate : 0} 100` }}/></svg>
-              <span><small>CONCLUSÃO</small><strong>{focusTickets.length ? `${dashboardProfile === "executive" ? municipalSummary.completionRate : completionRate}%` : "—"}</strong></span>
+          <article className="panel reference-performance-card dashboard-performance-card">
+            <header><div><span>Desempenho geral</span><h3>{dashboardProfile === "staff" ? "Minha execução" : "Execução do setor"}</h3></div><button type="button" aria-label="Abrir indicadores" onClick={() => onNavigate(executive ? "Central Executiva" : "Indicadores")}><MoreHorizontal size={16}/></button></header>
+            <div className="reference-performance-gauge" role="img" aria-label={focusTickets.length ? `${completionRate}% de conclusão` : "Sem chamados para calcular a conclusão"}>
+              <svg viewBox="0 0 140 82" aria-hidden="true"><path className="gauge-track" pathLength="100" d="M14 70 A56 56 0 0 1 126 70"/><path className="gauge-value" pathLength="100" d="M14 70 A56 56 0 0 1 126 70" style={{ strokeDasharray: `${focusTickets.length ? completionRate : 0} 100` }}/></svg>
+              <span><small>CONCLUSÃO</small><strong>{focusTickets.length ? `${completionRate}%` : "—"}</strong></span>
             </div>
             <div className="reference-performance-legend">
               <span><i className="done"/><small>Concluídas</small><strong>{completedTickets}</strong></span>
               <span><i className="active"/><small>Em andamento</small><strong>{openTickets.length}</strong></span>
-              <span><i className="attention"/><small>Em atenção</small><strong>{dashboardProfile === "executive" ? municipalSummary.overdue : overdueTickets.length}</strong></span>
+              <span><i className="attention"/><small>Em atenção</small><strong>{overdueTickets.length}</strong></span>
             </div>
             <button className="reference-performance-action" type="button" onClick={() => onNavigate(executive ? "Central Executiva" : "Indicadores")}>Ver detalhes <ArrowUpRight size={13}/></button>
           </article>
@@ -1652,7 +1698,7 @@ function Dashboard({ tickets, allTickets, municipalSummary, audit, executive, de
           </article>
 
           <article className="panel reference-assignments-card">
-            <header><div><span>Acompanhamento</span><h3>Demandas prioritárias</h3></div><button type="button" onClick={() => onNavigate("Chamados")}><Plus size={14}/></button></header>
+            <header><div><span>Acompanhamento</span><h3>Demandas prioritárias</h3></div><button type="button" aria-label="Abrir demandas prioritárias" onClick={() => onNavigate("Chamados")}><Plus size={14}/></button></header>
             <div>{openTickets.slice(0, 3).map((ticket, index) => <button type="button" key={ticket.id} onClick={() => onNavigate("Chamados")}><span className={["peach","lime","blue"][index % 3]}><ClipboardList size={14}/></span><div><strong>{ticket.title}</strong><small>{ticket.protocol}</small></div><em>{ticket.status}</em></button>)}</div>
           </article>
         </aside>
@@ -1696,6 +1742,7 @@ function Dashboard({ tickets, allTickets, municipalSummary, audit, executive, de
 }
 
 function TicketTable({ tickets, onOpen }: { tickets: Ticket[]; onOpen: () => void }) {
+  const operations = useOperations();
   return (
     <div className="ticket-table-wrap">
       <table className="ticket-table">
@@ -1703,10 +1750,10 @@ function TicketTable({ tickets, onOpen }: { tickets: Ticket[]; onOpen: () => voi
         <tbody>{tickets.map((ticket) => (
           <tr key={ticket.id}>
             <td><div className="ticket-title"><span className={`priority-dot ${ticket.priority.toLowerCase().replace("é", "e")}`} /><div><strong>{ticket.title}</strong><small>{ticket.protocol} · {ticket.requester}</small></div></div></td>
-            <td><div className="department-cell"><span className="mini-avatar">{ticket.assigneeInitials ?? "--"}</span>{ticket.department}</div></td>
+            <td><div className="department-cell"><span className="mini-avatar">{ticket.assigneeInitials ?? "--"}</span><span className="department-cell-name">{ticket.department}</span></div></td>
             <td><StatusPill status={ticket.status} /></td>
             <td><span className={formatDue(ticket.dueDate).startsWith("Hoje") ? "due urgent" : "due"}>{formatDue(ticket.dueDate)}</span></td>
-            <td><button className="table-menu" aria-label={`Opções de ${ticket.protocol}`} onClick={onOpen}><MoreHorizontal size={17} /></button></td>
+            <td><button className="table-menu" aria-label={`Abrir ${ticket.protocol}`} onClick={() => operations.openRecord({kind:"ticket",id:ticket.id})}><MoreHorizontal size={17} /></button></td>
           </tr>
         ))}</tbody>
       </table>
@@ -1719,10 +1766,13 @@ type TicketSavedView = "Todos" | "Urgentes" | "Atrasados" | "Minha equipe" | "Se
 type TicketColumn = "protocol" | "department" | "status" | "due" | "assignee";
 type TicketWorkspacePreference = { viewMode: "board" | "table"; savedView: TicketSavedView; query: string; priority: "Todas" | Priority; status: "Todos" | TicketStatus; page: number; columns: TicketColumn[] };
 
-function TicketsSection({ tickets, department, departments, userId, now, onStatus, onNew }: { tickets: Ticket[]; department: string; departments: string[]; userId: string; now: Date; onStatus: (id: string, status: TicketStatus) => void; onNew: () => void }) {
+function TicketsSection({ tickets, department, departments, userId, now, onStatus, onNew }: { tickets: Ticket[]; department: string; departments: string[]; userId: string; now: Date; onStatus: (id: string, status: TicketStatus) => Promise<boolean>; onNew: () => void }) {
   const access = useCurrentPermission();
-  const [selectedTicket, setSelectedTicket] = useState<Ticket | null>(null);
+  const [selectedTicketId, setSelectedTicketId] = useState<string | null>(null);
+  const selectedTicket = tickets.find(t => t.id === selectedTicketId) ?? null;
+  const setSelectedTicket = (ticket: Ticket | null) => setSelectedTicketId(ticket?.id ?? null);
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
+  const [bulkBusy, setBulkBusy] = useState(false);
   const [bulkStatus, setBulkStatus] = useState<TicketStatus>("Em execução");
   const defaultPreferences: TicketWorkspacePreference = { viewMode: "board", savedView: "Todos", query: "", priority: "Todas", status: "Todos", page: 1, columns: ["protocol", "department", "status", "due", "assignee"] };
   const [preferences, setPreferences, preferencesReady] = useLocalPreference<TicketWorkspacePreference>(`prefeitura:workspace:tickets:${normalizeText(userId)}:${normalizeText(department)}`, defaultPreferences);
@@ -1750,9 +1800,12 @@ function TicketsSection({ tickets, department, departments, userId, now, onStatu
   const toggleColumn = (column: TicketColumn) => setPreferences((current) => ({ ...current, columns: current.columns.includes(column) ? current.columns.filter((item) => item !== column) : [...current.columns, column] }));
   const toggleSelection = (id: string) => setSelectedIds((current) => current.includes(id) ? current.filter((item) => item !== id) : [...current, id]);
 
-  function applyBulkStatus() {
-    selectedIds.forEach((id) => onStatus(id, bulkStatus));
-    setSelectedIds([]);
+  async function applyBulkStatus() {
+    if (!access.edit || bulkBusy) return;
+    setBulkBusy(true);
+    const failed: string[] = [];
+    for (const id of selectedIds) { if (!await onStatus(id, bulkStatus)) failed.push(id); }
+    setSelectedIds(failed); setBulkBusy(false);
   }
 
   if (!preferencesReady) return <section className="ticket-workspace-skeleton" role="status" aria-label="Carregando filtros dos chamados"><span/><span/><span/><div><i/><i/><i/><i/></div></section>;
@@ -1760,6 +1813,7 @@ function TicketsSection({ tickets, department, departments, userId, now, onStatu
   return (
     <section className="board-wrap ticket-workspace-v61">
       <div className="access-note ticket-privacy-note"><span><ShieldCheck size={20} /></span><div><strong>Fluxo setorial com responsabilidade definida</strong><p>Você está vendo somente as demandas de {department}. Filtros, página e modo de visualização são lembrados quando você retorna.</p></div></div>
+      <SavedTicketFilters preferences={preferences} onApply={(saved) => setPreferences(current => ({ ...current, ...saved, page: 1 }) as TicketWorkspacePreference)}/>
       <div className="ticket-workspace-toolbar">
         <label className="ticket-workspace-search"><Search size={16}/><input type="search" aria-label="Buscar nos chamados" placeholder="Buscar protocolo, assunto, bairro ou responsável" value={preferences.query} onChange={(event) => updatePreferences({ query: event.target.value, page: 1 })}/></label>
         <label><span>Prioridade</span><select value={preferences.priority} onChange={(event) => updatePreferences({ priority: event.target.value as TicketWorkspacePreference["priority"], page: 1 })}><option>Todas</option><option>Urgente</option><option>Alta</option><option>Média</option><option>Baixa</option></select></label>
@@ -1771,7 +1825,7 @@ function TicketsSection({ tickets, department, departments, userId, now, onStatu
 
       <div className="ticket-saved-views" aria-label="Visualizações salvas">{savedViews.map((view) => <button type="button" key={view} className={preferences.savedView === view ? "active" : ""} aria-pressed={preferences.savedView === view} onClick={() => updatePreferences({ savedView: view, page: 1 })}>{view}<strong>{view === "Todos" ? tickets.length : view === "Urgentes" ? tickets.filter((ticket) => ticket.priority === "Urgente").length : view === "Atrasados" ? tickets.filter((ticket) => !["Concluído", "Cancelado"].includes(ticket.status) && Boolean(ticket.dueDate) && new Date(ticket.dueDate as string).getTime() < nowTimestamp).length : view === "Minha equipe" ? tickets.filter((ticket) => ticket.assigneeId).length : tickets.filter((ticket) => !ticket.assigneeId).length}</strong></button>)}</div>
 
-      {selectedIds.length > 0 && access.edit && <div className="ticket-bulk-bar" role="status"><span><CheckCheck size={16}/><strong>{selectedIds.length} selecionados</strong></span><label>Alterar status<select value={bulkStatus} onChange={(event) => setBulkStatus(event.target.value as TicketStatus)}>{statuses.map((status) => <option key={status}>{status}</option>)}</select></label><button type="button" onClick={applyBulkStatus}>Aplicar</button><button type="button" onClick={() => setSelectedIds([])}>Limpar seleção</button></div>}
+      {selectedIds.length > 0 && access.edit && <div className="ticket-bulk-bar" role="status"><span><CheckCheck size={16}/><strong>{selectedIds.length} selecionados</strong></span><label>Alterar status<select value={bulkStatus} onChange={(event) => setBulkStatus(event.target.value as TicketStatus)}>{statuses.map((status) => <option key={status}>{status}</option>)}</select></label><button type="button" disabled={bulkBusy} onClick={applyBulkStatus}>{bulkBusy ? "Aplicando…" : "Aplicar"}</button><button type="button" onClick={() => setSelectedIds([])}>Limpar seleção</button></div>}
 
       {preferences.viewMode === "table" ? <div className="panel advanced-ticket-table-wrap"><table className="advanced-ticket-table"><thead><tr>{access.edit && <th className="select-column"><input type="checkbox" aria-label="Selecionar chamados da página" checked={pageTickets.length > 0 && pageTickets.every((ticket) => selectedIds.includes(ticket.id))} onChange={(event) => setSelectedIds((current) => event.target.checked ? Array.from(new Set([...current, ...pageTickets.map((ticket) => ticket.id)])) : current.filter((id) => !pageTickets.some((ticket) => ticket.id === id)))}/></th>}{preferences.columns.includes("protocol") && <th>Chamado</th>}{preferences.columns.includes("department") && <th>Setor</th>}{preferences.columns.includes("status") && <th>Status</th>}{preferences.columns.includes("due") && <th>Prazo</th>}{preferences.columns.includes("assignee") && <th>Responsável</th>}<th aria-label="Abrir"/></tr></thead><tbody>{pageTickets.map((ticket) => <tr key={ticket.id}>{access.edit && <td className="select-column" data-label="Selecionar"><input type="checkbox" aria-label={`Selecionar ${ticket.protocol}`} checked={selectedIds.includes(ticket.id)} onChange={() => toggleSelection(ticket.id)}/></td>}{preferences.columns.includes("protocol") && <td data-label="Chamado"><button className="ticket-table-title" onClick={() => setSelectedTicket(ticket)}><span className={`priority-dot ${ticket.priority.toLowerCase().replace("é", "e")}`}/><span><strong>{ticket.title}</strong><small>{ticket.protocol} · {ticket.requester}</small></span></button></td>}{preferences.columns.includes("department") && <td data-label="Setor">{ticket.department}</td>}{preferences.columns.includes("status") && <td data-label="Status"><StatusPill status={ticket.status}/></td>}{preferences.columns.includes("due") && <td data-label="Prazo"><span className={formatDue(ticket.dueDate).startsWith("Hoje") ? "due urgent" : "due"}><Clock3 size={12}/>{formatDue(ticket.dueDate)}</span></td>}{preferences.columns.includes("assignee") && <td data-label="Responsável"><span className="assignee-cell"><i className="mini-avatar">{ticket.assigneeInitials ?? "--"}</i>{ticket.assigneeName ?? "A definir"}</span></td>}<td data-label="Abrir"><button className="table-menu" aria-label={`Abrir ${ticket.protocol}`} onClick={() => setSelectedTicket(ticket)}><ChevronRight size={16}/></button></td></tr>)}</tbody></table>{!filteredTickets.length && <div className="module-empty ticket-filter-empty"><Search size={27}/><strong>Nenhum chamado nesta visualização</strong><p>Revise os filtros ou volte à visão completa.</p><button type="button" onClick={() => setPreferences(defaultPreferences)}>Limpar filtros</button></div>}<footer className="ticket-pagination"><span>Mostrando {filteredTickets.length ? (activePage - 1) * pageSize + 1 : 0}–{Math.min(activePage * pageSize, filteredTickets.length)} de {filteredTickets.length}</span><div><button type="button" disabled={activePage === 1} onClick={() => updatePreferences({ page: activePage - 1 })} aria-label="Página anterior"><ChevronRight size={14}/></button><strong>Página {activePage} de {pageCount}</strong><button type="button" disabled={activePage === pageCount} onClick={() => updatePreferences({ page: activePage + 1 })} aria-label="Próxima página"><ChevronRight size={14}/></button></div></footer></div> : <div className="kanban-board">
         {statuses.map((status) => {
@@ -1781,7 +1835,7 @@ function TicketsSection({ tickets, department, departments, userId, now, onStatu
         })}
       </div>}
       <div className="status-legend-v61" aria-label="Legenda de status">{statuses.map((status) => { const Icon = statusMeta[status].icon; return <span key={status} title={statusMeta[status].description}><Icon size={12}/><strong>{statusMeta[status].short}</strong><small>{statusMeta[status].description}</small></span>; })}</div>
-      {selectedTicket && <TicketDetailModal ticket={selectedTicket} departments={departments} onClose={() => setSelectedTicket(null)} onStatus={(status) => { onStatus(selectedTicket.id, status); setSelectedTicket((current) => current ? { ...current, status } : current); }}/>} 
+      {selectedTicket && <TicketDetailModal ticket={selectedTicket} departments={departments} onClose={() => setSelectedTicket(null)} onStatus={(status) => { void onStatus(selectedTicket.id, status); }}/>} 
     </section>
   );
 }
@@ -2263,35 +2317,8 @@ function AuditSection({ audit, department, notify }: { audit: AuditItem[]; depar
   );
 }
 
-function TicketDetailModal({ ticket, departments = [], onClose, onStatus }: { ticket: Ticket; departments?: string[]; onClose: () => void; onStatus: (status: TicketStatus) => void }) {
-  const access = useCurrentPermission();
-  const [tab, setTab] = useState<"mensagens" | "interno">("mensagens");
-  const [note, setNote] = useState("");
-  const [feedback, setFeedback] = useState("");
-  const [forwardDepartment, setForwardDepartment] = useState("");
-  const [checklist, setChecklist] = useState([
-    { id: "receive", label: "Conferir dados e documentos obrigatórios", done: true },
-    { id: "inspect", label: "Realizar análise ou vistoria técnica", done: ticket.status !== "Recebido" && ticket.status !== "Em análise" },
-    { id: "approve", label: "Submeter ao responsável pela aprovação", done: ticket.status === "Concluído" },
-    { id: "proof", label: "Anexar comprovante, parecer ou fotografia final", done: ticket.status === "Concluído" },
-  ]);
-  const [aiDetailBusy, setAiDetailBusy] = useState<"summary" | "checklist" | "reply" | null>(null);
-  const [aiSummary, setAiSummary] = useState("");
-  async function aiTicketTool(kind: "summary" | "checklist" | "reply") {
-    if (aiDetailBusy) return; setAiDetailBusy(kind);
-    try {
-      if (kind === "summary") {
-        const response = await fetch("/api/ai", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ operation: "summarize", text: `${ticket.title}\n${ticket.description}\nStatus: ${ticket.status}\nPrioridade: ${ticket.priority}\nSetor: ${ticket.department}` }) });
-        const payload = await response.json() as { text?: string }; if (response.ok && payload.text) setAiSummary(payload.text);
-      } else {
-        const response = await fetch("/api/ai", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ operation: "draft", kind: kind === "checklist" ? "checklist" : "citizen_response", text: `${ticket.title}\n${ticket.description}`, context: { protocol: ticket.protocol, department: ticket.department, status: ticket.status, priority: ticket.priority, dueDate: ticket.dueDate } }) });
-        const payload = await response.json() as { text?: string };
-        if (response.ok && payload.text) { if (kind === "reply") { setTab("mensagens"); setNote(payload.text); } else { const lines = payload.text.split(/\n+/).map((line) => line.replace(/^\s*[-*•\d.)]+\s*/, "").trim()).filter(Boolean).slice(0,10); if (lines.length) setChecklist(lines.map((label,index)=>({ id:`ai-${index}-${Date.now()}`, label, done:false }))); } }
-      }
-    } finally { setAiDetailBusy(null); }
-  }
-  const forwardDepartments = departments.filter((department) => !sameDepartment(department, ticket.department));
-  return <div className="modal-backdrop" role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget) onClose(); }}><section className="modal ticket-detail-modal" role="dialog" aria-modal="true" aria-labelledby="ticket-detail-title"><header><div><p className="eyebrow">{ticket.protocol} · {ticket.requester}</p><h2 id="ticket-detail-title">{ticket.title}</h2></div><button type="button" onClick={onClose} aria-label="Fechar"><X size={18} /></button></header><div className="ticket-detail-body"><div className="ticket-detail-meta"><StatusPill status={ticket.status} /><span className={`priority-label ${ticket.priority.toLowerCase().replace("é", "e")}`}>{ticket.priority}</span><span><Clock3 size={13} /> SLA: {formatDue(ticket.dueDate)}</span>{!access.edit && <span className="read-only-chip"><ShieldCheck size={11} /> Somente consulta</span>}</div><p className="ticket-detail-description">{ticket.description}</p><div className="ticket-ai-toolbar"><button type="button" disabled={Boolean(aiDetailBusy)} onClick={() => void aiTicketTool("summary")}><Sparkles size={13}/>{aiDetailBusy === "summary" ? "Resumindo..." : "Resumir"}</button><button type="button" disabled={Boolean(aiDetailBusy) || !access.edit} onClick={() => void aiTicketTool("checklist")}><Sparkles size={13}/>{aiDetailBusy === "checklist" ? "Criando..." : "Gerar checklist"}</button><button type="button" disabled={Boolean(aiDetailBusy) || !access.edit} onClick={() => void aiTicketTool("reply")}><Sparkles size={13}/>{aiDetailBusy === "reply" ? "Redigindo..." : "Sugerir atualização"}</button></div>{aiSummary && <div className="ticket-ai-summary"><strong><Sparkles size={13}/> Resumo da IA</strong><p>{aiSummary}</p></div>}<div className="ticket-address-card"><span><MapPin size={16} /></span><div><small>Endereço registrado</small><strong>{ticket.address || "Endereço não informado"}</strong><p>{ticket.neighborhood ? `${ticket.neighborhood} · Várzea da Palma/MG` : "Bairro não informado"}</p></div></div><div className="ticket-sla-meter"><strong>SLA operacional</strong><span><i style={{ width: `${ticket.status === "Concluído" ? 100 : ticket.priority === "Urgente" ? 82 : ticket.priority === "Alta" ? 66 : 48}%` }} /></span><em>{formatDue(ticket.dueDate)}</em></div><article className="ticket-timeline"><h3>Linha do tempo do chamado</h3><ol><li><time>08:42</time><i /><span><strong>Chamado registrado</strong>Solicitação recebida e protocolo gerado.</span></li><li><time>09:03</time><i /><span><strong>Triagem concluída</strong>Demanda encaminhada para {ticket.department}.</span></li><li><time>09:18</time><i /><span><strong>Responsável definido</strong>{ticket.assigneeName ?? "Equipe do setor"} assumiu o atendimento.</span></li><li><time>11:07</time><i /><span><strong>Execução atualizada</strong>Status atual: {ticket.status}.</span></li></ol></article><div className="ticket-ownership"><div><small>Responsável principal</small><strong><span className="mini-avatar">{ticket.assigneeInitials ?? "--"}</span>{ticket.assigneeName ?? "A definir"}</strong></div><div><small>Equipe do setor</small><strong><UsersRound size={14} /> Acesso restrito à unidade</strong></div><div><small>Aprovador</small><strong><ShieldCheck size={14} /> Responsável pelo setor</strong></div></div><div className="ticket-detail-grid"><article className="ticket-checklist"><header><div><h3>Checklist de execução</h3><p>{checklist.filter((item) => item.done).length} de {checklist.length} etapas concluídas</p></div><span>{Math.round(checklist.filter((item) => item.done).length / checklist.length * 100)}%</span></header>{checklist.map((item) => <label key={item.id} className={item.done ? "done" : ""}><input type="checkbox" checked={item.done} disabled={!access.edit} onChange={() => setChecklist((current) => current.map((entry) => entry.id === item.id ? { ...entry, done: !entry.done } : entry))} /><span>{item.label}</span></label>)}{access.edit && <button onClick={() => { setChecklist((current) => [...current, { id: `custom-${current.length + 1}`, label: `Nova etapa ${current.length + 1}`, done: false }]); setFeedback("Nova etapa adicionada ao checklist."); }}><Plus size={13} /> Adicionar etapa</button>}</article>{forwardDepartments.length > 0 && <article className="ticket-movement"><h3>Encaminhar para outro setor</h3><p>O setor de origem e todo o histórico serão preservados.</p><select aria-label="Setor de destino" disabled={!access.edit} value={forwardDepartment} onChange={(event) => setForwardDepartment(event.target.value)}><option value="">Selecione o setor de destino</option>{forwardDepartments.map((department) => <option key={department}>{department}</option>)}</select><textarea aria-label="Motivo do encaminhamento" disabled={!access.edit} placeholder={access.edit ? "Justificativa do encaminhamento..." : "Alteração bloqueada pelo perfil"} />{access.edit && <button className="button secondary" disabled={!forwardDepartment} onClick={() => { setFeedback(`Encaminhamento preparado para ${forwardDepartment}.`); setForwardDepartment(""); }}>Registrar encaminhamento</button>}{feedback && <small className="ticket-inline-feedback"><Check size={11} /> {feedback}</small>}</article>}</div><article className="ticket-conversation"><div className="ticket-conversation-tabs"><button className={tab === "mensagens" ? "active" : ""} onClick={() => setTab("mensagens")}>Mensagens do chamado</button><button className={tab === "interno" ? "active" : ""} onClick={() => setTab("interno")}><LockKeyholeIcon /> Anotações internas</button></div><div className="ticket-note-feed">{tab === "mensagens" ? <><p><strong>Solicitante</strong><span>A solicitação foi registrada com endereço e fotografias do local.</span><small>13 ago., 08:42</small></p><p><strong>{ticket.assigneeName ?? "Equipe responsável"}</strong><span>A análise inicial foi realizada e o atendimento segue o prazo indicado.</span><small>13 ago., 11:18</small></p></> : <><p className="internal-note"><strong>Nota restrita ao setor</strong><span>Verificar disponibilidade da equipe antes de confirmar a data ao solicitante.</span><small>Somente integrantes autorizados podem visualizar</small></p></>} </div>{access.edit && <div className="ticket-note-compose"><input aria-label={tab === "interno" ? "Adicionar anotação interna" : "Escrever mensagem do chamado"} value={note} onChange={(event) => setNote(event.target.value)} placeholder={tab === "interno" ? "Adicionar anotação interna..." : "Escrever atualização para os participantes..."} /><button disabled={!note.trim()} onClick={() => { setFeedback(tab === "interno" ? "Anotação interna registrada." : "Mensagem registrada no chamado."); setNote(""); }}><Send size={14} /></button></div>}</article><footer className="ticket-detail-footer">{access.edit && <label>Etapa atual<select value={ticket.status} onChange={(event) => onStatus(event.target.value as TicketStatus)}>{statuses.map((status) => <option key={status}>{status}</option>)}</select></label>}<button className="button secondary" onClick={onClose}>Fechar</button>{access.edit && <button className="button primary" onClick={() => { onStatus("Concluído"); setFeedback("Chamado concluído e pesquisa de satisfação liberada."); }}><CheckCircle2 size={15} /> Concluir atendimento</button>}</footer></div></section></div>;
+function TicketDetailModal({ ticket, onClose }: { ticket: Ticket; departments?: string[]; onClose: () => void; onStatus: (status: TicketStatus) => void }) {
+  return <OperationalTicketDetail ticket={ticket} onClose={onClose}/>;
 }
 
 function LockKeyholeIcon() { return <ShieldCheck size={13} />; }
