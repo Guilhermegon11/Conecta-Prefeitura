@@ -14,9 +14,9 @@ test("ships the 7.0 municipal visual shell and role-aware overview", async () =>
   assert.match(pkg, /"version": "8\.0\.0"/);
   assert.match(page, /const PRODUCT_VERSION = "8\.0\.0"/);
   assert.match(page, /municipal-ui-v700/);
-  assert.match(page, /className="municipal-overview-hero"/);
-  assert.match(page, /O município em um só panorama/);
-  assert.match(page, /className="panel reference-performance-card"/);
+  assert.match(page, /className="kleon-workspace-line"/);
+  assert.match(page, /Visão executiva municipal/);
+  assert.match(page, /className="panel reference-performance-card kleon-performance-card"/);
   assert.match(page, /className="gauge-value"/);
   assert.match(styles, /--pc7-forest: #176057/);
   assert.match(styles, /--pc7-lime: #b9df63/);

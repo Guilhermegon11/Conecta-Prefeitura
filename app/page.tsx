@@ -1143,7 +1143,7 @@ export default function Home() {
   }
 
   return (
-    <div className={`app-shell reference-ui-2026 municipal-ui-v6 municipal-ui-v61 municipal-ui-v611 municipal-ui-v620 municipal-ui-v700 municipal-ui-v701 municipal-ui-v800 ${motionEnabled ? "motion-enabled" : "motion-reduced"} ${contrastEnabled ? "contrast-enabled" : ""} ${simplifiedMode ? "simplified-mode" : ""} ${sidebarCompact ? "sidebar-compact" : ""} text-scale-${textScale}`}>
+    <div className={`app-shell reference-ui-2026 municipal-ui-v6 municipal-ui-v61 municipal-ui-v611 municipal-ui-v620 municipal-ui-v700 municipal-ui-v701 municipal-ui-v800 municipal-ui-kleon ${motionEnabled ? "motion-enabled" : "motion-reduced"} ${contrastEnabled ? "contrast-enabled" : ""} ${simplifiedMode ? "simplified-mode" : ""} ${sidebarCompact ? "sidebar-compact" : ""} text-scale-${textScale}`}>
       <aside className={`sidebar ${sidebarOpen ? "sidebar-open" : ""}`}>
         <div className="brand" title="Identidade institucional de Várzea da Palma">
           <div className="brand-mark municipal-crest-slot official-municipal-brand" data-crest-slot="brasao-oficial"><img src="/brasao-varzea-da-palma-oficial.png" alt="Brasão oficial da Prefeitura Municipal de Várzea da Palma" /></div>
@@ -1217,7 +1217,7 @@ export default function Home() {
           <div className="global-search-wrap">
             <label className="search-box">
               <Search size={18} aria-hidden="true" />
-              <input type="search" placeholder="Buscar chamados, pessoas, processos, arquivos, eventos..." value={search} onFocus={() => setSearchOpen(true)} onChange={(event) => { setSearch(event.target.value); setSearchOpen(true); }} />
+              <input type="search" aria-label="Buscar no sistema" placeholder="Buscar no sistema..." value={search} onFocus={() => setSearchOpen(true)} onChange={(event) => { setSearch(event.target.value); setSearchOpen(true); }} />
               <kbd>⌘ K</kbd>
             </label>
             {searchOpen && search.trim() && <GlobalSearchPanel query={search} tickets={privateTickets} users={scopedActiveUsers} documents={privateDocuments} events={currentEvents} offices={scopedOffices} onOpen={(nav) => setActiveNav(nav as NavItem)} onClose={() => setSearchOpen(false)} />}
@@ -1494,7 +1494,7 @@ function dashboardCalendarKey(value: Date) {
   return `${value.getFullYear()}-${String(value.getMonth() + 1).padStart(2, "0")}-${String(value.getDate()).padStart(2, "0")}`;
 }
 
-function Dashboard({ tickets, allTickets, municipalSummary, audit, executive, department, userId, userName, userRole, events, unreadCount, now, onNavigate }: { tickets: Ticket[]; allTickets: Ticket[]; municipalSummary: { total: number; open: number; overdue: number; riskSectors: number; awaitingDecision: number; completionRate: number }; audit: AuditItem[]; executive: boolean; department: string; userId: string; userName: string; userRole: string; events: SectorEvent[]; unreadCount: number; now: Date; onNavigate: (item: NavItem) => void }) {
+function Dashboard({ tickets, allTickets, municipalSummary, audit, executive, department, userId, userRole, events, unreadCount, now, onNavigate }: { tickets: Ticket[]; allTickets: Ticket[]; municipalSummary: { total: number; open: number; overdue: number; riskSectors: number; awaitingDecision: number; completionRate: number }; audit: AuditItem[]; executive: boolean; department: string; userId: string; userName: string; userRole: string; events: SectorEvent[]; unreadCount: number; now: Date; onNavigate: (item: NavItem) => void }) {
   const [showDetails, setShowDetails] = useState(false);
   const [selectedChartDay, setSelectedChartDay] = useState<number | null>(null);
   const [calendarCursor, setCalendarCursor] = useState(() => new Date(now.getFullYear(), now.getMonth(), 1));
@@ -1510,10 +1510,10 @@ function Dashboard({ tickets, allTickets, municipalSummary, audit, executive, de
   }));
   const openTickets = focusTickets.filter((ticket) => ticket.status !== "Concluído" && ticket.status !== "Cancelado");
   const overdueTickets = openTickets.filter((ticket) => ticket.dueDate && new Date(ticket.dueDate).getTime() < now.getTime());
-  const nextEvent = events.find((event) => new Date(event.startsAt).getTime() >= now.getTime());
+  const nextEvent = events.filter((event) => new Date(event.startsAt).getTime() >= now.getTime()).sort((a, b) => new Date(a.startsAt).getTime() - new Date(b.startsAt).getTime())[0];
   const roleLabel = dashboardProfile === "executive" ? "Visão executiva municipal" : dashboardProfile === "manager" ? "Gestão da equipe" : "Meu trabalho";
   const completedTickets = focusTickets.filter((ticket) => ticket.status === "Concluído").length;
-  const completionRate = focusTickets.length ? Math.round((completedTickets / focusTickets.length) * 100) : 100;
+  const completionRate = focusTickets.length ? Math.round((completedTickets / focusTickets.length) * 100) : 0;
   const onTimeRate = openTickets.length ? Math.round(((openTickets.length - overdueTickets.length) / openTickets.length) * 100) : 100;
   const awaitingDecision = openTickets.filter((ticket) => ticket.status === "Aguardando aprovação" || ticket.status === "Aguardando resposta").length;
   const unassignedTickets = openTickets.filter((ticket) => !ticket.assigneeId).length;
@@ -1542,11 +1542,13 @@ function Dashboard({ tickets, allTickets, municipalSummary, audit, executive, de
     dayStart.setDate(dayStart.getDate() + index);
     const dayEnd = new Date(dayStart);
     dayEnd.setDate(dayEnd.getDate() + 1);
-    const value = focusTickets.filter((ticket) => {
+    const dayTickets = focusTickets.filter((ticket) => {
       const createdAt = new Date(ticket.createdAt).getTime();
       return createdAt >= dayStart.getTime() && createdAt < dayEnd.getTime();
-    }).length;
-    return { label, value, date: dayStart };
+    });
+    const completed = dayTickets.filter((ticket) => ticket.status === "Concluído").length;
+    const canceled = dayTickets.filter((ticket) => ticket.status === "Cancelado").length;
+    return { label, value: dayTickets.length, active: dayTickets.length - completed - canceled, completed, canceled, date: dayStart };
   });
   const chartMax = Math.max(1, ...chartItems.map((item) => item.value));
   const previousWeekStart = new Date(chartWeekStart);
@@ -1556,7 +1558,7 @@ function Dashboard({ tickets, allTickets, municipalSummary, audit, executive, de
     return createdAt >= previousWeekStart.getTime() && createdAt < chartWeekStart.getTime();
   }).length;
   const currentWeekTotal = chartItems.reduce((sum, item) => sum + item.value, 0);
-  const weeklyDelta = previousWeekTotal ? Math.round(((currentWeekTotal - previousWeekTotal) / previousWeekTotal) * 100) : currentWeekTotal ? 100 : 0;
+  const weeklyDelta = previousWeekTotal ? Math.round(((currentWeekTotal - previousWeekTotal) / previousWeekTotal) * 100) : 0;
   const lastDayWithDemand = chartItems.reduce((lastIndex, item, index) => item.value > 0 ? index : lastIndex, 0);
   const chartShowsCurrentWeek = chartWeekStart.getTime() === currentWeekStart.getTime();
   const activeChartDay = selectedChartDay ?? (chartShowsCurrentWeek ? dashboardWeekdayIndex(now) : lastDayWithDemand);
@@ -1569,34 +1571,11 @@ function Dashboard({ tickets, allTickets, municipalSummary, audit, executive, de
   const calendarMonthLabel = calendarCursor.toLocaleDateString("pt-BR", { month: "long", year: "numeric" });
   const todayCalendarKey = dashboardCalendarKey(now);
   const calendarEventKeys = new Set(events.map((event) => dashboardCalendarKey(new Date(event.startsAt))));
-  const schedule = events.slice(0, 4);
+  const schedule = events.filter((event) => new Date(event.endsAt ?? event.startsAt).getTime() >= now.getTime()).sort((a, b) => new Date(a.startsAt).getTime() - new Date(b.startsAt).getTime()).slice(0, 4);
 
   return (
     <>
-      <section className="reference-dashboard" aria-label="Painel principal">
-        <div className="reference-dashboard-main">
-          <section className="municipal-overview-hero" aria-label="Panorama municipal do dia">
-            <div className="municipal-overview-copy">
-              <span>{userName.split(" ")[0]} · {roleLabel}</span>
-              <h2>{dashboardProfile === "executive" ? "O município em um só panorama." : dashboardProfile === "manager" ? "Sua equipe, prazos e entregas em foco." : "Seu dia organizado, do início à entrega."}</h2>
-              <p>{dashboardProfile === "executive" ? "Acompanhe riscos, decisões e o ritmo das secretarias sem perder o contexto." : dashboardProfile === "manager" ? `Acompanhe o andamento de ${department} e aja primeiro no que exige atenção.` : "Veja suas prioridades, avisos e próximos compromissos em uma leitura rápida."}</p>
-              <div className="municipal-overview-metrics">
-                <span><small>EM ANDAMENTO</small><strong>{dashboardProfile === "executive" ? municipalSummary.open : openTickets.length}</strong></span>
-                <span><small>CONCLUSÃO</small><strong>{dashboardProfile === "executive" ? municipalSummary.completionRate : completionRate}%</strong></span>
-                <span><small>ATENÇÃO</small><strong>{dashboardProfile === "executive" ? municipalSummary.overdue : overdueTickets.length}</strong></span>
-              </div>
-              <button type="button" onClick={() => onNavigate(dashboardProfile === "executive" ? "Central Executiva" : "Central Integrada")}>Abrir central de trabalho <ArrowRight size={14}/></button>
-            </div>
-            <div className="municipal-overview-symbol" aria-hidden="true">
-              <i className="municipal-orbit orbit-one" />
-              <i className="municipal-orbit orbit-two" />
-              <span><img src="/brasao-varzea-da-palma-oficial.png" alt="" /></span>
-              <b className="municipal-symbol-point point-one"><CheckCircle2 size={14}/></b>
-              <b className="municipal-symbol-point point-two"><MapPin size={14}/></b>
-              <b className="municipal-symbol-point point-three"><Gauge size={14}/></b>
-            </div>
-          </section>
-
+      <div className="kleon-workspace-line"><span><Landmark size={16}/>{roleLabel}<i/> {dashboardProfile === "executive" ? "Várzea da Palma" : department}</span><button type="button" onClick={() => onNavigate(dashboardProfile === "executive" ? "Central Executiva" : "Central Integrada")}>Central de trabalho <ArrowUpRight size={15}/></button></div>
           <section className="reference-priorities" aria-label="Prioridades do dia">
             <header className="reference-section-heading"><div><span>{roleLabel}</span><h2>{dashboardCopy.title}</h2></div><button type="button" onClick={() => onNavigate(dashboardProfile === "executive" ? "Central Executiva" : "Central Integrada")}>Ver tudo <ArrowRight size={13}/></button></header>
             <div className="reference-kpi-grid">
@@ -1606,6 +1585,9 @@ function Dashboard({ tickets, allTickets, municipalSummary, audit, executive, de
               <button type="button" onClick={() => onNavigate(dashboardProfile === "staff" ? "Próximos Eventos" : "Indicadores")} title={dashboardProfile === "staff" ? "Próximo evento da agenda" : "Percentual calculado sobre os registros do período"}><span className="sand">{dashboardProfile === "staff" ? <CalendarDays size={16}/> : <Gauge size={16}/>}</span><div><strong>{dashboardProfile === "staff" ? (nextEvent ? formatDate(nextEvent.startsAt) : "—") : `${dashboardProfile === "executive" ? municipalSummary.completionRate : onTimeRate}%`}</strong><small>{dashboardCopy.fourth}</small><em>{dashboardProfile === "staff" ? (nextEvent?.title ?? "Agenda livre") : "Meta: 85%"}</em></div></button>
             </div>
           </section>
+      <section className="reference-dashboard" aria-label="Painel principal">
+        <div className="reference-dashboard-main">
+
 
           {showDetails && <section className="panel municipal-health-strip" aria-label="Saúde operacional do setor">
             <header><span><Gauge size={19}/></span><div><small>SAÚDE OPERACIONAL</small><strong>Ritmo do setor</strong></div></header>
@@ -1615,25 +1597,18 @@ function Dashboard({ tickets, allTickets, municipalSummary, audit, executive, de
             <button type="button" className={unassignedTickets ? "attention" : ""} onClick={() => onNavigate("Chamados")}><span><small>Sem responsável</small><strong>{unassignedTickets}</strong></span><em>{unassignedTickets ? "Distribuir" : "Fila distribuída"}</em></button>
           </section>}
 
-          <div className="reference-middle-grid">
+          <div className="reference-middle-grid kleon-chart-layout">
             <article className="panel reference-activity-card">
-              <header><div><span>Desempenho</span><h3>Fluxo de demandas</h3></div><button type="button" aria-expanded={showDetails} title={`Ver detalhes · ${chartRangeLabel}`} onClick={() => setShowDetails((current) => !current)}>{showDetails ? "Ocultar detalhes" : "Ver detalhes"} <ChevronRight size={13}/></button></header>
-              <div className="reference-chart-summary"><strong>{completionRate}%</strong><span className={weeklyDelta < 0 ? "negative" : ""} title={`Semana anterior: ${previousWeekTotal} demandas`}><ArrowUpRight size={12}/> {weeklyDelta >= 0 ? "+" : ""}{weeklyDelta}% vs. semana anterior</span><em aria-live="polite">{activeChartItem.value} {activeChartItem.value === 1 ? "demanda" : "demandas"} · {activeChartItem.label}</em></div>
-              <div className="reference-bar-chart" aria-label={`Demandas criadas por dia da semana · ${chartRangeLabel}`}>
-                {chartItems.map((item, index) => <button type="button" className={index === activeChartDay ? "active" : ""} aria-pressed={index === activeChartDay} aria-label={`${item.label}, ${item.date.toLocaleDateString("pt-BR")}: ${item.value} ${item.value === 1 ? "demanda criada" : "demandas criadas"}`} title={`${item.value} ${item.value === 1 ? "demanda" : "demandas"} em ${item.label}`} key={item.label} onClick={() => setSelectedChartDay(index)}><span>{index === activeChartDay && <b>{item.value}</b>}<i className={index === activeChartDay ? "highlight" : ""} style={{ height: `${item.value ? 22 + (item.value / chartMax) * 78 : 10}%` }}/></span><small>{item.label}</small></button>)}
+              <header><div><span>Desempenho</span><h3>Fluxo de demandas</h3><small>{chartRangeLabel}</small></div><button type="button" aria-expanded={showDetails} title={`Ver detalhes · ${chartRangeLabel}`} onClick={() => setShowDetails((current) => !current)}>{showDetails ? "Ocultar detalhes" : "Ver detalhes"} <ChevronRight size={13}/></button></header>
+              <div className="reference-chart-summary"><div><strong>{currentWeekTotal}</strong><small>chamados na semana</small></div><span className={weeklyDelta < 0 ? "negative" : ""} title={`Semana anterior: ${previousWeekTotal} demandas`}><ArrowUpRight size={14}/> {previousWeekTotal ? `${weeklyDelta >= 0 ? "+" : ""}${weeklyDelta}% vs. semana anterior` : "Sem base na semana anterior"}</span><em aria-live="polite">{activeChartItem.value} {activeChartItem.value === 1 ? "demanda" : "demandas"} · {activeChartItem.label}</em></div>
+              <div className="kleon-chart-legend"><span><i className="active"/>Em andamento</span><span><i className="completed"/>Concluídas</span><span><i className="canceled"/>Canceladas</span><small>Status atual por dia de abertura</small></div>
+              <div className="reference-bar-chart kleon-demand-chart" aria-label={`Demandas criadas por dia da semana · ${chartRangeLabel}`}>
+                {chartItems.map((item, index) => <button type="button" className={index === activeChartDay ? "active" : ""} aria-pressed={index === activeChartDay} aria-label={`${item.label}, ${item.date.toLocaleDateString("pt-BR")}: ${item.value} demandas; ${item.active} em andamento, ${item.completed} concluídas e ${item.canceled} canceladas`} title={`${item.value} demandas em ${item.label}`} key={item.label} onClick={() => setSelectedChartDay(index)}><span className="kleon-bar-group"><b>{item.value}</b><i className="series-active" style={{ height: `${(item.active / chartMax) * 100}%` }}/><i className="series-completed" style={{ height: `${(item.completed / chartMax) * 100}%` }}/><i className="series-canceled" style={{ height: `${(item.canceled / chartMax) * 100}%` }}/></span><small>{item.label}</small></button>)}
               </div>
+              {!currentWeekTotal && <p className="kleon-chart-empty">Nenhum chamado registrado nesta semana.</p>}
             </article>
 
-            <article className="panel reference-schedule-card">
-              <header><div><span>Hoje</span><h3>Agenda operacional</h3></div><button type="button" onClick={() => onNavigate("Próximos Eventos")}><ArrowRight size={14}/></button></header>
-              <div className="reference-schedule-list">
-                {(schedule.length ? schedule : [
-                  { id: "agenda-1", title: "Alinhamento da equipe", startsAt: "2026-08-20T09:00:00.000Z" },
-                  { id: "agenda-2", title: "Revisão de pendências", startsAt: "2026-08-20T11:30:00.000Z" },
-                  { id: "agenda-3", title: "Fechamento operacional", startsAt: "2026-08-20T16:00:00.000Z" },
-                ]).slice(0, 4).map((event, index) => <button type="button" key={event.id} onClick={() => onNavigate("Próximos Eventos")}><span className={["peach","blue","lime","sand"][index % 4]}><CalendarDays size={14}/></span><div><strong>{event.title}</strong><small>{formatDate(event.startsAt)}</small></div><ChevronRight size={13}/></button>)}
-              </div>
-            </article>
+
           </div>
 
           <article className="panel reference-ticket-panel">
@@ -1643,11 +1618,18 @@ function Dashboard({ tickets, allTickets, municipalSummary, audit, executive, de
         </div>
 
         <aside className="reference-dashboard-rail">
-          <article className="panel reference-performance-card">
-            <header><div><span>Desempenho geral</span><h3>Execução do setor</h3></div><button type="button" aria-label="Abrir indicadores" onClick={() => onNavigate(executive ? "Central Executiva" : "Indicadores")}><MoreHorizontal size={16}/></button></header>
-            <div className="reference-performance-gauge" role="img" aria-label={`${dashboardProfile === "executive" ? municipalSummary.completionRate : completionRate}% de conclusão`}>
-              <svg viewBox="0 0 140 82" aria-hidden="true"><path className="gauge-track" pathLength="100" d="M14 70 A56 56 0 0 1 126 70"/><path className="gauge-value" pathLength="100" d="M14 70 A56 56 0 0 1 126 70" style={{ strokeDasharray: `${dashboardProfile === "executive" ? municipalSummary.completionRate : completionRate} 100` }}/></svg>
-              <span><small>CONCLUSÃO</small><strong>{dashboardProfile === "executive" ? municipalSummary.completionRate : completionRate}%</strong></span>
+            <article className="panel reference-schedule-card">
+              <header><div><span>Próximos compromissos</span><h3>Agenda operacional</h3></div><button type="button" onClick={() => onNavigate("Próximos Eventos")}><ArrowRight size={14}/></button></header>
+              <div className="reference-schedule-list">
+                {schedule.map((event, index) => <button type="button" key={event.id} onClick={() => onNavigate("Próximos Eventos")}><span className={["peach","blue","lime","sand"][index % 4]}><CalendarDays size={14}/></span><div><strong>{event.title}</strong><small>{formatDate(event.startsAt)}</small></div><ChevronRight size={13}/></button>)}
+                {!schedule.length && <div className="kleon-agenda-empty"><CalendarDays size={24}/><strong>Agenda livre</strong><p>Nenhum compromisso futuro.</p></div>}
+              </div>
+            </article>
+          <article className="panel reference-performance-card kleon-performance-card">
+            <header><div><span>Desempenho geral</span><h3>{executive ? "Execução municipal" : "Execução do setor"}</h3></div><button type="button" aria-label="Abrir indicadores" onClick={() => onNavigate(executive ? "Central Executiva" : "Indicadores")}><MoreHorizontal size={16}/></button></header>
+            <div className="reference-performance-gauge" role="img" aria-label={focusTickets.length ? `${dashboardProfile === "executive" ? municipalSummary.completionRate : completionRate}% de conclusão` : "Sem chamados para calcular a conclusão"}>
+              <svg viewBox="0 0 140 82" aria-hidden="true"><path className="gauge-track" pathLength="100" d="M14 70 A56 56 0 0 1 126 70"/><path className="gauge-value" pathLength="100" d="M14 70 A56 56 0 0 1 126 70" style={{ strokeDasharray: `${focusTickets.length ? dashboardProfile === "executive" ? municipalSummary.completionRate : completionRate : 0} 100` }}/></svg>
+              <span><small>CONCLUSÃO</small><strong>{focusTickets.length ? `${dashboardProfile === "executive" ? municipalSummary.completionRate : completionRate}%` : "—"}</strong></span>
             </div>
             <div className="reference-performance-legend">
               <span><i className="done"/><small>Concluídas</small><strong>{completedTickets}</strong></span>

@@ -58,7 +58,7 @@ export function TestLoginScreen({ onAuthenticated }: { onAuthenticated: () => vo
     finally { setBusy(false); }
   }
 
-  return <main className="login-shell public-ui-v800">
+  return <main className="login-shell public-ui-v800 public-ui-kleon">
     <div className="login-frame">
       <LoginShowcase/>
       <section className="login-panel">
@@ -84,5 +84,5 @@ export function TestLoginScreen({ onAuthenticated }: { onAuthenticated: () => vo
 }
 
 export function LoginLoadingScreen() {
-  return <main className="login-shell public-ui-v800"><div className="login-frame login-loading-frame"><LoginShowcase/><section className="login-panel login-loading"><span className="login-loading-icon"><Landmark size={25} /></span><strong>Prefeitura Conecta</strong><p>Preparando seu painel...</p><i className="login-loading-line"/></section></div></main>;
+  return <main className="login-shell public-ui-v800 public-ui-kleon"><div className="login-frame login-loading-frame"><LoginShowcase/><section className="login-panel login-loading"><span className="login-loading-icon"><Landmark size={25} /></span><strong>Prefeitura Conecta</strong><p>Preparando seu painel...</p><i className="login-loading-line"/></section></div></main>;
 }

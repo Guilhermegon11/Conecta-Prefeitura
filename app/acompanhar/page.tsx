@@ -71,7 +71,7 @@ export default function AcompanharPage() {
   }
 
 
-  return <main className="tracking-shell public-ui-v800">
+  return <main className="tracking-shell public-ui-v800 public-ui-kleon">
     <header className="evaluation-topbar"><div className="evaluation-brand"><span><Landmark size={21}/></span><div><strong>Prefeitura Conecta</strong><small>Acompanhamento do Cidadão</small></div></div><div className="public-nav-links"><Link href="/avaliar">Nova manifestação</Link><Link href="/">Acesso administrativo</Link></div></header>
     <section className="tracking-hero">
       <div className="tracking-copy"><p className="eyebrow">TRANSPARÊNCIA DO ATENDIMENTO</p><h1>Acompanhe seu protocolo</h1><p>Use o protocolo e o código de acesso recebidos no envio para conferir andamento, encaminhamentos e a resposta oficial da Prefeitura.</p><div><ShieldCheck size={17}/><span>O código de acesso evita que terceiros consultem seu atendimento.</span></div></div>

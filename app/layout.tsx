@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import "./globals.css";
+import "./dashboard-theme.css";
 import { PwaRegistrar } from "./platform-experience";
 
 export const metadata: Metadata = {

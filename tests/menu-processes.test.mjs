@@ -8,7 +8,7 @@ test("keeps the institutional header and redesigned sidebar identity", async () 
   const source = await readSource("page.tsx");
   assert.match(source, /className="brand"/);
   assert.match(source, /Gestão municipal/);
-  assert.match(source, /Buscar chamados, pessoas, processos, arquivos, eventos\.\.\./);
+  assert.match(source, /aria-label="Buscar no sistema"/);
   assert.doesNotMatch(source, /className="top-ai-button"/);
   assert.match(source, /"VISUALIZAR COMO" : "PERFIS CADASTRADOS"/);
   assert.doesNotMatch(source, /className="topbar-brand"/);
@@ -133,10 +133,10 @@ test("recreates the reference dashboard composition across the whole home view",
   assert.match(page, /app-shell reference-ui-2026/);
   assert.match(page, /className="reference-dashboard"/);
   assert.match(page, /className="reference-kpi-grid"/);
-  assert.match(page, /className="reference-middle-grid"/);
+  assert.match(page, /className="reference-middle-grid kleon-chart-layout"/);
   assert.match(page, /className="panel reference-calendar-card"/);
-  assert.match(page, /className="municipal-overview-hero"/);
-  assert.match(page, /className="panel reference-performance-card"/);
+  assert.match(page, /className="kleon-workspace-line"/);
+  assert.match(page, /className="panel reference-performance-card kleon-performance-card"/);
   assert.match(page, /className="sidebar-reference-card"/);
   assert.match(styles, /Prefeitura Conecta v5\.1 — dashboard editorial, compacto e sem roxo/);
   assert.match(styles, /\.reference-dashboard \{ display: grid; grid-template-columns: minmax\(0, 1fr\) 310px/);
