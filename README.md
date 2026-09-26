@@ -42,14 +42,26 @@ pnpm build
 pnpm start
 ```
 
-As tabelas de `db/schema.ts` são criadas de forma idempotente na primeira conexão. O token precisa permitir leitura, escrita e criação de tabelas no banco do projeto. Ao alterar o esquema no futuro, prepare uma migração compatível; o inicializador não apaga nem recria tabelas existentes.
+As tabelas de `db/schema.ts` são criadas de forma idempotente na primeira conexão. O token precisa permitir leitura, escrita e criação de tabelas no banco do projeto. Esta versão também acrescenta automaticamente a coluna da pergunta sobre Várzea da Palma nas instalações anteriores. Respostas antigas são preservadas e identificadas como pergunta não respondida, sem inferir Sim/Não a partir do município antigo. Ao alterar o esquema no futuro, prepare uma migração compatível; o inicializador não apaga nem recria tabelas existentes.
 
 ## Verificação desta entrega
 
 - Build de produção Next.js concluído, incluindo análise TypeScript.
 - Teste HTTP da versão de produção: páginas, fontes locais, base de candidatos, coleta fechada e painel aguardando configuração.
-- 39 verificações automatizadas das rotas reais com SQLite em memória e transporte libSQL simulado: sessão assinada, expiração/alteração de credencial, login limitado, origem da requisição, persistência, convite único, escolhas e publicação.
+- 48 verificações automatizadas das rotas reais com SQLite em memória e transporte libSQL simulado: sessão assinada, expiração/alteração de credencial, login limitado, origem da requisição, migração do banco, respostas Sim/Não, ordem dos destaques, convite único, escolhas e publicação.
 - A conexão com um banco Turso real e a publicação na conta Vercel do proprietário dependem das credenciais que serão configuradas por ele. Não foram realizadas nesta entrega.
+
+## Ajustes do questionário nesta versão
+
+A entrada apresenta **“Você vota em Várzea da Palma?”**, com opções **Sim** e **Não**, sem campo para selecionar município e sem a antiga confirmação de voto em Minas Gerais. Ambas as opções permitem prosseguir e são gravadas separadamente. O painel oferece filtros e contagem por essa resposta; a exportação indica o filtro aplicado. Consentimento versão 1.1.
+
+Os nomes indicados pelo proprietário aparecem no início das listas, na ordem solicitada:
+
+- Federal: Vinicius Diniz, Pedro Braga, Pinheirinho e Nely Aquino.
+- Estadual: João do Social, Arlen Santiago e Oscar Teixeira.
+- Presidência: Lula, Flávio Bolsonaro, Renan Santos, Escritor Augusto Cury e Ronaldo Caiado.
+
+Os demais nomes permanecem disponíveis na lista e na busca. Os destaques são uma escolha de apresentação do questionário, não uma classificação de popularidade. A configuração está em `data/featured-candidates.json`; os números e partidos continuam vindo da base importada. Governador e Senado mantêm sua apresentação anterior.
 
 ## Dados de candidaturas
 

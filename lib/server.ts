@@ -5,7 +5,7 @@ export {isAdmin as admin} from './auth';
 export async function settings():Promise<SurveySettings>{
  if(!databaseConfigured())return {...defaults};
  const row=await db().prepare('SELECT data FROM settings WHERE id=1').first<{data:string}>();
- return {...defaults,...(row?JSON.parse(row.data):{})};
+ return {...defaults,...(row?JSON.parse(row.data):{}),consentVersion:defaults.consentVersion};
 }
 export async function hash(value:string){return [...new Uint8Array(await crypto.subtle.digest('SHA-256',new TextEncoder().encode(value)))].map(x=>x.toString(16).padStart(2,'0')).join('');}
 export function json(value:unknown,status=200){return Response.json(value,{status,headers:{'Cache-Control':'no-store','X-Content-Type-Options':'nosniff'}});}

@@ -11,7 +11,19 @@ function connection(){
 }
 async function ready(){
  const c=connection();
- initializing??=c.batch(schema,'write').then(()=>{}).catch(error=>{initializing=undefined;throw error;});
+ initializing??=(async()=>{
+  await c.batch(schema,'write');
+  // Existing installations retain their responses. The new question starts unset.
+  const columns=await c.execute('PRAGMA table_info(responses)');
+  if(!columns.rows.some(row=>row.name==='votes_in_varzea_da_palma')){
+   try{await c.execute('ALTER TABLE responses ADD COLUMN votes_in_varzea_da_palma INTEGER CHECK(votes_in_varzea_da_palma IN (0,1))');}
+   catch(error){
+    // Another server instance may have completed this same migration concurrently.
+    const current=await c.execute('PRAGMA table_info(responses)');
+    if(!current.rows.some(row=>row.name==='votes_in_varzea_da_palma'))throw error;
+   }
+  }
+ })().catch(error=>{initializing=undefined;throw error;});
  await initializing;return c;
 }
 class Statement {

@@ -107,3 +107,12 @@ Documentação oficial consultada em 26/09/2026:
 - [Variáveis na Vercel](https://vercel.com/docs/environment-variables)
 - [Next.js na Vercel](https://vercel.com/docs/frameworks/full-stack/nextjs)
 - [Turso com Next.js](https://docs.turso.tech/sdk/ts/guides/nextjs)
+
+
+## Atualização: Várzea da Palma e destaques
+
+Substitua os arquivos da versão anterior pelos arquivos deste ZIP no seu repositório e faça Commit e Push. Mantenha as quatro variáveis já cadastradas na Vercel. Não crie outro banco para aplicar esta atualização.
+
+A pergunta inicial agora é “Você vota em Várzea da Palma?”, com Sim e Não. As duas respostas permitem continuar. O painel passa a filtrar e contar os participantes por essa informação. A atualização do banco é automática e preserva respostas antigas.
+
+Os deputados e presidenciáveis solicitados aparecem primeiro. “João Social” é apresentado como “João do Social” e “Bolsonaro” como “Flávio Bolsonaro”, conforme os nomes da base. Os demais candidatos continuam acessíveis.
