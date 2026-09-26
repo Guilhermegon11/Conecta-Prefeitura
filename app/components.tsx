@@ -1,0 +1,7 @@
+'use client';
+import {ChartNoAxesCombined,ArrowUpRight,ShieldCheck} from 'lucide-react';
+import {useState} from 'react';
+export function Brand(){return <a className="brand" href="/" aria-label="Minas Opina — início"><span className="brand-symbol"><ChartNoAxesCombined size={23}/></span><span>minas<span className="brand-light">opina</span><small>PESQUISA ELEITORAL 2026</small></span></a>;}
+export function Header({active='pesquisa'}:{active?:string}){return <><div className="topline"/><header className="site-header"><div className="header-inner"><Brand/><nav aria-label="Navegação principal"><a className={active==='pesquisa'?'active':''} href="/">Pesquisa</a><a className={active==='resultados'?'active':''} href="/resultados">Resultados</a><a className={'admin-link '+(active==='painel'?'active':'')} href="/painel">Painel <ArrowUpRight size={15}/></a></nav></div></header></>;}
+export function Footer(){return <footer className="site-footer"><span>© 2026 Minas Opina</span><span>Pesquisa independente. Sem vínculo com o TSE ou a Justiça Eleitoral.</span><span><ShieldCheck size={15}/> Conexão protegida</span></footer>;}
+export function CandidatePhoto({src,name}:{src?:string;name:string}){const [failed,setFailed]=useState(false);return src&&!failed?<img src={src} alt="" loading="lazy" className="candidate-photo" onError={()=>setFailed(true)}/>:<span className="candidate-photo initials" aria-hidden="true">{name.split(' ').filter(Boolean).slice(0,2).map(n=>n[0]).join('')}</span>;}
