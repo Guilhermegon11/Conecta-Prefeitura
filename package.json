@@ -11,17 +11,20 @@
     "start": "next start",
     "typecheck": "tsc --noEmit",
     "test": "node tests/server-integrity.cjs",
-    "setup:keys": "node scripts/generate-secrets.mjs"
+    "setup:keys": "node scripts/generate-secrets.mjs",
+    "test:export": "node tests/statistics-export.cjs"
   },
   "dependencies": {
     "@base-ui/react": "^1.7.0",
     "@hookform/resolvers": "^5.7.1",
+    "@libsql/client": "0.18.0",
     "@shadcn/react": "^0.3.0",
     "class-variance-authority": "0.7.1",
     "clsx": "2.1.1",
     "cmdk": "^1.1.1",
     "date-fns": "^4.4.0",
     "embla-carousel-react": "^8.6.0",
+    "exceljs": "4.4.0",
     "input-otp": "^1.4.2",
     "lucide-react": "^1.31.0",
     "next": "16.3.6",
@@ -36,8 +39,7 @@
     "sonner": "^2.0.8",
     "tailwind-merge": "3.6.0",
     "vaul": "^1.1.2",
-    "zod": "^3.25.76",
-    "@libsql/client": "0.18.0"
+    "zod": "^3.25.76"
   },
   "devDependencies": {
     "@tailwindcss/postcss": "4.2.1",

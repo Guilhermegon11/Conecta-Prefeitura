@@ -1,118 +1,145 @@
-# Publique o Minas Opina no seu GitHub e na Vercel
+# Minas Opina — coloque no ar e teste o painel
 
-Este pacote contém o site completo adaptado para Vercel: formulário, candidatos, fotos, fonte Poppins, painel com senha, convites individuais e resultados. Você controla as contas do GitHub, da Vercel e do banco de dados.
+O pacote contém formulário, candidatos, fotos, fonte Poppins, painel administrativo, banco, exportação Excel e simulação de votos. Você controla as contas do GitHub, da Vercel e do Turso.
 
-O site abre em demonstração. A coleta real começa quando você configura o banco, entra no painel e preenche os dados da pesquisa.
+**Acesso de teste:** endereço do site + `/painel`, usuário **admin**, senha **1234**. O banco precisa estar configurado para o login funcionar e as respostas ficarem salvas. Não basta abrir os arquivos do ZIP no computador.
 
-## 1. Extraia o ZIP
+## Já publicou uma versão anterior?
 
-Descompacte `minas-opina-vercel.zip`. Abra a pasta extraída: ela deve conter `package.json`, `app`, `public`, `data` e este guia.
+Substitua os arquivos antigos no seu repositório pelos arquivos extraídos deste ZIP. Preserve o banco atual e as variáveis do Turso. Faça Commit e Push pelo GitHub Desktop.
 
-O GitHub precisa receber os **arquivos extraídos**. Não envie somente o ZIP. O arquivo `package.json` deve ficar na raiz do repositório.
+Na Vercel, em **Settings → Environment Variables**, configure `TEST_MODE=true`, `ADMIN_USERNAME=admin` e `ADMIN_PASSWORD=1234`. Uma senha já cadastrada continua valendo até você substituí-la. Se já existe uma `SESSION_SECRET`, pode mantê-la. Faça **Redeploy** após alterar variáveis.
 
-## 2. Coloque o projeto no seu GitHub
+A atualização acrescenta os campos necessários ao banco automaticamente e preserva as respostas anteriores. Registros antigos ficam na base real; novos testes ficam separados. Depois, siga a seção **Teste o painel e salve respostas** abaixo.
 
-Como o projeto inclui muitas fotos de candidatos, use o [GitHub Desktop](https://desktop.github.com/download/) para enviar a pasta inteira.
+## 1. Extraia o ZIP e envie ao GitHub
+
+Descompacte `minas-opina-vercel.zip`. A pasta extraída deve conter `package.json`, `app`, `public`, `data` e este guia. O GitHub precisa receber os **arquivos extraídos**, e não apenas o ZIP. O `package.json` deve ficar na raiz do repositório.
+
+Como há muitas fotos de candidatos, use o [GitHub Desktop](https://desktop.github.com/download/) para enviar a pasta inteira:
 
 1. Instale o GitHub Desktop e entre na sua conta.
 2. Use **File → New repository** para criar um repositório chamado `minas-opina` em uma pasta nova.
-3. Abra essa pasta no seu computador. Copie para dentro dela todo o conteúdo extraído do ZIP, incluindo `.gitignore` e `.env.example`.
-4. Volte ao GitHub Desktop. Escreva `Versão inicial do Minas Opina` no resumo e clique em **Commit to main**.
-5. Clique em **Publish repository**. Mantenha **Keep this code private** marcado e confirme a publicação.
+3. Abra essa pasta e copie para dentro dela todo o conteúdo extraído do ZIP, incluindo `.gitignore` e `.env.example`.
+4. No GitHub Desktop, escreva `Versão inicial do Minas Opina` no resumo e clique em **Commit to main**.
+5. Clique em **Publish repository**, mantenha **Keep this code private** marcado e confirme.
 
-Não coloque senhas, tokens reais, lista de contatos ou respostas dos participantes no GitHub. O pacote não contém essas informações.
+Não coloque tokens reais, credenciais de produção, lista de contatos ou respostas dos participantes no GitHub.
 
-## 3. Crie o banco de dados
+## 2. Crie o banco
 
 1. Entre no [Turso](https://turso.tech/) com sua conta.
-2. Crie um banco chamado `minas-opina`, compatível com **libSQL**. Se o painel apresentar escolha de engine, use libSQL para este projeto.
+2. Crie um banco chamado `minas-opina`, compatível com **libSQL**. Se houver uma escolha de engine, use libSQL.
 3. Copie a URL do banco, normalmente começando com `libsql://`.
-4. Gere um token de acesso com leitura e escrita para esse banco e copie-o.
+4. Gere um token de leitura e escrita para esse banco e copie-o.
 
-Guarde esses dois valores. As tabelas são criadas automaticamente no primeiro acesso válido ao banco. Não é necessário executar SQL manualmente.
+Guarde os dois valores. As tabelas são criadas automaticamente na primeira conexão; o token precisa permitir sua criação. Não é necessário executar SQL manualmente.
 
-Os registros ficam no Turso e permanecem disponíveis quando você atualiza o site na Vercel. Esta instalação começa com um banco novo; ela não importa respostas de outro site.
+Os registros ficam no Turso e continuam disponíveis após atualizações na Vercel. Um banco novo começa vazio; o pacote não importa respostas de outro site.
 
-## 4. Importe o GitHub na Vercel
+## 3. Importe o projeto na Vercel
 
-1. Entre em [vercel.com](https://vercel.com/) usando sua conta.
-2. Abra **Add New → Project**.
-3. Conecte o GitHub e escolha o repositório `minas-opina`.
-4. Confira **Framework Preset: Next.js** e **Root Directory: `./`**, correspondente à pasta que contém `package.json`.
-5. Use **Node.js 24.x**. Os comandos de instalação e publicação já estão definidos no projeto.
-6. Em **Environment Variables**, cadastre os quatro valores abaixo antes de clicar em **Deploy**.
+1. Entre em [vercel.com](https://vercel.com/).
+2. Abra **Add New → Project**, conecte o GitHub e escolha `minas-opina`.
+3. Confira **Framework Preset: Next.js** e **Root Directory: `./`**, correspondente à pasta do `package.json`.
+4. Use **Node.js 24.x**. Os comandos de instalação e build já estão definidos no projeto.
+5. Em **Environment Variables**, cadastre:
 
-| Nome exato | O que colocar |
+| Nome exato | Valor para este teste |
 | --- | --- |
-| `TURSO_DATABASE_URL` | A URL do banco que você criou. |
-| `TURSO_AUTH_TOKEN` | O token de leitura e escrita desse banco. |
-| `ADMIN_PASSWORD` | Uma senha exclusiva do painel, com pelo menos 16 caracteres. |
-| `SESSION_SECRET` | Uma chave aleatória diferente da senha, com pelo menos 32 caracteres. |
+| `TURSO_DATABASE_URL` | URL do seu banco. |
+| `TURSO_AUTH_TOKEN` | Token do seu banco. |
+| `TEST_MODE` | `true` |
+| `ADMIN_USERNAME` | `admin` |
+| `ADMIN_PASSWORD` | `1234` |
 
-Use um gerenciador de senhas para gerar valores aleatórios longos. Não use os nomes dos campos como valores. Não coloque prefixo `NEXT_PUBLIC_` nesses nomes. Cadastre-os para **Production**; se criar ambientes de teste, use outro banco para esses ambientes.
+Cadastre as variáveis para **Production**, que é o ambiente usado pelo endereço principal da Vercel, mesmo enquanto o aplicativo está em teste. Não use prefixo `NEXT_PUBLIC_`. Se habilitar Preview, prefira outro banco para esse ambiente.
 
-Opcionalmente, com Node.js instalado, abra um terminal na pasta do projeto e rode `node scripts/generate-secrets.mjs`. O comando gera uma senha e uma chave novas no seu computador. Copie cada valor para o campo correspondente na Vercel e guarde-os.
+Em modo de teste, `SESSION_SECRET` é opcional: o servidor gera uma chave aleatória e a salva no Turso quando ela não é fornecida. Não é necessário inventar uma chave para começar o teste.
 
-Clique em **Deploy**. Ao terminar, a Vercel fornecerá o endereço do seu site.
+Clique em **Deploy**. Ao terminar, a Vercel fornecerá o endereço do site. Alterações posteriores nas variáveis exigem **Redeploy**. Os serviços podem ter limites e cobranças conforme o plano da sua conta.
 
-Se você alterar qualquer variável depois, faça **Redeploy** para aplicar o novo valor. A Vercel e o Turso podem ter limites e cobranças conforme o plano escolhido; confira-os nas suas contas.
+## 4. Teste o painel e salve respostas
 
-## 5. Entre no painel
+1. Abra o endereço fornecido pela Vercel e acrescente `/painel`.
+2. Entre com usuário **admin** e senha **1234**.
+3. Abra a página inicial do site, responda **“Você vota em Várzea da Palma?”** com Sim ou Não e complete as escolhas.
+4. Revise e envie a resposta de teste. Nesse modo, não é necessário gerar um convite externo antes de responder.
+5. Volte ao painel e atualize os dados. Confira o registro na aba **Respostas** e os totais em **Resultados**.
+6. Feche e reabra o painel para conferir que a resposta permanece salva no banco.
 
-Abra o endereço fornecido pela Vercel e acrescente `/painel`.
+O modo de teste aparece identificado. As respostas salvas nele são separadas das reais e **não são publicadas na página de resultados públicos**. Os convites da base de testes aceitam uma resposta por link. Enquanto TEST_MODE=true, o envio por convites reais fica pausado; eles voltam a funcionar quando você ativa o modo real.
 
-Exemplo de formato: `https://SEU-PROJETO.vercel.app/painel`.
+Sem as duas variáveis do Turso, o formulário oferece somente uma demonstração sem gravação; o painel informa a configuração pendente. O pacote não simula uma gravação que não aconteceu.
 
-Entre usando a senha que você definiu em `ADMIN_PASSWORD`. Esta versão usa senha própria; o link de ativação da versão hospedada anteriormente não é utilizado aqui.
+### Excel e simulação
 
-Se aparecer “Configure as quatro variáveis”, revise o passo 4 e faça um novo deploy. Para trocar a senha, altere `ADMIN_PASSWORD` na Vercel e faça Redeploy; as sessões anteriores deixam de funcionar.
+Use os filtros do painel para escolher a base de teste ou real e a resposta sobre Várzea da Palma. Os registros antigos sem essa pergunta aparecem identificados separadamente.
 
-## 6. Prepare a pesquisa e os convites
+O botão de exportação gera um arquivo **`.xlsx`** que abre no Excel. Ele contém quatro abas:
 
-1. No painel, abra **Configuração**.
-2. Preencha responsável, contato, registro, metodologia, período de coleta e data de divulgação.
-3. Confira os dados e a lista de candidaturas antes de abrir a coleta.
-4. Quando a pesquisa estiver regularizada, altere a situação para **Aberta para convidados** e salve.
-5. Em **Convites**, gere até 1.500 links e baixe o CSV.
-6. Distribua um link diferente para cada contato autorizado. Guarde o CSV: os links completos só aparecem nessa geração.
-7. Acompanhe as respostas no painel. Cada convite aceita uma única resposta.
+| Aba | Conteúdo |
+| --- | --- |
+| Respostas | Registros salvos na base selecionada e suas escolhas. |
+| Resumo | Contagens e percentuais das opções. |
+| Projeção | Simulação para o total hipotético informado no painel. |
+| Sobre | Filtros, base usada e explicação dos cálculos. |
 
-A geração de links não faz o envio pelo WhatsApp. O site apresenta pesquisa independente e não utiliza a marca oficial do TSE. Preencher um número de registro no painel não efetua nem valida o registro no TSE.
+Em **Simulação**, informe para quantos eleitores hipotéticos deseja aplicar as proporções recebidas. O valor inicial de 1.500 é um exemplo baseado na quantidade de contatos mencionada; não é o eleitorado oficial.
 
-Para divulgar resultados, encerre a coleta e ative **Publicar resultados agregados**, respeitando a data cadastrada. Os participantes acessam a página `/resultados`; o painel continua protegido por senha.
+Exemplo: 20 escolhas em 100 respostas equivalem a 20%; aplicando essa proporção a 1.500 eleitores hipotéticos, a simulação mostra aproximadamente 300 votos. Branco, nulo, indecisão e demais alternativas também participam do total usado no cálculo.
 
-Antes de distribuir links, abra um deles em uma janela anônima. Caso a proteção de acesso da Vercel peça login aos participantes, ajuste **Settings → Deployment Protection** para permitir acesso público à implantação de produção quando estiver pronto para iniciar. A senha do painel permanece independente dessa configuração.
+No Senado são duas escolhas por pessoa. A base percentual é `2 × número de respostas`, e a simulação distribui `2 × número de eleitores hipotéticos` escolhas. As quantidades são arredondadas.
 
-## 7. Atualizações e domínio
+Essa “média” é uma proporção da base recebida. A simulação **não é uma previsão eleitoral**, não prova representatividade e não calcula margem de erro. As escolhas dos contatos convidados podem diferir das escolhas do conjunto de eleitores.
 
-Faça alterações nos arquivos e use o GitHub Desktop para **Commit** e **Push**. Com a integração ativa, a Vercel publica uma nova versão do mesmo repositório.
+## 5. Quando decidir iniciar a coleta real
 
-Você pode começar pelo endereço `.vercel.app` fornecido pela Vercel. Para usar um domínio próprio, adicione-o em **Settings → Domains** e siga a configuração de DNS indicada pela plataforma. Este pacote não registra domínio nem altera a identificação exigida pelos provedores.
+Mantenha `admin / 1234` somente durante o teste. Para ativar o modo real:
+
+1. Gere uma senha exclusiva com pelo menos 16 caracteres e uma chave aleatória, diferente da senha, com pelo menos 32 caracteres. Com Node.js instalado, execute `node scripts/generate-secrets.mjs` na pasta do projeto para gerar os valores.
+2. Na Vercel, altere `TEST_MODE` para `false`, substitua `ADMIN_PASSWORD` pela senha forte e cadastre a chave em `SESSION_SECRET`. `ADMIN_USERNAME` pode continuar `admin` ou ser alterado.
+3. Mantenha as variáveis do Turso e faça Redeploy.
+4. Entre no painel com as novas credenciais. Em **Configuração**, preencha responsável, contato, registro, metodologia, período de coleta e data de divulgação.
+5. Confira os dados, a lista de candidaturas e as condições de realização e divulgação antes de abrir a coleta.
+6. Altere a situação para **Aberta para convidados** e salve.
+7. Em **Convites**, gere até 1.500 links reais e baixe o CSV. Guarde o arquivo: os links completos aparecem apenas nessa geração.
+8. Envie um link diferente para cada contato autorizado. Cada convite aceita uma resposta.
+
+O envio pelo WhatsApp é feito por você. Preencher um número de registro no painel não efetua nem valida um registro no TSE. O site apresenta pesquisa independente, sem vínculo com o TSE.
+
+Os testes anteriores permanecem salvos e separados. Eles não passam a ser respostas reais ao desligar o modo de teste. Esta versão usa uma pesquisa real por banco; para uma nova rodada independente, utilize outro banco.
+
+Antes de distribuir os links, abra um deles em uma janela anônima. Se a Vercel pedir login ao participante, confira **Settings → Deployment Protection** para permitir acesso público à implantação de produção quando estiver pronto. O login do painel continua sendo separado.
+
+Para divulgar resultados, encerre a coleta e ative **Publicar resultados agregados**, respeitando a data cadastrada. A página pública fica em `/resultados` e usa somente respostas reais.
+
+## 6. Atualizações e domínio
+
+Faça alterações nos arquivos e use o GitHub Desktop para **Commit** e **Push**. Com a integração ativa, a Vercel publica uma nova versão; manter o mesmo banco preserva as respostas.
+
+Você pode começar pelo endereço `.vercel.app`. Para um domínio próprio, adicione-o em **Settings → Domains** e siga o DNS indicado pela Vercel. Este pacote não registra domínio nem altera a identificação exigida pelos provedores.
 
 ## Se encontrar um problema
 
 | Situação | O que conferir |
 | --- | --- |
 | “No Next.js version detected” | O `package.json` precisa estar na raiz escolhida em Root Directory. |
-| Falha ao conectar o banco | Confira URL, token, banco libSQL e se o token continua válido. |
-| Painel não aceita a senha | Confira `ADMIN_PASSWORD`, sem espaços extras, e faça Redeploy após alterações. |
+| Banco não conecta ou painel pede configuração | Confira URL, token, banco libSQL, permissões e Redeploy. |
+| `admin / 1234` não funciona | Confira se `TEST_MODE=true` e se as variáveis de usuário/senha possuem outros valores. |
+| Login real não funciona | Com `TEST_MODE=false`, use senha de 16+ caracteres e `SESSION_SECRET` de 32+ caracteres. |
 | “Muitas tentativas” | Aguarde 15 minutos e tente novamente. |
-| O site está em demonstração | Abra a coleta no painel depois de preencher e conferir os dados da pesquisa. |
+| Demonstração não salva | A demonstração não grava; conecte o banco e use o modo de teste para persistir respostas. |
+| Respostas somem ao trocar o filtro | Confira teste/real e a resposta sobre Várzea da Palma; os filtros selecionam bases distintas. |
 | Participante vê um login da Vercel | Confira Deployment Protection da implantação de produção. |
-| Os resultados não aparecem | Encerre a coleta, aguarde a data e ative a publicação no painel. |
+| Testes não aparecem em `/resultados` | Esse é o comportamento esperado: testes ficam no painel. |
+| Resultados reais não aparecem | Encerre a coleta, aguarde a data e ative a publicação no painel. |
 
-Documentação oficial consultada em 26/09/2026:
+Referências oficiais usadas na preparação do pacote:
 
 - [Vercel com GitHub](https://vercel.com/docs/git/vercel-for-github)
 - [Variáveis na Vercel](https://vercel.com/docs/environment-variables)
 - [Next.js na Vercel](https://vercel.com/docs/frameworks/full-stack/nextjs)
 - [Turso com Next.js](https://docs.turso.tech/sdk/ts/guides/nextjs)
 
-
-## Atualização: Várzea da Palma e destaques
-
-Substitua os arquivos da versão anterior pelos arquivos deste ZIP no seu repositório e faça Commit e Push. Mantenha as quatro variáveis já cadastradas na Vercel. Não crie outro banco para aplicar esta atualização.
-
-A pergunta inicial agora é “Você vota em Várzea da Palma?”, com Sim e Não. As duas respostas permitem continuar. O painel passa a filtrar e contar os participantes por essa informação. A atualização do banco é automática e preserva respostas antigas.
-
-Os deputados e presidenciáveis solicitados aparecem primeiro. “João Social” é apresentado como “João do Social” e “Bolsonaro” como “Flávio Bolsonaro”, conforme os nomes da base. Os demais candidatos continuam acessíveis.
+A configuração de contas, a conexão com seu Turso e a publicação na sua Vercel ainda precisam ser feitas por você. O ZIP contém o projeto e as instruções; não possui acesso às suas contas.

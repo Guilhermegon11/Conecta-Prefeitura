@@ -13,14 +13,20 @@ async function ready(){
  const c=connection();
  initializing??=(async()=>{
   await c.batch(schema,'write');
-  // Existing installations retain their responses. The new question starts unset.
-  const columns=await c.execute('PRAGMA table_info(responses)');
-  if(!columns.rows.some(row=>row.name==='votes_in_varzea_da_palma')){
-   try{await c.execute('ALTER TABLE responses ADD COLUMN votes_in_varzea_da_palma INTEGER CHECK(votes_in_varzea_da_palma IN (0,1))');}
+  // Existing responses are preserved as real data. Never relabel an old response as a test.
+  const migrations=[
+   ['responses','votes_in_varzea_da_palma','INTEGER CHECK(votes_in_varzea_da_palma IN (0,1))'],
+   ['responses','is_test','INTEGER NOT NULL DEFAULT 0 CHECK(is_test IN (0,1))'],
+   ['invitations','is_test','INTEGER NOT NULL DEFAULT 0 CHECK(is_test IN (0,1))']
+  ];
+  for(const [table,column,definition] of migrations){
+   const columns=await c.execute(`PRAGMA table_info(${table})`);
+   if(columns.rows.some(row=>row.name===column))continue;
+   try{await c.execute(`ALTER TABLE ${table} ADD COLUMN ${column} ${definition}`);}
    catch(error){
-    // Another server instance may have completed this same migration concurrently.
-    const current=await c.execute('PRAGMA table_info(responses)');
-    if(!current.rows.some(row=>row.name==='votes_in_varzea_da_palma'))throw error;
+    // Another server instance may have completed this migration concurrently.
+    const current=await c.execute(`PRAGMA table_info(${table})`);
+    if(!current.rows.some(row=>row.name===column))throw error;
    }
   }
  })().catch(error=>{initializing=undefined;throw error;});
