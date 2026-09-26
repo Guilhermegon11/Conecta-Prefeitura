@@ -13,12 +13,12 @@ process.env.TURSO_DATABASE_URL='libsql://test.invalid';process.env.TURSO_AUTH_TO
 process.env.TEST_MODE='false';process.env.ADMIN_USERNAME='admin';
 process.env.ADMIN_PASSWORD='test-only-password-very-long';process.env.SESSION_SECRET='test-only-secret-with-more-than-32-characters';
 const originalPassword=process.env.ADMIN_PASSWORD,originalSecret=process.env.SESSION_SECRET;
-const jar=new Map(),cookieOptions=new Map();let checked=0;
-function execute(statement){const sql=typeof statement==='string'?statement:statement.sql,args=typeof statement==='string'?[]:statement.args||[];const stmt=sqlite.prepare(sql);if(stmt.columns().length)return{rows:stmt.all(...args),rowsAffected:0};const r=stmt.run(...args);return{rows:[],rowsAffected:Number(r.changes)};}
+const jar=new Map(),cookieOptions=new Map();let checked=0,databaseCalls=0;
+function execute(statement){databaseCalls++;const sql=typeof statement==='string'?statement:statement.sql,args=typeof statement==='string'?[]:statement.args||[];const stmt=sqlite.prepare(sql);if(stmt.columns().length)return{rows:stmt.all(...args),rowsAffected:0};const r=stmt.run(...args);return{rows:[],rowsAffected:Number(r.changes)};}
 const transport={async execute(s){return execute(s);},async batch(statements){sqlite.exec('BEGIN');try{const r=statements.map(execute);sqlite.exec('COMMIT');return r;}catch(e){sqlite.exec('ROLLBACK');throw e;}}};
 const cache={};
 function load(name){
- if(name.startsWith('node:'))return require(name);
+ if(name.startsWith('node:')||name==='exceljs')return require(name);
  if(name==='@libsql/client/web')return{createClient:()=>transport};
  if(name==='next/headers')return{cookies:async()=>({get:key=>jar.has(key)?{value:jar.get(key)}:undefined,set(key,value,options){jar.set(key,value);cookieOptions.set(key,options);}})};
  let file=name.startsWith('@/')?path.join(root,name.slice(2)):name;
@@ -114,6 +114,42 @@ async function post(handler,body,status,origin){const r=await handler(request(bo
  assert.equal(await auth.validSession(testCookie),false);checked++;
  await post(authRoute.POST,{username:'admin',password:originalPassword},200);
  const logout=await authRoute.DELETE(new Request('https://test.example/api/auth',{method:'DELETE',headers:{origin:'https://test.example'}}));assert.equal(logout.status,200);assert.equal((await admin.GET()).status,401);checked++;
- console.log(`${checked} checks passed: authentication, rate limiting, session integrity, schema migration, locality answers, candidate order, single-use invites, saved test responses, persistent test sessions and isolated result publication.`);
+ // An unconnected test installation can display only an empty preview, with no admin session.
+ const exportRoute=load('@/app/api/admin/export/route');
+ const configuredEnvironment=Object.fromEntries(['TURSO_DATABASE_URL','TURSO_AUTH_TOKEN','ADMIN_PASSWORD','SESSION_SECRET','TEST_MODE'].map(key=>[key,process.env[key]]));
+ try{
+  delete process.env.TURSO_DATABASE_URL;delete process.env.TURSO_AUTH_TOKEN;
+  delete process.env.ADMIN_PASSWORD;delete process.env.SESSION_SECRET;delete process.env.TEST_MODE;
+  jar.clear();cookieOptions.clear();
+  const beforePreview=databaseCalls;
+  const previewGate=await admin.GET();assert.equal(previewGate.status,401);
+  const previewConfig=await previewGate.json();assert.equal(previewConfig.needsLogin,true);assert.equal(previewConfig.previewAvailable,true);assert.equal(previewConfig.databaseReady,false);assert.equal(previewConfig.testMode,true);assert.equal(previewConfig.responses,undefined);checked++;
+  await post(authRoute.POST,{username:'admin',password:'1234'},403,'https://other.invalid');
+  await post(authRoute.POST,{username:'admin',password:'incorrect'},401);
+  const preview=await post(authRoute.POST,{username:'admin',password:'1234'},200);
+  assert.deepEqual(preview,{ok:true,preview:true});assert.equal(jar.has(auth.SESSION_COOKIE),false);assert.equal(cookieOptions.has(auth.SESSION_COOKIE),false);checked++;
+  assert.equal((await admin.GET()).status,401);checked++;
+  await post(admin.POST,{action:'invitations',count:1},401);
+  await post(admin.POST,{action:'settings',settings:{title:'Unauthorized edit'}},401);
+  assert.equal((await exportRoute.GET(new Request('https://test.example/api/admin/export'))).status,401);checked++;
+  await post(respond.POST,{},503);
+  await post(testSession.POST,{},503);
+  jar.set(auth.SESSION_COOKIE,testCookie);
+  await post(authRoute.POST,{username:'admin',password:'1234'},200);
+  assert.equal(jar.get(auth.SESSION_COOKIE),'');assert.equal(cookieOptions.get(auth.SESSION_COOKIE).maxAge,0);assert.equal(cookieOptions.get(auth.SESSION_COOKIE).httpOnly,true);assert.equal(cookieOptions.get(auth.SESSION_COOKIE).sameSite,'strict');checked++;
+  await post(admin.POST,{action:'invitations',count:1},401);
+  for(let i=0;i<8;i++)await post(authRoute.POST,{username:'admin',password:'incorrect'},401);
+  const throttled=await authRoute.POST(request({username:'admin',password:'1234'}));assert.equal(throttled.status,429);assert.equal(throttled.headers.get('Retry-After'),'900');checked++;
+  const previewNow=Date.now;try{Date.now=()=>previewNow()+16*60*1000;await post(authRoute.POST,{username:'admin',password:'1234'},200);}finally{Date.now=previewNow;}
+  process.env.TEST_MODE='false';process.env.ADMIN_PASSWORD=originalPassword;process.env.SESSION_SECRET=originalSecret;
+  const unavailable=await admin.GET();assert.equal(unavailable.status,503);assert.equal((await unavailable.json()).needsConfiguration,true);checked++;
+  await post(authRoute.POST,{username:'admin',password:originalPassword},503);
+  await post(admin.POST,{action:'invitations',count:1},401);
+  assert.equal((await exportRoute.GET(new Request('https://test.example/api/admin/export'))).status,401);checked++;
+  assert.equal(databaseCalls,beforePreview,'The preview and unconfigured production routes must never query the database');checked++;
+ }finally{
+  for(const [key,value] of Object.entries(configuredEnvironment)){if(value===undefined)delete process.env[key];else process.env[key]=value;}
+ }
+ console.log(`${checked} checks passed: authentication, rate limiting, session integrity, schema migration, locality answers, candidate order, single-use invites, saved test responses, persistent test sessions, isolated result publication and database-free preview boundaries.`);
  sqlite.close();
 })().catch(e=>{console.error(e);process.exitCode=1;});

@@ -7,7 +7,7 @@
 - Interface em português, fonte Poppins local e design responsivo em azul, verde e amarelo.
 - Candidaturas de Minas Gerais para deputado federal, deputado estadual, Senado e governo; candidaturas nacionais para Presidência.
 - Seis escolhas, com dois senadores diferentes, alternativas de branco/nulo/indecisão e revisão antes do envio.
-- Painel em `/painel`, com usuário, senha, sessão de oito horas e limitação de tentativas de login.
+- Painel em `/painel`, com usuário e senha. O acesso ao banco usa sessão de oito horas e limitação de tentativas de login.
 - Modo de teste com acesso padrão **admin / 1234** e respostas de teste salvas no banco.
 - Abas de resultados, respostas salvas, simulação, convites e configuração; filtros de modo e localidade.
 - Exportação de arquivo **Excel `.xlsx`**, com abas Respostas, Resumo, Projeção e Sobre.
@@ -19,11 +19,11 @@ O pacote não inclui respostas de participantes nem credenciais do banco. As con
 
 ## Comece em modo de teste
 
-O modo de teste vem habilitado por padrão. Para salvar respostas e entrar no painel, configure `TURSO_DATABASE_URL` e `TURSO_AUTH_TOKEN`. O banco precisa ser compatível com libSQL, com permissão de leitura, escrita e criação de tabelas.
+O modo de teste vem habilitado por padrão. Para salvar e consultar respostas no painel, configure `TURSO_DATABASE_URL` e `TURSO_AUTH_TOKEN`. O banco precisa ser compatível com libSQL, com permissão de leitura, escrita e criação de tabelas.
 
 Com o banco conectado, abra `/painel` e entre com usuário `admin` e senha `1234`. Na página inicial, envie uma resposta de teste; ela ficará disponível no painel. O teste não exige preencher os dados da coleta real nem gerar um convite externo antes de responder. Os convites criados enquanto o modo de teste estiver ativo também serão de teste.
 
-Sem banco configurado, a demonstração do formulário continua disponível, mas **não salva respostas**. O painel informa a configuração pendente. O projeto não usa o armazenamento local do navegador nem o disco efêmero da Vercel como banco de participantes.
+Sem banco configurado, a demonstração do formulário continua disponível, mas **não salva respostas**. O login `admin / 1234` abre uma prévia do painel com telas vazias e um passo a passo de conexão. Gravações, convites e exportação permanecem indisponíveis até a conexão. A prévia não emite cookie de sessão administrativa nem dá acesso às APIs protegidas; um erro de conexão com banco já configurado continua sendo exibido como erro. O projeto não usa o armazenamento local do navegador nem o disco efêmero da Vercel como banco de participantes.
 
 Se você já configurou `ADMIN_USERNAME` ou `ADMIN_PASSWORD`, esses valores prevalecem sobre os padrões. Para usar exatamente `admin / 1234` em uma instalação existente de teste, ajuste as variáveis na Vercel e faça Redeploy.
 
@@ -31,8 +31,8 @@ Se você já configurou `ADMIN_USERNAME` ou `ADMIN_PASSWORD`, esses valores prev
 
 | Variável | Modo de teste | Coleta real |
 | --- | --- | --- |
-| `TURSO_DATABASE_URL` | Obrigatória para login e persistência. | Obrigatória. |
-| `TURSO_AUTH_TOKEN` | Obrigatória para login e persistência. | Obrigatória. |
+| `TURSO_DATABASE_URL` | Obrigatória para persistência; opcional para conhecer a prévia. | Obrigatória. |
+| `TURSO_AUTH_TOKEN` | Obrigatória para persistência; opcional para conhecer a prévia. | Obrigatória. |
 | `TEST_MODE` | `true`; também é o padrão quando omitida. | Defina explicitamente `false`. |
 | `ADMIN_USERNAME` | Padrão `admin`; pode ser alterado. | Padrão `admin`; pode ser alterado. |
 | `ADMIN_PASSWORD` | Padrão `1234`; pode ser alterada. | Obrigatória, com pelo menos 16 caracteres. |
@@ -105,7 +105,7 @@ Os nomes indicados pelo proprietário aparecem no início das listas, na ordem s
 - Estadual: João do Social, Arlen Santiago e Oscar Teixeira.
 - Presidência: Lula, Flávio Bolsonaro, Renan Santos, Escritor Augusto Cury e Ronaldo Caiado.
 
-Os demais nomes permanecem disponíveis na lista e na busca. Os destaques são uma escolha de apresentação do questionário, não uma classificação de popularidade. A configuração está em `data/featured-candidates.json`; os números e partidos vêm da base importada.
+Todos os nomes aparecem em uma lista única, sem cabeçalhos que separem os indicados dos demais. Os indicados continuam no início, na ordem solicitada. Essa ordenação é uma escolha de apresentação do questionário, não uma classificação de popularidade. A configuração está em `data/featured-candidates.json`; os números e partidos vêm da base importada.
 
 A base entregue é uma fotografia dos dados oficiais consultados em 26/09/2026. Não há sincronização automática em segundo plano. A lista exibida exclui renúncias e registros substituídos; demais situações foram preservadas para revisão dos responsáveis.
 
@@ -128,6 +128,6 @@ O importador grava arquivos de revisão em `work/tse`; não sobrescreve a lista 
 
 A chave do convite é armazenada como SHA-256. Telefones e nomes dos participantes não são solicitados. O organizador pode relacionar cada link à pessoa para quem o enviou; isso não é anonimato absoluto. Os dados públicos são agregados. Backups, solicitações de direitos e eliminação após o prazo de retenção são responsabilidade do organizador; a exclusão automática por prazo não foi implementada.
 
-Mantenha o repositório privado e as credenciais nas variáveis de ambiente. Alterações nas credenciais de acesso e na chave de sessão invalidam sessões existentes após a nova configuração ser aplicada. O limite de login usa um identificador derivado do IP, sem guardar o IP em texto; registros antigos são removidos durante novos acessos.
+Mantenha o repositório privado e as credenciais nas variáveis de ambiente. Alterações nas credenciais de acesso e na chave de sessão invalidam sessões existentes após a nova configuração ser aplicada. O login ao banco usa um limite persistido com identificador derivado do IP, sem guardar o IP em texto; registros antigos são removidos durante novos acessos. A prévia vazia usa um limite temporário por instância e nunca concede autorização para acessar dados.
 
 As fontes, dependências e ativos de terceiros permanecem sujeitos às respectivas licenças. A marca Minas Opina identifica uma pesquisa independente, sem vínculo com o TSE.

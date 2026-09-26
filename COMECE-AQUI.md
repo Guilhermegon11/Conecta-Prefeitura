@@ -2,7 +2,7 @@
 
 O pacote contém formulário, candidatos, fotos, fonte Poppins, painel administrativo, banco, exportação Excel e simulação de votos. Você controla as contas do GitHub, da Vercel e do Turso.
 
-**Acesso de teste:** endereço do site + `/painel`, usuário **admin**, senha **1234**. O banco precisa estar configurado para o login funcionar e as respostas ficarem salvas. Não basta abrir os arquivos do ZIP no computador.
+**Acesso de teste:** endereço do site + `/painel`, usuário **admin**, senha **1234**. No modo de teste, você já pode entrar para conhecer o painel sem banco conectado. Para salvar e consultar respostas, gerar convites e exportar planilhas, conecte o banco conforme os passos abaixo. Não basta abrir os arquivos do ZIP no computador.
 
 ## Já publicou uma versão anterior?
 
@@ -70,7 +70,7 @@ Clique em **Deploy**. Ao terminar, a Vercel fornecerá o endereço do site. Alte
 
 O modo de teste aparece identificado. As respostas salvas nele são separadas das reais e **não são publicadas na página de resultados públicos**. Os convites da base de testes aceitam uma resposta por link. Enquanto TEST_MODE=true, o envio por convites reais fica pausado; eles voltam a funcionar quando você ativa o modo real.
 
-Sem as duas variáveis do Turso, o formulário oferece somente uma demonstração sem gravação; o painel informa a configuração pendente. O pacote não simula uma gravação que não aconteceu.
+Sem as duas variáveis do Turso, o formulário oferece uma demonstração sem gravação. O login admin / 1234 abre uma prévia do painel, com telas vazias e instruções para conectar o banco. Essa prévia não grava dados, não gera convites, não exporta respostas e não cria uma sessão administrativa de acesso ao banco. Ao atualizar a página, entre novamente. Depois de conectar o Turso e fazer Redeploy, entre para usar o painel completo.
 
 ### Excel e simulação
 
@@ -125,7 +125,8 @@ Você pode começar pelo endereço `.vercel.app`. Para um domínio próprio, adi
 | Situação | O que conferir |
 | --- | --- |
 | “No Next.js version detected” | O `package.json` precisa estar na raiz escolhida em Root Directory. |
-| Banco não conecta ou painel pede configuração | Confira URL, token, banco libSQL, permissões e Redeploy. |
+| Painel mostra “Prévia · banco ainda não conectado” | Siga “Conecte o banco uma vez” dentro do próprio painel, cadastre URL e token na Vercel e faça Redeploy. |
+| Banco configurado não conecta | Confira URL, token, banco libSQL e permissões. Um erro de conexão não é substituído por dados fictícios. |
 | `admin / 1234` não funciona | Confira se `TEST_MODE=true` e se as variáveis de usuário/senha possuem outros valores. |
 | Login real não funciona | Com `TEST_MODE=false`, use senha de 16+ caracteres e `SESSION_SECRET` de 32+ caracteres. |
 | “Muitas tentativas” | Aguarde 15 minutos e tente novamente. |
@@ -143,3 +144,7 @@ Referências oficiais usadas na preparação do pacote:
 - [Turso com Next.js](https://docs.turso.tech/sdk/ts/guides/nextjs)
 
 A configuração de contas, a conexão com seu Turso e a publicação na sua Vercel ainda precisam ser feitas por você. O ZIP contém o projeto e as instruções; não possui acesso às suas contas.
+
+## Lista única de candidatos
+
+Os candidatos aparecem juntos, sem títulos de “principais” ou “demais”. Os nomes que você solicitou continuam primeiro, na mesma ordem; os outros seguem na lista e permanecem disponíveis na busca.

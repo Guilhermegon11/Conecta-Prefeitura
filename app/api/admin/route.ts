@@ -8,6 +8,7 @@ import {defaults} from '@/lib/survey';
 import {testMode} from '@/lib/mode';
 export async function GET(){try{
  const testing=testMode();
+ if(testing&&!databaseConfigured()&&authConfigured())return json({needsLogin:true,previewAvailable:true,databaseReady:false,testMode:true,error:'Entre para conhecer o painel. Conecte o banco para salvar e consultar respostas.'},401);
  if(!authConfigured()||!databaseConfigured())return json({error:configurationMessage(),needsConfiguration:true,testMode:testing},503);
  if(!await admin())return json({error:'Entre no painel com seu usuário e sua senha.',needsLogin:true,testMode:testing},401);
  const [s,responses,invitations]=await Promise.all([
